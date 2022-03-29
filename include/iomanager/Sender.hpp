@@ -73,8 +73,7 @@ public:
   using SenderConcept<Datatype>::send;
 
   explicit NetworkSenderModel(ConnectionID conn_id)
-    : SenderConcept<Datatype>(conn_id)
-    , m_conn_id(conn_id)
+    : m_conn_id(conn_id)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << (void*)this;
     // get network resources

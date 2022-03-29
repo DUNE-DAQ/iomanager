@@ -25,11 +25,13 @@ struct ConnectionID
 inline bool
 operator<(const ConnectionID& l, const ConnectionID& r)
 {
-  std::ostringstream ossl;
-  std::ostringstream ossr;
-  ossl << l.m_service_type << l.m_service_type << l.m_topic;
-  ossr << r.m_service_type << r.m_service_type << r.m_topic;
-  return ossl.str() < ossr.str();
+  if (l.m_service_type != r.m_service_type) {
+    return l.m_service_name < r.m_service_type;
+  }
+  if (l.m_service_name != r.m_service_name) {
+    return l.m_service_name < r.m_service_name;
+  }
+  return l.m_topic < r.m_topic;
 }
 
 } // namespace iomanager

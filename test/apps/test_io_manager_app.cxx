@@ -24,11 +24,20 @@ int
 main(int /*argc*/, char** /*argv[]*/)
 {
   dunedaq::iomanager::IOManager iom;
+  std::map<std::string, dunedaq::appfwk::QueueConfig> config_map;
+  dunedaq::appfwk::QueueConfig qspec;
+  qspec.kind = dunedaq::appfwk::QueueConfig::queue_kind::kStdDeQueue;
+  qspec.capacity = 10;
+  config_map["bar"] = qspec;
+  config_map["foo"] = qspec;
+  config_map["dsa"] = qspec;
+  config_map["zyx"] = qspec;
+  dunedaq::appfwk::QueueRegistry::get().configure(config_map);
 
   std::cout << "Test int sender.\n";
   // Int sender
   dunedaq::iomanager::ConnectionID cid;
-  cid.m_service_type = "foo";
+  cid.m_service_type = "queue";
   cid.m_service_name = "bar";
   cid.m_topic = "";
 
@@ -48,7 +57,7 @@ main(int /*argc*/, char** /*argv[]*/)
   std::cout << "Test string sender.\n";
   // String sender
   dunedaq::iomanager::ConnectionID cid2;
-  cid2.m_service_type = "bar";
+  cid2.m_service_type = "queue";
   cid2.m_service_name = "foo";
   cid2.m_topic = "";
 
@@ -61,7 +70,7 @@ main(int /*argc*/, char** /*argv[]*/)
   std::cout << "Test string receiver.\n";
   // String receiver
   dunedaq::iomanager::ConnectionID cid3;
-  cid3.m_service_type = "asd";
+  cid3.m_service_type = "queue";
   cid3.m_service_name = "dsa";
   cid3.m_topic = "";
 
@@ -73,7 +82,7 @@ main(int /*argc*/, char** /*argv[]*/)
   std::cout << "Test callback string receiver.\n";
   // Callback receiver
   dunedaq::iomanager::ConnectionID cid4;
-  cid4.m_service_type = "xyz";
+  cid4.m_service_type = "queue";
   cid4.m_service_name = "zyx";
   cid4.m_topic = "";
 
