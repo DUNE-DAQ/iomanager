@@ -33,15 +33,16 @@ main(int /*argc*/, char** /*argv[]*/)
   cid.m_topic = "";
 
   int msg = 5;
+  std::chrono::milliseconds timeout(100);
   auto isender = iom.get_sender<int>(cid);
   std::cout << "Type: " << typeid(isender).name() << '\n';
-  isender->send(msg);
-  isender->send(msg);
+  isender->send(msg, timeout);
+  isender->send(msg, timeout);
   std::cout << "\n\n";
 
   std::cout << "Test one line sender.\n";
   // One line send
-  iom.get_sender<int>(cid)->send(msg);
+  iom.get_sender<int>(cid)->send(msg, timeout);
   std::cout << "\n\n\n";
 
   std::cout << "Test string sender.\n";
@@ -54,7 +55,7 @@ main(int /*argc*/, char** /*argv[]*/)
   auto ssender = iom.get_sender<std::string>(cid2);
   std::cout << "Type: " << typeid(ssender).name() << '\n';
   std::string asd("asd");
-  ssender->send(asd);
+  ssender->send(asd, timeout);
   std::cout << "\n\n";
 
   std::cout << "Test string receiver.\n";
@@ -66,7 +67,7 @@ main(int /*argc*/, char** /*argv[]*/)
 
   auto receiver = iom.get_receiver<std::string>(cid3);
   std::cout << "Type: " << typeid(receiver).name() << '\n';
-  std::string got = receiver->receive();
+  std::string got = receiver->receive(timeout);
   std::cout << "\n\n";
 
   std::cout << "Test callback string receiver.\n";
@@ -76,24 +77,21 @@ main(int /*argc*/, char** /*argv[]*/)
   cid4.m_service_name = "zyx";
   cid4.m_topic = "";
 
-  // CB function and run-marker
-  std::atomic<bool> run_marker{ true };
+  // CB function
   std::function<void(std::string)> str_receiver_cb = [&](std::string data) {
     std::cout << "Str receiver callback called with data: " << data << '\n';
   };
 
   auto cbrec = iom.get_receiver<std::string>(cid4);
   std::cout << "Type: " << typeid(cbrec).name() << '\n';
-  cbrec->add_callback(str_receiver_cb, run_marker);
+  cbrec->add_callback(str_receiver_cb);
   std::cout << "Try to call receive, which should fail with callbacks registered!\n";
-  got = cbrec->receive();
+  got = cbrec->receive(timeout);
 
   // Exercise internal event loop
   std::cout << "Wait a bit in main to see event loop polling...\n";
   std::this_thread::sleep_for(std::chrono::seconds(5));
-  std::cout << "Flip killswitch/run_marker... Then unregister callback for event loop stop.\n";
-  run_marker.store(false);
-  // iom.unregister_callback<std::string>(cid4); or:
+  std::cout << "Unregister callback for event loop stop.\n";
   cbrec->remove_callback();
   std::cout << "\n\n";
 

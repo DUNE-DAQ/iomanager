@@ -11,7 +11,9 @@
 
 #include "iomanager/ConnectionID.hpp"
 #include "iomanager/GenericCallback.hpp"
+
 #include "utilities/ReusableThread.hpp"
+#include "logging/Logging.hpp"
 
 #include <any>
 #include <atomic>
@@ -26,6 +28,10 @@ namespace iomanager {
 class Receiver
 {
 public:
+  using timeout_t = std::chrono::milliseconds;
+  static constexpr timeout_t s_block = timeout_t::max();
+  static constexpr timeout_t s_no_block = timeout_t::zero();
+
   virtual ~Receiver() = default;
 };
 
@@ -34,8 +40,8 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
-  virtual Datatype receive() = 0;
-  virtual void add_callback(std::function<void(Datatype)> callback, std::atomic<bool>& run_marker) = 0;
+  virtual Datatype receive(Receiver::timeout_t timeout) = 0;
+  virtual void add_callback(std::function<void(Datatype&)> callback) = 0;
   virtual void remove_callback() = 0;
 };
 
@@ -46,7 +52,6 @@ class QueueReceiverModel : public ReceiverConcept<Datatype>
 public:
   explicit QueueReceiverModel(ConnectionID conn_id)
     : m_conn_id(conn_id)
-    , m_with_callback{ false }
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
     // get queue ref from queueregistry based on conn_id
@@ -54,7 +59,14 @@ public:
     // m_source = std::make_unique<appfwk::DAQSource<Datatype>>(sink_name);
   }
 
-  Datatype receive() override
+  QueueReceiverModel(QueueReceiverModel&& other)
+    : m_conn_id(other.m_conn_id)
+    , m_with_callback(other.m_with_callback.load())
+    , m_callback(std::move(other.m_callback))
+    , m_event_loop_runner(std::move(other.m_event_loop_runner))
+  {}
+
+  Datatype receive(Receiver::timeout_t /*timeout*/) override
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
@@ -67,14 +79,14 @@ public:
     // if (m_queue->write(
   }
 
-  void add_callback(std::function<void(Datatype)> callback, std::atomic<bool>& run_marker) override
+  void add_callback(std::function<void(Datatype&)> callback) override
   {
     TLOG() << "Registering callback.";
     m_callback = callback;
     m_with_callback = true;
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner = std::thread([&]() {
-      while (run_marker.load()) {
+      while (m_with_callback.load()) {
         TLOG() << "Take data from q then invoke callback...";
         Datatype dt;
         m_callback(dt);
@@ -85,6 +97,7 @@ public:
 
   void remove_callback() override
   {
+    m_with_callback = false;
     if (m_event_loop_runner.joinable()) {
       m_event_loop_runner.join();
     } else {
@@ -94,8 +107,8 @@ public:
   }
 
   ConnectionID m_conn_id;
-  bool m_with_callback;
-  std::function<void(Datatype)> m_callback;
+  std::atomic<bool> m_with_callback{ false };
+  std::function<void(Datatype&)> m_callback;
   std::thread m_event_loop_runner;
   // std::unique_ptr<appfwk::DAQSource<Datatype>> m_source;
 };
@@ -106,14 +119,20 @@ class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
   explicit NetworkReceiverModel(ConnectionID conn_id)
-    : ReceiverConcept<Datatype>(conn_id)
-    , m_conn_id(conn_id)
+    : m_conn_id(conn_id)
   {
     TLOG() << "NetworkReceiverModel created with DT! Addr: " << (void*)this;
     // get network resources
   }
 
-  Datatype receive() override
+  NetworkReceiverModel(NetworkReceiverModel&& other)
+    : m_conn_id(other.m_conn_id)
+    , m_with_callback(other.m_with_callback.load())
+    , m_callback(std::move(other.m_callback))
+    , m_event_loop_runner(std::move(other.m_event_loop_runner))
+  {}
+
+  Datatype receive(Receiver::timeout_t /*timeout*/) override
   {
     TLOG() << "Hand off data...";
     Datatype dt;
@@ -121,14 +140,14 @@ public:
     // if (m_queue->write(
   }
 
-  void add_callback(std::function<void(Datatype)> callback, std::atomic<bool>& run_marker)
+  void add_callback(std::function<void(Datatype&)> callback)
   {
     TLOG() << "Registering callback.";
     m_callback = callback;
     m_with_callback = true;
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner = std::thread([&]() {
-      while (run_marker.load()) {
+      while (m_with_callback.load()) {
         TLOG() << "Take data from network then invoke callback...";
         Datatype dt;
         m_callback(dt);
@@ -139,6 +158,7 @@ public:
 
   void remove_callback() override
   {
+    m_with_callback = false;
     if (m_event_loop_runner.joinable()) {
       m_event_loop_runner.join();
     } else {
@@ -148,8 +168,8 @@ public:
   }
 
   ConnectionID m_conn_id;
-  bool m_with_callback;
-  std::function<void(Datatype)> m_callback;
+  std::atomic<bool> m_with_callback{ false };
+  std::function<void(Datatype&)> m_callback;
   std::thread m_event_loop_runner;
 };
 

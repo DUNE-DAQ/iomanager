@@ -11,6 +11,8 @@
 
 #include "iomanager/ConnectionID.hpp"
 
+#include "appfwk/QueueRegistry.hpp"
+
 #include <any>
 #include <atomic>
 #include <iostream>
@@ -24,6 +26,10 @@ namespace iomanager {
 class Sender
 {
 public:
+  using timeout_t = std::chrono::milliseconds;
+  static constexpr timeout_t s_block = timeout_t::max();
+  static constexpr timeout_t s_no_block = timeout_t::zero();
+
   virtual ~Sender() = default;
 };
 
@@ -32,7 +38,7 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  virtual void send(Datatype& /*data*/) = 0;
+  virtual void send(Datatype& /*data*/, Sender::timeout_t /*timeout*/) = 0;
 };
 
 // QImpl
@@ -43,17 +49,20 @@ public:
   explicit QueueSenderModel(ConnectionID conn_id)
     : m_conn_id(conn_id)
   {
-    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this;
+    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this; 
+    m_queue= appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.m_service_name);
     // get queue ref from queueregistry based on conn_id
   }
 
-  void send(Datatype& data) override
+  void send(Datatype& data, Sender::timeout_t timeout) override
   {
-    TLOG() << "Handle data: " << data;
+    //TLOG() << "Handle data: " << data;
+    m_queue->push(std::move(data), timeout);
     // if (m_queue->write(
   }
 
   ConnectionID m_conn_id;
+  std::shared_ptr<appfwk::Queue<Datatype>> m_queue;
 };
 
 // NImpl
@@ -71,9 +80,9 @@ public:
     // get network resources
   }
 
-  void send(Datatype& data) override
+  void send(Datatype& data, Sender::timeout_t /*timeout*/) override
   {
-    TLOG() << "Handle data: " << data;
+    //TLOG() << "Handle data: " << data;
     // if (m_queue->write(
   }
 

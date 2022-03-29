@@ -55,15 +55,18 @@ public:
   ReceiverConcept<Datatype>* get_receiver(ConnectionID conn_id)
   {
     if (!m_receivers.count(conn_id)) {
-      if (true) { // if queue
+      if (conn_id.m_service_type == "queue") { // if queue
         m_receivers[conn_id] = std::make_unique<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(conn_id));
+      } else {
+        m_receivers[conn_id] =
+          std::make_unique<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id));
       }
     }
     return dynamic_cast<ReceiverConcept<Datatype>*>(m_receivers[conn_id].get()); // NOLINT
   }
 
   template<typename Datatype>
-  void add_callback(ConnectionID conn_id, std::function<void(Datatype)> callback)
+  void add_callback(ConnectionID conn_id, std::function<void(Datatype&)> callback)
   {
     auto receiver = dynamic_cast<ReceiverConcept<Datatype>*>(m_receivers[conn_id].get()); // NOLINT
     receiver->add_callback(callback);
