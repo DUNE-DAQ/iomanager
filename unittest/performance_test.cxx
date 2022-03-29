@@ -56,7 +56,7 @@ struct ConfigurationTestFixture
     std::map<std::string, dunedaq::appfwk::QueueConfig> config_map;
     dunedaq::appfwk::QueueConfig qspec;
     qspec.kind = dunedaq::appfwk::QueueConfig::queue_kind::kStdDeQueue;
-    qspec.capacity = 10;
+    qspec.capacity = 100;
     config_map["test_queue"] = qspec;
     dunedaq::appfwk::QueueRegistry::get().configure(config_map);
   }
@@ -175,7 +175,7 @@ BOOST_FIXTURE_TEST_CASE(DirectReadQueue, ConfigurationTestFixture)
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < total_send; ++i) {
     dunedaq::data_t temp(55680, i % 200);
-    queue_sender->send(temp, dunedaq::iomanager::Sender::s_no_block);
+    queue_sender->send(temp, std::chrono::milliseconds(10));
   }
   rcv_ftr.get();
   auto stop_time = std::chrono::steady_clock::now();
