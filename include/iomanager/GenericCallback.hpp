@@ -13,10 +13,10 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_GENERICCALLBACK_HPP_
 
 #include <any>
-#include <vector>
+#include <memory>
 #include <tuple>
 #include <utility>
-#include <memory>
+#include <vector>
 
 namespace dunedaq {
 namespace iomanager {

@@ -1,6 +1,6 @@
 /**
  * @file Sender.hpp
- * 
+ *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
@@ -43,13 +43,13 @@ public:
   explicit QueueSenderModel(ConnectionID conn_id)
     : m_conn_id(conn_id)
   {
-    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this ;
+    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this;
     // get queue ref from queueregistry based on conn_id
   }
 
   void send(Datatype& data) override
   {
-    TLOG() << "Handle data: " << data ;
+    TLOG() << "Handle data: " << data;
     // if (m_queue->write(
   }
 

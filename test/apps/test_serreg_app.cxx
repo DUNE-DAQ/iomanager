@@ -12,8 +12,8 @@
 
 #include <iostream>
 #include <sstream>
-#include <vector>
 #include <string>
+#include <vector>
 
 std::string
 int_to_string(int num)
