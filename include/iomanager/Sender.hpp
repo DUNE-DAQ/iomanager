@@ -9,7 +9,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
 
-#include "iomanager/ConnectionID.hpp"
+#include "iomanager/ConnectionId.hpp"
 
 #include "appfwk/QueueRegistry.hpp"
 
@@ -38,7 +38,7 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  virtual void send(Datatype& /*data*/, Sender::timeout_t /*timeout*/) = 0;
+  virtual void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
 };
 
 // QImpl
@@ -46,22 +46,27 @@ template<typename Datatype>
 class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
-  explicit QueueSenderModel(ConnectionID conn_id)
+  explicit QueueSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
     : m_conn_id(conn_id)
+    , m_conn_ref(conn_ref)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this; 
-    m_queue= appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.m_service_name);
+    m_queue= appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
     // get queue ref from queueregistry based on conn_id
   }
 
-  void send(Datatype& data, Sender::timeout_t timeout) override
+  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
+    if (topic != "") {
+      TLOG() << "Topics are invalid for queues! Check config!";
+    }
     //TLOG() << "Handle data: " << data;
     m_queue->push(std::move(data), timeout);
     // if (m_queue->write(
   }
 
-  ConnectionID m_conn_id;
+  ConnectionId m_conn_id;
+  ConnectionRef m_conn_ref;
   std::shared_ptr<appfwk::Queue<Datatype>> m_queue;
 };
 
@@ -72,20 +77,22 @@ class NetworkSenderModel : public SenderConcept<Datatype>
 public:
   using SenderConcept<Datatype>::send;
 
-  explicit NetworkSenderModel(ConnectionID conn_id)
+  explicit NetworkSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
     : m_conn_id(conn_id)
+    , m_conn_ref(conn_ref)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << (void*)this;
     // get network resources
   }
 
-  void send(Datatype& data, Sender::timeout_t /*timeout*/) override
+  void send(Datatype& data, Sender::timeout_t /*timeout*/, Topic_t topic = "") override
   {
     //TLOG() << "Handle data: " << data;
     // if (m_queue->write(
   }
 
-  ConnectionID m_conn_id;
+  ConnectionId m_conn_id;
+  ConnectionRef m_conn_ref;
 };
 
 } // namespace iomanager

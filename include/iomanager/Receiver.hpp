@@ -9,12 +9,13 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_
 
-#include "iomanager/ConnectionID.hpp"
+#include "iomanager/ConnectionId.hpp"
 #include "iomanager/GenericCallback.hpp"
 
 #include "appfwk/QueueRegistry.hpp"
 #include "logging/Logging.hpp"
 #include "utilities/ReusableThread.hpp"
+#include "ipm/Subscriber.hpp"
 
 #include <any>
 #include <atomic>
@@ -26,9 +27,9 @@ namespace dunedaq {
 
 ERS_DECLARE_ISSUE(iomanager,
                   ReceiveCallbackConflict,
-                  "QueueReceiverModel for service_name " << service_name
+                  "QueueReceiverModel for uid " << conn_uid
                                                          << " is equipped with callback! Ignoring receive call.",
-                  ((std::string)service_name))
+                  ((std::string)conn_uid))
 
 namespace iomanager {
 
@@ -58,18 +59,20 @@ template<typename Datatype>
 class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit QueueReceiverModel(ConnectionID conn_id)
+  explicit QueueReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
     : m_conn_id(conn_id)
+    , m_conn_ref(conn_ref)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
     // get queue ref from queueregistry based on conn_id
     // std::string sink_name = conn_id to sink_name;
     // m_source = std::make_unique<appfwk::DAQSource<Datatype>>(sink_name);
-    m_queue = appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.m_service_name);
+    m_queue = appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
     : m_conn_id(other.m_conn_id)
+    , m_conn_ref(other.m_conn_ref)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
@@ -81,7 +84,7 @@ public:
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
-      throw ReceiveCallbackConflict(ERS_HERE, m_conn_id.m_service_name);
+      throw ReceiveCallbackConflict(ERS_HERE, m_conn_id.uid);
     }
     if (m_queue == nullptr) {
       throw "Queue instance not found";
@@ -124,7 +127,8 @@ public:
     // remove function.
   }
 
-  ConnectionID m_conn_id;
+  ConnectionId m_conn_id;
+  ConnectionRef m_conn_ref;
   std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
   std::unique_ptr<std::thread> m_event_loop_runner;
@@ -137,8 +141,9 @@ template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit NetworkReceiverModel(ConnectionID conn_id)
+  explicit NetworkReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
     : m_conn_id(conn_id)
+    , m_conn_ref(conn_ref)
   {
     TLOG() << "NetworkReceiverModel created with DT! Addr: " << (void*)this;
     // get network resources
@@ -188,10 +193,14 @@ public:
     // remove function.
   }
 
-  ConnectionID m_conn_id;
+  ConnectionId m_conn_id;
+  ConnectionRef m_conn_ref;
   std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
   std::unique_ptr<std::thread> m_event_loop_runner;
+  std::shared_ptr<GenericCallback> m_deserializer;
+  std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
+  std::shared_ptr<ipm::Subscriber> m_network_subscriber_ptr{ nullptr };
 };
 
 } // namespace iomanager

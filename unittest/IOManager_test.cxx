@@ -127,6 +127,13 @@ struct ConfigurationTestFixture
     qspec.capacity = 10;
     config_map["test_queue"] = qspec;
     dunedaq::appfwk::QueueRegistry::get().configure(config_map);
+
+    dunedaq::iomanager::ConnectionIds_t connections;
+    connections.emplace_back(ConnectionId{ "test_queue", ServiceType::kQueue, "NonCopyableData", "queue://StdDeque:10" });
+    connections.emplace_back(ConnectionId{ "test_connection", ServiceType::kNetwork, "NonCopyableData", "inproc://foo" });
+    iom.configure(connections);
+    conn_ref = ConnectionRef{ "network", "test_connection" };
+    queue_ref = ConnectionRef{ "queue", "test_queue" };
   }
   ~ConfigurationTestFixture()
   {
@@ -138,6 +145,10 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture(ConfigurationTestFixture&&) = default;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
+
+  dunedaq::iomanager::IOManager iom;
+  dunedaq::iomanager::ConnectionRef conn_ref;
+  dunedaq::iomanager::ConnectionRef queue_ref;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
@@ -150,13 +161,10 @@ BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
 
 BOOST_FIXTURE_TEST_CASE(SimpleSendReceive, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<Data>(test_conn);
-  auto net_receiver = iom.get_receiver<Data>(test_conn);
-  auto q_sender = iom.get_sender<Data>(test_queue);
-  auto q_receiver = iom.get_receiver<Data>(test_queue);
+  auto net_sender = iom.get_sender<Data>(conn_ref);
+  auto net_receiver = iom.get_receiver<Data>(conn_ref);
+  auto q_sender = iom.get_sender<Data>(queue_ref);
+  auto q_receiver = iom.get_receiver<Data>(queue_ref);
 
   Data sent_nw(56, 26.5, "test1");
   Data sent_q(57, 27.5, "test2");
@@ -177,13 +185,10 @@ BOOST_FIXTURE_TEST_CASE(SimpleSendReceive, ConfigurationTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<NonSerializableData>(test_conn);
-  auto net_receiver = iom.get_receiver<NonSerializableData>(test_conn);
-  auto q_sender = iom.get_sender<NonSerializableData>(test_queue);
-  auto q_receiver = iom.get_receiver<NonSerializableData>(test_queue);
+  auto net_sender = iom.get_sender<NonSerializableData>(conn_ref);
+  auto net_receiver = iom.get_receiver<NonSerializableData>(conn_ref);
+  auto q_sender = iom.get_sender<NonSerializableData>(queue_ref);
+  auto q_receiver = iom.get_receiver<NonSerializableData>(queue_ref);
 
   NonSerializableData sent_nw(56, 26.5, "test1");
   NonSerializableData sent_q(57, 27.5, "test2");
@@ -204,13 +209,10 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(NonCopyableSendReceive, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<NonCopyableData>(test_conn);
-  auto net_receiver = iom.get_receiver<NonCopyableData>(test_conn);
-  auto q_sender = iom.get_sender<NonCopyableData>(test_queue);
-  auto q_receiver = iom.get_receiver<NonCopyableData>(test_queue);
+  auto net_sender = iom.get_sender<NonCopyableData>(conn_ref);
+  auto net_receiver = iom.get_receiver<NonCopyableData>(conn_ref);
+  auto q_sender = iom.get_sender<NonCopyableData>(queue_ref);
+  auto q_receiver = iom.get_receiver<NonCopyableData>(queue_ref);
 
   NonCopyableData sent_nw(56, 26.5, "test1");
   NonCopyableData sent_q(57, 27.5, "test2");
@@ -231,13 +233,10 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableSendReceive, ConfigurationTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableSendReceive, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<NonSerializableNonCopyable>(test_conn);
-  auto net_receiver = iom.get_receiver<NonSerializableNonCopyable>(test_conn);
-  auto q_sender = iom.get_sender<NonSerializableNonCopyable>(test_queue);
-  auto q_receiver = iom.get_receiver<NonSerializableNonCopyable>(test_queue);
+  auto net_sender = iom.get_sender<NonSerializableNonCopyable>(conn_ref);
+  auto net_receiver = iom.get_receiver<NonSerializableNonCopyable>(conn_ref);
+  auto q_sender = iom.get_sender<NonSerializableNonCopyable>(queue_ref);
+  auto q_receiver = iom.get_receiver<NonSerializableNonCopyable>(queue_ref);
 
   NonSerializableNonCopyable sent_nw(56, 26.5, "test1");
   NonSerializableNonCopyable sent_q(57, 27.5, "test2");
@@ -258,11 +257,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableSendReceive, ConfigurationTest
 
 BOOST_FIXTURE_TEST_CASE(CallbackRegistration, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<Data>(test_conn);
-  auto q_sender = iom.get_sender<Data>(test_queue);
+  auto net_sender = iom.get_sender<Data>(conn_ref);
+  auto q_sender = iom.get_sender<Data>(queue_ref);
 
   Data sent_data_nw(56, 26.5, "test1");
   Data sent_data_q(57, 27.5, "test2");
@@ -274,8 +270,8 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistration, ConfigurationTestFixture)
     recv_data = std::move(d);
   };
 
-  iom.add_callback<Data>(test_conn, callback);
-  iom.add_callback<Data>(test_queue, callback);
+  iom.add_callback<Data>(conn_ref, callback);
+  iom.add_callback<Data>(queue_ref, callback);
 
   usleep(1000);
 
@@ -298,18 +294,14 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistration, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(recv_data.d2, 27.5);
   BOOST_CHECK_EQUAL(recv_data.d3, "test2");
 
-  iom.remove_callback<Data>(test_conn);
-  iom.remove_callback<Data>(test_queue);
+  iom.remove_callback<Data>(conn_ref);
+  iom.remove_callback<Data>(queue_ref);
 }
 
 BOOST_FIXTURE_TEST_CASE(NonCopyableCallbackRegistration, ConfigurationTestFixture)
 {
-
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<NonCopyableData>(test_conn);
-  auto q_sender = iom.get_sender<NonCopyableData>(test_queue);
+  auto net_sender = iom.get_sender<NonCopyableData>(conn_ref);
+  auto q_sender = iom.get_sender<NonCopyableData>(queue_ref);
 
   NonCopyableData sent_data_nw(56, 26.5, "test1");
   NonCopyableData sent_data_q(57, 27.5, "test2");
@@ -321,8 +313,8 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableCallbackRegistration, ConfigurationTestFixtur
     recv_data = std::move(d);
   };
 
-  iom.add_callback<NonCopyableData>(test_conn, callback);
-  iom.add_callback<NonCopyableData>(test_queue, callback);
+  iom.add_callback<NonCopyableData>(conn_ref, callback);
+  iom.add_callback<NonCopyableData>(queue_ref, callback);
 
   usleep(1000);
 
@@ -345,18 +337,14 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableCallbackRegistration, ConfigurationTestFixtur
   BOOST_CHECK_EQUAL(recv_data.d2, 27.5);
   BOOST_CHECK_EQUAL(recv_data.d3, "test2");
 
-  iom.remove_callback<NonCopyableData>(test_conn);
-  iom.remove_callback<NonCopyableData>(test_queue);
+  iom.remove_callback<NonCopyableData>(conn_ref);
+  iom.remove_callback<NonCopyableData>(queue_ref);
 }
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFixture)
 {
-
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<NonSerializableData>(test_conn);
-  auto q_sender = iom.get_sender<NonSerializableData>(test_queue);
+  auto net_sender = iom.get_sender<NonSerializableData>(conn_ref);
+  auto q_sender = iom.get_sender<NonSerializableData>(queue_ref);
 
   NonSerializableData sent_data_nw(56, 26.5, "test1");
   NonSerializableData sent_data_q(57, 27.5, "test2");
@@ -368,8 +356,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
     recv_data = std::move(d);
   };
 
-  iom.add_callback<NonSerializableData>(test_conn, callback);
-  iom.add_callback<NonSerializableData>(test_queue, callback);
+  iom.add_callback<NonSerializableData>(conn_ref, callback);
+  iom.add_callback<NonSerializableData>(queue_ref, callback);
 
   usleep(1000);
 
@@ -383,7 +371,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
   BOOST_CHECK_EQUAL(recv_data.d3, "");
 
   // Have to stop the callback from endlessly setting recv_data to default-constructed object
-  iom.remove_callback<NonSerializableData>(test_conn);
+  iom.remove_callback<NonSerializableData>(conn_ref);
   has_received_data = false;
   q_sender->send(sent_data_q, std::chrono::milliseconds(10));
 
@@ -394,16 +382,13 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
   BOOST_CHECK_EQUAL(recv_data.d2, 27.5);
   BOOST_CHECK_EQUAL(recv_data.d3, "test2");
 
-  iom.remove_callback<NonSerializableData>(test_queue);
+  iom.remove_callback<NonSerializableData>(queue_ref);
 }
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn{ "network", "test_connection", "" };
-  ConnectionID test_queue{ "queue", "test_queue", "" };
-  auto net_sender = iom.get_sender<NonSerializableNonCopyable>(test_conn);
-  auto q_sender = iom.get_sender<NonSerializableNonCopyable>(test_queue);
+  auto net_sender = iom.get_sender<NonSerializableNonCopyable>(conn_ref);
+  auto q_sender = iom.get_sender<NonSerializableNonCopyable>(queue_ref);
 
   NonSerializableNonCopyable sent_data_nw(56, 26.5, "test1");
   NonSerializableNonCopyable sent_data_q(57, 27.5, "test2");
@@ -415,8 +400,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
     recv_data = std::move(d);
   };
 
-  iom.add_callback<NonSerializableNonCopyable>(test_conn, callback);
-  iom.add_callback<NonSerializableNonCopyable>(test_queue, callback);
+  iom.add_callback<NonSerializableNonCopyable>(conn_ref, callback);
+  iom.add_callback<NonSerializableNonCopyable>(queue_ref, callback);
 
   usleep(1000);
 
@@ -430,7 +415,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
   BOOST_CHECK_EQUAL(recv_data.d3, "");
 
   // Have to stop the callback from endlessly setting recv_data to default-constructed object
-  iom.remove_callback<NonSerializableNonCopyable>(test_conn);
+  iom.remove_callback<NonSerializableNonCopyable>(conn_ref);
   has_received_data = false;
   q_sender->send(sent_data_q, std::chrono::milliseconds(10));
 
@@ -441,7 +426,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
   BOOST_CHECK_EQUAL(recv_data.d2, 27.5);
   BOOST_CHECK_EQUAL(recv_data.d3, "test2");
 
-  iom.remove_callback<NonSerializableNonCopyable>(test_queue);
+  iom.remove_callback<NonSerializableNonCopyable>(queue_ref);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

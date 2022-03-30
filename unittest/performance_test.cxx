@@ -56,9 +56,17 @@ struct ConfigurationTestFixture
     std::map<std::string, dunedaq::appfwk::QueueConfig> config_map;
     dunedaq::appfwk::QueueConfig qspec;
     qspec.kind = dunedaq::appfwk::QueueConfig::queue_kind::kStdDeQueue;
-    qspec.capacity = 100;
+    qspec.capacity = 10;
     config_map["test_queue"] = qspec;
     dunedaq::appfwk::QueueRegistry::get().configure(config_map);
+
+    dunedaq::iomanager::ConnectionIds_t connections;
+    connections.emplace_back(ConnectionId{ "test_queue", ServiceType::kQueue, "data_t", "queue://StdDeque:10" });
+    connections.emplace_back(
+      ConnectionId{ "test_connection", ServiceType::kNetwork, "data_t", "inproc://foo" });
+    iom.configure(connections);
+    conn_ref = ConnectionRef{ "network", "test_connection" };
+    queue_ref = ConnectionRef{ "queue", "test_queue" };
   }
   ~ConfigurationTestFixture()
   {
@@ -70,25 +78,26 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture(ConfigurationTestFixture&&) = default;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
+
+  dunedaq::iomanager::IOManager iom;
+  dunedaq::iomanager::ConnectionRef conn_ref;
+  dunedaq::iomanager::ConnectionRef queue_ref;
 };
 
 BOOST_FIXTURE_TEST_CASE(CallbackRegistrationNetwork, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn_id{ "network", "test_connection", "" };
-
   std::atomic<unsigned int> received_count = 0;
   std::function<void(dunedaq::data_t)> callback = [&](dunedaq::data_t) { ++received_count; };
 
-  iom.add_callback<dunedaq::data_t>(test_conn_id, callback);
-  auto net_sender = iom.get_sender<dunedaq::data_t>(test_conn_id);
+  iom.add_callback<dunedaq::data_t>(conn_ref, callback);
+  auto net_sender = iom.get_sender<dunedaq::data_t>(conn_ref);
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < 100000; ++i) {
     dunedaq::data_t temp(55680, i % 200);
     net_sender->send(temp, Sender::s_no_block);
   }
 
-  iom.remove_callback<dunedaq::data_t>(test_conn_id);
+  iom.remove_callback<dunedaq::data_t>(conn_ref);
   auto stop_time = std::chrono::steady_clock::now();
 
   auto time = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time).count();
@@ -100,20 +109,17 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistrationNetwork, ConfigurationTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(CallbackRegistrationQueue, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_queue_id{ "queue", "test_queue", "" };
-
   std::atomic<unsigned int> received_count = 0;
   std::function<void(dunedaq::data_t)> callback = [&](dunedaq::data_t) { ++received_count; };
 
-  iom.add_callback<dunedaq::data_t>(test_queue_id, callback);
-  auto queue_sender = iom.get_sender<dunedaq::data_t>(test_queue_id);
+  iom.add_callback<dunedaq::data_t>(queue_ref, callback);
+  auto queue_sender = iom.get_sender<dunedaq::data_t>(queue_ref);
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < 100000; ++i) {
     dunedaq::data_t temp(55680, i % 200);
     queue_sender->send(temp, dunedaq::iomanager::Sender::s_no_block);
   }
-  iom.remove_callback<dunedaq::data_t>(test_queue_id);
+  iom.remove_callback<dunedaq::data_t>(queue_ref);
   auto stop_time = std::chrono::steady_clock::now();
 
   auto time = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time).count();
@@ -125,19 +131,16 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistrationQueue, ConfigurationTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(DirectReadNetwork, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_conn_id{ "network", "test_connection", "" };
-
   std::atomic<unsigned int> received_count = 0;
   unsigned int total_send = 100000;
   std::function<void()> recv_func = [&]() {
     do {
-      auto mess = iom.get_receiver<dunedaq::data_t>(test_conn_id)->receive(std::chrono::milliseconds(10));
+      auto mess = iom.get_receiver<dunedaq::data_t>(conn_ref)->receive(std::chrono::milliseconds(10));
       ++received_count;
     } while (received_count.load() < total_send);
   };
 
-  auto net_sender = iom.get_sender<dunedaq::data_t>(test_conn_id);
+  auto net_sender = iom.get_sender<dunedaq::data_t>(conn_ref);
   auto rcv_ftr = std::async(std::launch::async, recv_func);
 
   auto start_time = std::chrono::steady_clock::now();
@@ -157,19 +160,16 @@ BOOST_FIXTURE_TEST_CASE(DirectReadNetwork, ConfigurationTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(DirectReadQueue, ConfigurationTestFixture)
 {
-  IOManager iom;
-  ConnectionID test_queue_id{ "queue", "test_queue", "" };
-
   std::atomic<unsigned int> received_count = 0;
   unsigned int total_send = 100000;
   std::function<void()> recv_func = [&]() {
     do {
-      auto mess = iom.get_receiver<dunedaq::data_t>(test_queue_id)->receive(std::chrono::milliseconds(10));
+      auto mess = iom.get_receiver<dunedaq::data_t>(queue_ref)->receive(std::chrono::milliseconds(10));
       ++received_count;
     } while (received_count.load() < total_send);
   };
 
-  auto queue_sender = iom.get_sender<dunedaq::data_t>(test_queue_id);
+  auto queue_sender = iom.get_sender<dunedaq::data_t>(queue_ref);
   auto rcv_ftr = std::async(std::launch::async, recv_func);
   
   auto start_time = std::chrono::steady_clock::now();

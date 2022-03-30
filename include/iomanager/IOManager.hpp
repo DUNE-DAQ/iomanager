@@ -11,7 +11,7 @@
 
 #include "nlohmann/json.hpp"
 
-#include "iomanager/ConnectionID.hpp"
+#include "iomanager/ConnectionId.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
 #include "iomanager/SerializerRegistry.hpp"
@@ -20,6 +20,8 @@
 #include <memory>
 
 namespace dunedaq {
+ERS_DECLARE_ISSUE(iomanager, ConnectionNotFound, "Connection with uid " << conn_uid << " not found!", ((std::string)conn_uid))
+
 namespace iomanager {
 
 /**
@@ -38,55 +40,72 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
+  void configure(ConnectionIds_t connections) { m_connections = connections; }
+
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionID conn_id)
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionRef const& conn_ref)
   {
-    if (!m_senders.count(conn_id)) {
+    if (!m_senders.count(conn_ref)) {
       // create from lookup service's factory function
       // based on connID we know if it's queue or network
-      if (conn_id.m_service_type == "queue") { // if queue
-        TLOG() << "Creating QueueSenderModel for service_name " << conn_id.m_service_name;
-        m_senders[conn_id] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(conn_id));
+      auto conn_id = ref_to_id(conn_ref);
+      if (conn_id.service_type == ServiceType::kQueue) { // if queue
+        TLOG() << "Creating QueueSenderModel for service_name " << conn_id.uid;
+        m_senders[conn_ref] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(conn_id, conn_ref));
       } else {
-        TLOG() << "Creating NetworkSenderModel for service_name " << conn_id.m_service_name;
-        m_senders[conn_id] = std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(conn_id));
+        TLOG() << "Creating NetworkSenderModel for service_name " << conn_id.uid;
+        m_senders[conn_ref] = std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(conn_id, conn_ref));
       }
     }
-    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[conn_id]);
+    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[conn_ref]);
   }
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionID conn_id)
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionRef const& conn_ref)
   {
-    if (!m_receivers.count(conn_id)) {
-      if (conn_id.m_service_type == "queue") { // if queue
-        TLOG() << "Creating QueueReceiverModel for service_name " << conn_id.m_service_name;
-        m_receivers[conn_id] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(conn_id));
+    if (!m_receivers.count(conn_ref)) {
+      auto conn_id = ref_to_id(conn_ref);
+      if (conn_id.service_type == ServiceType::kQueue) { // if queue
+        TLOG() << "Creating QueueReceiverModel for service_name " << conn_id.uid;
+        m_receivers[conn_ref] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(conn_id, conn_ref));
       } else {
-        TLOG() << "Creating NetworkReceiverModel for service_name " << conn_id.m_service_name;
-        m_receivers[conn_id] =
-          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id));
+        TLOG() << "Creating NetworkReceiverModel for service_name " << conn_id.uid;
+        m_receivers[conn_ref] =
+          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id, conn_ref));
       }
     }
-    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[conn_id]); // NOLINT
+    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[conn_ref]); // NOLINT
   }
 
   template<typename Datatype>
-  void add_callback(ConnectionID conn_id, std::function<void(Datatype&)> callback)
+  void add_callback(ConnectionRef const& conn_ref, std::function<void(Datatype&)> callback)
   {
-    auto receiver = get_receiver<Datatype>(conn_id);
+    auto receiver = get_receiver<Datatype>(conn_ref);
     receiver->add_callback(callback);
   }
 
   template<typename Datatype>
-  void remove_callback(ConnectionID conn_id)
+  void remove_callback(ConnectionRef const& conn_ref)
   {
-    auto receiver = get_receiver<Datatype>(conn_id);
+    auto receiver = get_receiver<Datatype>(conn_ref);
     receiver->remove_callback();
   }
 
-  using SenderMap = std::map<ConnectionID, std::shared_ptr<Sender>>;
-  using ReceiverMap = std::map<ConnectionID, std::shared_ptr<Receiver>>;
+  private:
+      // TODO: Eric Flumerfelt <eflumerf@github.com>, 30-Mar-2022: Replace with service lookup
+    ConnectionId ref_to_id(ConnectionRef const& ref)
+  {
+    for (auto& conn : m_connections) {
+      if (conn.uid == ref.uid)
+        return conn;
+    }
+
+    throw ConnectionNotFound(ERS_HERE, ref.uid);
+  }
+
+  using SenderMap = std::map<ConnectionRef, std::shared_ptr<Sender>>;
+  using ReceiverMap = std::map<ConnectionRef, std::shared_ptr<Receiver>>;
+  ConnectionIds_t m_connections;
   SenderMap m_senders;
   ReceiverMap m_receivers;
   SerializerRegistry m_serdes_reg;
