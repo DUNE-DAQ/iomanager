@@ -97,7 +97,7 @@ public:
     if (m_queue == nullptr) {
       throw QueueNotFound(ERS_HERE, m_conn_id.uid);
     }
-    TLOG() << "Hand off data...";
+    //TLOG() << "Hand off data...";
     Datatype dt;
     m_queue->pop(dt, timeout);
     return dt;
@@ -113,13 +113,13 @@ public:
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner.reset(new std::thread([&]() {
       while (m_with_callback.load()) {
-        TLOG() << "Take data from q then invoke callback...";
+        //TLOG() << "Take data from q then invoke callback...";
         Datatype dt;
         try {
           m_queue->pop(dt, std::chrono::milliseconds(500));
+          m_callback(dt);
         } catch (appfwk::QueueTimeoutExpired&) {
         }
-        m_callback(dt);
       }
     }));
   }
@@ -129,7 +129,7 @@ public:
     m_with_callback = false;
     if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
       m_event_loop_runner->join();
-      m_event_loop_runner = nullptr;
+      m_event_loop_runner.reset(nullptr);
     } else if (m_event_loop_runner != nullptr) {
       TLOG() << "Event loop can't be closed!";
     }
@@ -227,6 +227,7 @@ public:
     m_with_callback = false;
     if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
       m_event_loop_runner->join();
+      m_event_loop_runner.reset(nullptr);
     } else if (m_event_loop_runner != nullptr) {
       TLOG() << "Event loop can't be closed!";
     }

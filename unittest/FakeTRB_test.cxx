@@ -53,17 +53,6 @@ struct GlobalTestFixture
     qspec.capacity = 10;
     config_map["trigger_record_queue"] = qspec;
     dunedaq::appfwk::QueueRegistry::get().configure(config_map);
-
-    dunedaq::iomanager::ConnectionIds_t connections;
-    connections.emplace_back(
-      dunedaq::iomanager::ConnectionId{ "td_connection", ServiceType::kNetwork, "TriggerDecision", "inproc://td" });
-    connections.emplace_back(
-      dunedaq::iomanager::ConnectionId{ "dr_connection", ServiceType::kNetwork, "DataRequest", "inproc://cr" });
-    connections.emplace_back(
-      dunedaq::iomanager::ConnectionId{ "frag_connection", ServiceType::kNetwork, "Fragment", "inproc://frag" });
-    connections.emplace_back(dunedaq::iomanager::ConnectionId{
-      "trigger_record_queue", ServiceType::kQueue, "TriggerRecord", "queue://StdDeque:10" });
-    iom.configure(connections);
   }
   ~GlobalTestFixture()
   {
@@ -75,19 +64,7 @@ struct GlobalTestFixture
   GlobalTestFixture(GlobalTestFixture&&) = default;
   GlobalTestFixture& operator=(GlobalTestFixture const&) = default;
   GlobalTestFixture& operator=(GlobalTestFixture&&) = default;
-
-  static dunedaq::iomanager::ConnectionRef td_ref, dr_ref, frag_ref, tr_ref;
-  static dunedaq::iomanager::IOManager iom;
 };
-dunedaq::iomanager::IOManager GlobalTestFixture::iom = dunedaq::iomanager::IOManager();
-dunedaq::iomanager::ConnectionRef GlobalTestFixture::td_ref =
-  dunedaq::iomanager::ConnectionRef{ "td", "td_connection" };
-dunedaq::iomanager::ConnectionRef GlobalTestFixture::dr_ref =
-  dunedaq::iomanager::ConnectionRef{ "dr", "dr_connection" };
-dunedaq::iomanager::ConnectionRef GlobalTestFixture::frag_ref =
-  dunedaq::iomanager::ConnectionRef{ "frag", "frag_connection" };
-dunedaq::iomanager::ConnectionRef GlobalTestFixture::tr_ref =
-  dunedaq::iomanager::ConnectionRef{ "tr", "trigger_record_queue" };
 
 BOOST_TEST_GLOBAL_FIXTURE(GlobalTestFixture);
 
@@ -101,6 +78,11 @@ struct FakeTRBTracking
   std::atomic<size_t> trs_processed{ 0 };
   std::atomic<bool> test_running{ false };
   std::atomic<size_t> tokens{ 10 };
+  dunedaq::iomanager::ConnectionRef td_ref = dunedaq::iomanager::ConnectionRef{ "td", "td_connection" };
+  dunedaq::iomanager::ConnectionRef dr_ref = dunedaq::iomanager::ConnectionRef{ "dr", "dr_connection" };
+  dunedaq::iomanager::ConnectionRef frag_ref = dunedaq::iomanager::ConnectionRef{ "frag", "frag_connection" };
+  dunedaq::iomanager::ConnectionRef tr_ref = dunedaq::iomanager::ConnectionRef{ "tr", "trigger_record_queue" };
+  std::unique_ptr<dunedaq::iomanager::IOManager> iom;
 };
 static FakeTRBTracking test_tracking;
 
@@ -110,7 +92,7 @@ mlt_thread()
   TLOG() << "Starting MLT thread";
   dunedaq::dfmessages::timestamp_t next_timestamp = 1;
   dunedaq::dfmessages::trigger_number_t next_trigger_number = 1;
-  auto sender = GlobalTestFixture::iom.get_sender<dunedaq::dfmessages::TriggerDecision>(GlobalTestFixture::td_ref);
+  auto sender = test_tracking.iom->get_sender<dunedaq::dfmessages::TriggerDecision>(test_tracking.td_ref);
 
   while (test_tracking.test_running) {
     dunedaq::dfmessages::TriggerDecision td;
@@ -153,7 +135,7 @@ trigger_decision_callback(dunedaq::dfmessages::TriggerDecision& td)
     test_tracking.tr_map[trigger_number] = std::make_unique<dunedaq::daqdataformats::TriggerRecord>(td.components);
   }
 
-  auto sender = GlobalTestFixture::iom.get_sender<dunedaq::dfmessages::DataRequest>(GlobalTestFixture::dr_ref);
+  auto sender = test_tracking.iom->get_sender<dunedaq::dfmessages::DataRequest>(test_tracking.dr_ref);
 
   for (auto& comp : td.components) {
     dunedaq::dfmessages::DataRequest req;
@@ -186,7 +168,7 @@ data_request_callback(dunedaq::dfmessages::DataRequest& dr)
   TLOG() << "Sending Fragment with trigger_number " << dr.trigger_number << " and element "
          << dr.request_information.component.element_id;
   auto sender =
-    GlobalTestFixture::iom.get_sender<std::unique_ptr<dunedaq::daqdataformats::Fragment>>(GlobalTestFixture::frag_ref);
+    test_tracking.iom->get_sender<std::unique_ptr<dunedaq::daqdataformats::Fragment>>(test_tracking.frag_ref);
   sender->send(frag, dunedaq::iomanager::Sender::s_block);
   TLOG() << "End DataRequest callback";
 }
@@ -208,8 +190,8 @@ fragment_callback(std::unique_ptr<dunedaq::daqdataformats::Fragment>& frag)
   test_tracking.tr_map.at(trigger_number)->add_fragment(std::move(frag));
 
   if (test_tracking.tr_map.at(trigger_number)->get_fragments_ref().size() == test_tracking.components.size()) {
-    auto sender = GlobalTestFixture::iom.get_sender<std::unique_ptr<dunedaq::daqdataformats::TriggerRecord>>(
-      GlobalTestFixture::tr_ref);
+    auto sender =
+      test_tracking.iom->get_sender<std::unique_ptr<dunedaq::daqdataformats::TriggerRecord>>(test_tracking.tr_ref);
     sender->send(test_tracking.tr_map[trigger_number], dunedaq::iomanager::Sender::s_block);
     test_tracking.tr_map.erase(trigger_number);
   }
@@ -230,6 +212,18 @@ trigger_record_callback(std::unique_ptr<dunedaq::daqdataformats::TriggerRecord>&
 BOOST_AUTO_TEST_CASE(SimpleTRBFlow)
 {
   TLOG() << "SimpleTRBFlow Test BEGIN";
+  test_tracking.iom.reset(new dunedaq::iomanager::IOManager());
+
+  dunedaq::iomanager::ConnectionIds_t connections;
+  connections.emplace_back(
+    dunedaq::iomanager::ConnectionId{ "td_connection", ServiceType::kNetwork, "TriggerDecision", "inproc://td" });
+  connections.emplace_back(
+    dunedaq::iomanager::ConnectionId{ "dr_connection", ServiceType::kNetwork, "DataRequest", "inproc://cr" });
+  connections.emplace_back(
+    dunedaq::iomanager::ConnectionId{ "frag_connection", ServiceType::kNetwork, "Fragment", "inproc://frag" });
+  connections.emplace_back(dunedaq::iomanager::ConnectionId{
+    "trigger_record_queue", ServiceType::kQueue, "TriggerRecord", "queue://StdDeque:10" });
+  test_tracking.iom->configure(connections);
 
   TLOG() << "Adding components";
   dunedaq::daqdataformats::GeoID g;
@@ -239,14 +233,12 @@ BOOST_AUTO_TEST_CASE(SimpleTRBFlow)
   test_tracking.components.push_back(g);
 
   TLOG() << "Setting callbacks";
-  GlobalTestFixture::iom.add_callback<dunedaq::dfmessages::TriggerDecision>(GlobalTestFixture::td_ref,
-                                                                            trigger_decision_callback);
-  GlobalTestFixture::iom.add_callback<dunedaq::dfmessages::DataRequest>(GlobalTestFixture::dr_ref,
-                                                                        data_request_callback);
-  GlobalTestFixture::iom.add_callback<std::unique_ptr<dunedaq::daqdataformats::Fragment>>(GlobalTestFixture::frag_ref,
-                                                                                          fragment_callback);
-  GlobalTestFixture::iom.add_callback<std::unique_ptr<dunedaq::daqdataformats::TriggerRecord>>(
-    GlobalTestFixture::tr_ref, trigger_record_callback);
+  test_tracking.iom->add_callback<dunedaq::dfmessages::TriggerDecision>(test_tracking.td_ref, trigger_decision_callback);
+  test_tracking.iom->add_callback<dunedaq::dfmessages::DataRequest>(test_tracking.dr_ref, data_request_callback);
+  test_tracking.iom->add_callback<std::unique_ptr<dunedaq::daqdataformats::Fragment>>(test_tracking.frag_ref,
+                                                                                     fragment_callback);
+  test_tracking.iom->add_callback<std::unique_ptr<dunedaq::daqdataformats::TriggerRecord>>(test_tracking.tr_ref,
+                                                                                          trigger_record_callback);
 
   TLOG() << "Starting test";
   test_tracking.test_running = true;
@@ -260,15 +252,16 @@ BOOST_AUTO_TEST_CASE(SimpleTRBFlow)
   TLOG() << "Ending test";
   test_tracking.test_running = false;
   t.join();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   BOOST_REQUIRE_GE(test_tracking.trs_processed.load(), 100);
 
-  GlobalTestFixture::iom.remove_callback<dunedaq::dfmessages::TriggerDecision>(GlobalTestFixture::td_ref);
-  GlobalTestFixture::iom.remove_callback<dunedaq::dfmessages::DataRequest>(GlobalTestFixture::dr_ref);
-  GlobalTestFixture::iom.remove_callback<std::unique_ptr<dunedaq::daqdataformats::Fragment>>(
-    GlobalTestFixture::frag_ref);
-  GlobalTestFixture::iom.remove_callback<std::unique_ptr<dunedaq::daqdataformats::TriggerRecord>>(
-    GlobalTestFixture::tr_ref);
+  test_tracking.iom->remove_callback<dunedaq::dfmessages::TriggerDecision>(test_tracking.td_ref);
+  test_tracking.iom->remove_callback<dunedaq::dfmessages::DataRequest>(test_tracking.dr_ref);
+  test_tracking.iom->remove_callback<std::unique_ptr<dunedaq::daqdataformats::Fragment>>(test_tracking.frag_ref);
+  test_tracking.iom->remove_callback<std::unique_ptr<dunedaq::daqdataformats::TriggerRecord>>(test_tracking.tr_ref);
 
+
+  test_tracking.iom.reset(nullptr);
   TLOG() << "SimpleTRBFlow Test END";
 }
 

@@ -97,7 +97,7 @@ public:
     if (m_network_sender_ptr == nullptr)
       return;
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-    TLOG() << "Serialized message for network sending: " << serialized.size();
+    //TLOG() << "Serialized message for network sending: " << serialized.size();
     m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
   }
 

@@ -38,6 +38,7 @@ struct data_t
   }
   DUNE_DAQ_SERIALIZE(data_t, d);
 };
+DUNE_DAQ_SERIALIZABLE(data_t);
 }
 
 BOOST_AUTO_TEST_SUITE(performance_test)
