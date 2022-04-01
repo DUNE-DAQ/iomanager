@@ -13,9 +13,11 @@
 #include "iomanager/GenericCallback.hpp"
 
 #include "appfwk/QueueRegistry.hpp"
-#include "logging/Logging.hpp"
-#include "utilities/ReusableThread.hpp"
 #include "ipm/Subscriber.hpp"
+#include "logging/Logging.hpp"
+#include "networkmanager/NetworkManager.hpp"
+#include "serialization/Serialization.hpp"
+#include "utilities/ReusableThread.hpp"
 
 #include <any>
 #include <atomic>
@@ -27,11 +29,13 @@ namespace dunedaq {
 
 ERS_DECLARE_ISSUE(iomanager,
                   ReceiveCallbackConflict,
-                  "QueueReceiverModel for uid " << conn_uid
-                                                         << " is equipped with callback! Ignoring receive call.",
+                  "QueueReceiverModel for uid " << conn_uid << " is equipped with callback! Ignoring receive call.",
                   ((std::string)conn_uid))
 
-    ERS_DECLARE_ISSUE(iomanager, QueueNotFound, "Queue Instance not found for queue " << queue_name, ((std::string)queue_name))
+ERS_DECLARE_ISSUE(iomanager,
+                  QueueNotFound,
+                  "Queue Instance not found for queue " << queue_name,
+                  ((std::string)queue_name))
 
 namespace iomanager {
 
@@ -152,6 +156,14 @@ public:
   {
     TLOG() << "NetworkReceiverModel created with DT! Addr: " << (void*)this;
     // get network resources
+    try {
+      m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
+    } catch (networkmanager::ConnectionNotFound&) {
+    }
+    try {
+      m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_id.uid);
+    } catch (networkmanager::ConnectionNotFound&) {
+    }
   }
   ~NetworkReceiverModel() { remove_callback(); }
 
@@ -160,15 +172,36 @@ public:
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
+    , m_network_receiver_ptr(other.m_network_receiver_ptr)
+    , m_network_subscriber_ptr(other.m_network_subscriber_ptr)
   {}
 
-  Datatype receive(Receiver::timeout_t /*timeout*/) override
+  template<typename MessageType>
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+    Receiver::timeout_t const& timeout)
   {
-    TLOG() << "Hand off data...";
-    Datatype dt;
-    return dt;
-    // if (m_queue->write(
+    if (m_network_subscriber_ptr != nullptr) {
+      auto response = m_network_subscriber_ptr->receive(timeout);
+      return dunedaq::serialization::deserialize<MessageType>(response.data);
+    }
+    if (m_network_receiver_ptr != nullptr) {
+      auto response = m_network_receiver_ptr->receive(timeout);
+      return dunedaq::serialization::deserialize<MessageType>(response.data);
+    }
+
+    TLOG() << "No receiver instance!";
+    return MessageType();
   }
+
+  template<typename MessageType>
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+    Receiver::timeout_t const&)
+  {
+    //TLOG() << "Not deserializing non-serializable message type!";
+    return MessageType();
+  }
+
+  Datatype receive(Receiver::timeout_t timeout) override { return read_network<Datatype>(timeout); }
 
   void add_callback(std::function<void(Datatype&)> callback)
   {
@@ -179,10 +212,12 @@ public:
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner.reset(new std::thread([&]() {
       while (m_with_callback.load()) {
-        TLOG() << "Take data from network then invoke callback...";
-        Datatype dt;
-        m_callback(dt);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        try {
+          auto message = read_network<Datatype>(std::chrono::milliseconds(1));
+          m_callback(message);
+        } catch (const ers::Issue&) {
+          ;
+        }
       }
     }));
   }
@@ -203,7 +238,6 @@ public:
   std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
   std::unique_ptr<std::thread> m_event_loop_runner;
-  std::shared_ptr<GenericCallback> m_deserializer;
   std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
   std::shared_ptr<ipm::Subscriber> m_network_subscriber_ptr{ nullptr };
 };

@@ -106,6 +106,11 @@ struct NonSerializableNonCopyable
 };
 
 } // namespace iomanager
+
+// Must be in dunedaq namespace only
+DUNE_DAQ_SERIALIZABLE(iomanager::Data);
+DUNE_DAQ_SERIALIZABLE(iomanager::NonCopyableData);
+
 } // namespace dunedaq
 
 BOOST_AUTO_TEST_SUITE(IOManager_test)
@@ -134,15 +139,6 @@ struct ConfigurationTestFixture
     iom.configure(connections);
     conn_ref = ConnectionRef{ "network", "test_connection" };
     queue_ref = ConnectionRef{ "queue", "test_queue" };
-
-    serreg.register_serializer<Data>(
-      [](Data d) { return dunedaq::serialization::serialize(d, dunedaq::serialization::kMsgPack); });
-    serreg.register_serializer<NonCopyableData>(
-      [](NonCopyableData d) { return dunedaq::serialization::serialize(d, dunedaq::serialization::kMsgPack); });
-    serreg.register_deseializer<Data>(
-      [](std::vector<unsigned char> v) { return dunedaq::serialization::deserialize(v); });
-    serreg.register_deseializer<NonCopyableData>(
-      [](std::vector<unsigned char> v) { return std::move(dunedaq::serialization::deserialize(v)); });
   }
   ~ConfigurationTestFixture()
   {

@@ -12,6 +12,9 @@
 #include "iomanager/ConnectionId.hpp"
 
 #include "appfwk/QueueRegistry.hpp"
+#include "serialization/Serialization.hpp"
+#include "ipm/Sender.hpp"
+#include "networkmanager/NetworkManager.hpp"
 
 #include <any>
 #include <atomic>
@@ -84,16 +87,35 @@ public:
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << (void*)this;
     // get network resources
+    m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.uid);
   }
 
-  void send(Datatype& data, Sender::timeout_t /*timeout*/, Topic_t topic = "") override
+  template<typename MessageType>
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+  write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
   {
-    //TLOG() << "Handle data: " << data;
-    // if (m_queue->write(
+    if (m_network_sender_ptr == nullptr)
+      return;
+    auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
+    TLOG() << "Serialized message for network sending: " << serialized.size();
+    m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+  write_network(MessageType&, Sender::timeout_t const&, std::string const&)
+  {
+    TLOG() << "Not sending non-serializable message!";
+  }
+
+  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  {
+    write_network<Datatype>(data, timeout, topic);
   }
 
   ConnectionId m_conn_id;
   ConnectionRef m_conn_ref;
+  std::shared_ptr<ipm::Sender> m_network_sender_ptr;
 };
 
 } // namespace iomanager
