@@ -31,6 +31,8 @@ ERS_DECLARE_ISSUE(iomanager,
                                                          << " is equipped with callback! Ignoring receive call.",
                   ((std::string)conn_uid))
 
+    ERS_DECLARE_ISSUE(iomanager, QueueNotFound, "Queue Instance not found for queue " << queue_name, ((std::string)queue_name))
+
 namespace iomanager {
 
 // Typeless
@@ -68,6 +70,7 @@ public:
     // std::string sink_name = conn_id to sink_name;
     // m_source = std::make_unique<appfwk::DAQSource<Datatype>>(sink_name);
     m_queue = appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
+    TLOG() << "QueueReceiverModel m_queue=" << (void*)m_queue.get();
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
@@ -76,6 +79,7 @@ public:
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
+    , m_queue(other.m_queue)
   {}
 
   ~QueueReceiverModel() { remove_callback(); }
@@ -87,7 +91,7 @@ public:
       throw ReceiveCallbackConflict(ERS_HERE, m_conn_id.uid);
     }
     if (m_queue == nullptr) {
-      throw "Queue instance not found";
+      throw QueueNotFound(ERS_HERE, m_conn_id.uid);
     }
     TLOG() << "Hand off data...";
     Datatype dt;
@@ -121,6 +125,7 @@ public:
     m_with_callback = false;
     if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
       m_event_loop_runner->join();
+      m_event_loop_runner = nullptr;
     } else if (m_event_loop_runner != nullptr) {
       TLOG() << "Event loop can't be closed!";
     }

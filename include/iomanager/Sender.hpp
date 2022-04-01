@@ -52,6 +52,7 @@ public:
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this; 
     m_queue= appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
+    TLOG() << "QueueSenderModel m_queue=" << (void*)m_queue.get();
     // get queue ref from queueregistry based on conn_id
   }
 

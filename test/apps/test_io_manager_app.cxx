@@ -88,7 +88,12 @@ main(int /*argc*/, char** /*argv[]*/)
 
   auto receiver = iom.get_receiver<std::string>(cref3);
   std::cout << "Type: " << typeid(receiver).name() << '\n';
-  std::string got = receiver->receive(timeout);
+  std::string got;
+  try {
+    got = receiver->receive(timeout);
+  } catch (dunedaq::appfwk::QueueTimeoutExpired&) {
+    // This is expected
+  }
   std::cout << "\n\n";
 
   std::cout << "Test callback string receiver.\n";
@@ -106,7 +111,11 @@ main(int /*argc*/, char** /*argv[]*/)
   std::cout << "Type: " << typeid(cbrec).name() << '\n';
   cbrec->add_callback(str_receiver_cb);
   std::cout << "Try to call receive, which should fail with callbacks registered!\n";
-  got = cbrec->receive(timeout);
+  try {
+    got = cbrec->receive(timeout);
+  } catch (dunedaq::iomanager::ReceiveCallbackConflict&) {
+    // This is expected
+  }
 
   // Exercise internal event loop
   std::cout << "Wait a bit in main to see event loop polling...\n";
