@@ -134,6 +134,15 @@ struct ConfigurationTestFixture
     iom.configure(connections);
     conn_ref = ConnectionRef{ "network", "test_connection" };
     queue_ref = ConnectionRef{ "queue", "test_queue" };
+
+    serreg.register_serializer<Data>(
+      [](Data d) { return dunedaq::serialization::serialize(d, dunedaq::serialization::kMsgPack); });
+    serreg.register_serializer<NonCopyableData>(
+      [](NonCopyableData d) { return dunedaq::serialization::serialize(d, dunedaq::serialization::kMsgPack); });
+    serreg.register_deseializer<Data>(
+      [](std::vector<unsigned char> v) { return dunedaq::serialization::deserialize(v); });
+    serreg.register_deseializer<NonCopyableData>(
+      [](std::vector<unsigned char> v) { return std::move(dunedaq::serialization::deserialize(v)); });
   }
   ~ConfigurationTestFixture()
   {
@@ -149,6 +158,7 @@ struct ConfigurationTestFixture
   dunedaq::iomanager::IOManager iom;
   dunedaq::iomanager::ConnectionRef conn_ref;
   dunedaq::iomanager::ConnectionRef queue_ref;
+  dunedaq::iomanager::SerializerRegistry serreg;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
