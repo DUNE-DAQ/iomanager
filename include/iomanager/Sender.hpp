@@ -12,9 +12,9 @@
 #include "iomanager/ConnectionId.hpp"
 
 #include "appfwk/QueueRegistry.hpp"
-#include "serialization/Serialization.hpp"
 #include "ipm/Sender.hpp"
 #include "networkmanager/NetworkManager.hpp"
+#include "serialization/Serialization.hpp"
 
 #include <any>
 #include <atomic>
@@ -53,8 +53,8 @@ public:
     : m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this; 
-    m_queue= appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
+    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this;
+    m_queue = appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
     TLOG() << "QueueSenderModel m_queue=" << (void*)m_queue.get();
     // get queue ref from queueregistry based on conn_id
   }
@@ -64,11 +64,12 @@ public:
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
     }
-    //TLOG() << "Handle data: " << data;
+    // TLOG() << "Handle data: " << data;
     m_queue->push(std::move(data), timeout);
     // if (m_queue->write(
   }
 
+private:
   ConnectionId m_conn_id;
   ConnectionRef m_conn_ref;
   std::shared_ptr<appfwk::Queue<Datatype>> m_queue;
@@ -90,6 +91,12 @@ public:
     m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.uid);
   }
 
+  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  {
+    write_network<Datatype>(data, timeout, topic);
+  }
+
+private:
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
   write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
@@ -97,7 +104,7 @@ public:
     if (m_network_sender_ptr == nullptr)
       return;
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-    //TLOG() << "Serialized message for network sending: " << serialized.size();
+    // TLOG() << "Serialized message for network sending: " << serialized.size();
     m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
   }
 
@@ -106,11 +113,6 @@ public:
   write_network(MessageType&, Sender::timeout_t const&, std::string const&)
   {
     TLOG() << "Not sending non-serializable message!";
-  }
-
-  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
-  {
-    write_network<Datatype>(data, timeout, topic);
   }
 
   ConnectionId m_conn_id;
