@@ -97,7 +97,7 @@ public:
     if (m_queue == nullptr) {
       throw QueueNotFound(ERS_HERE, m_conn_id.uid);
     }
-    //TLOG() << "Hand off data...";
+    // TLOG() << "Hand off data...";
     Datatype dt;
     m_queue->pop(dt, timeout);
     return dt;
@@ -113,7 +113,7 @@ public:
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner.reset(new std::thread([&]() {
       while (m_with_callback.load()) {
-        //TLOG() << "Take data from q then invoke callback...";
+        // TLOG() << "Take data from q then invoke callback...";
         Datatype dt;
         try {
           m_queue->pop(dt, std::chrono::milliseconds(500));
@@ -136,6 +136,7 @@ public:
     // remove function.
   }
 
+private:
   ConnectionId m_conn_id;
   ConnectionRef m_conn_ref;
   std::atomic<bool> m_with_callback{ false };
@@ -176,31 +177,6 @@ public:
     , m_network_subscriber_ptr(other.m_network_subscriber_ptr)
   {}
 
-  template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
-    Receiver::timeout_t const& timeout)
-  {
-    if (m_network_subscriber_ptr != nullptr) {
-      auto response = m_network_subscriber_ptr->receive(timeout);
-      return dunedaq::serialization::deserialize<MessageType>(response.data);
-    }
-    if (m_network_receiver_ptr != nullptr) {
-      auto response = m_network_receiver_ptr->receive(timeout);
-      return dunedaq::serialization::deserialize<MessageType>(response.data);
-    }
-
-    TLOG() << "No receiver instance!";
-    return MessageType();
-  }
-
-  template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
-    Receiver::timeout_t const&)
-  {
-    //TLOG() << "Not deserializing non-serializable message type!";
-    return MessageType();
-  }
-
   Datatype receive(Receiver::timeout_t timeout) override { return read_network<Datatype>(timeout); }
 
   void add_callback(std::function<void(Datatype&)> callback)
@@ -232,6 +208,32 @@ public:
       TLOG() << "Event loop can't be closed!";
     }
     // remove function.
+  }
+
+private:
+  template<typename MessageType>
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+    Receiver::timeout_t const& timeout)
+  {
+    if (m_network_subscriber_ptr != nullptr) {
+      auto response = m_network_subscriber_ptr->receive(timeout);
+      return dunedaq::serialization::deserialize<MessageType>(response.data);
+    }
+    if (m_network_receiver_ptr != nullptr) {
+      auto response = m_network_receiver_ptr->receive(timeout);
+      return dunedaq::serialization::deserialize<MessageType>(response.data);
+    }
+
+    TLOG() << "No receiver instance!";
+    return MessageType();
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+    Receiver::timeout_t const&)
+  {
+    // TLOG() << "Not deserializing non-serializable message type!";
+    return MessageType();
   }
 
   ConnectionId m_conn_id;

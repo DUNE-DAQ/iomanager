@@ -14,7 +14,6 @@
 #include "iomanager/ConnectionId.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
-#include "iomanager/SerializerRegistry.hpp"
 
 #include <map>
 #include <memory>
@@ -108,7 +107,6 @@ public:
   ConnectionIds_t m_connections;
   SenderMap m_senders;
   ReceiverMap m_receivers;
-  SerializerRegistry m_serdes_reg;
 };
 
 } // namespace iomanager

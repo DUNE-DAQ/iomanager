@@ -154,7 +154,6 @@ struct ConfigurationTestFixture
   dunedaq::iomanager::IOManager iom;
   dunedaq::iomanager::ConnectionRef conn_ref;
   dunedaq::iomanager::ConnectionRef queue_ref;
-  dunedaq::iomanager::SerializerRegistry serreg;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)

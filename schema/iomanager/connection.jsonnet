@@ -13,7 +13,7 @@ local c = {
   datatype: s.string("DataType_t", doc="Name of a data type"),
   topic: s.string("Topic_t", doc="Name of a topic"),
   topics: s.sequence("Topics_t", self.topic, doc="Topics used by an instance of a connection"),
-  label: s.string("Label", moo.re.ident_only, doc="A label hard-wired into code"),
+  label: s.string("Label_t", moo.re.ident_only, doc="A label hard-wired into code"),
 
   ConnectionId: s.record("ConnectionId", [
         s.field("uid", self.uid, doc="Name of the connection"),
