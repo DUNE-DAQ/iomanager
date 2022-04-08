@@ -10,6 +10,7 @@ local c = {
   uid: s.string("Uid_t", doc="An identifier"),
   uri: s.string("Uri_t", doc="Location of a resource"),
   service_type: s.enum("ServiceType", ["kQueue", "kNetwork", "kUnknown"]),
+  direction: s.enum("Direction", ["kUnspecified", "kInput", "kOutput"]),
   datatype: s.string("DataType_t", doc="Name of a data type"),
   topic: s.string("Topic_t", doc="Name of a topic"),
   topics: s.sequence("Topics_t", self.topic, doc="Topics used by an instance of a connection"),
@@ -26,6 +27,7 @@ local c = {
         s.field("name", self.label, doc="The name by which this connection is known to the module"),
         s.field("uid", self.uid, doc="Name of the connection"),
         s.field("topics", self.topics,[], doc="Topics used in this instance"),
+        s.field("dir", self.direction,"kUnspecified", doc="Direction of this connection reference")
   ], doc="Reference to a connection"),
 
   connections: s.sequence("ConnectionIds_t", self.ConnectionId, doc="Connections used by an application/system"),

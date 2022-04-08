@@ -60,8 +60,8 @@ struct ConfigurationTestFixture
   dunedaq::iomanager::IOManager iom;
   dunedaq::iomanager::ConnectionRef conn_ref;
   dunedaq::iomanager::ConnectionRef queue_ref;
-  const int n_sends = 10000;
-  const int message_size = 55680;
+  const size_t n_sends = 10000;
+  const size_t message_size = 55680;
 };
 
 BOOST_FIXTURE_TEST_CASE(CallbackRegistrationNetwork, ConfigurationTestFixture)

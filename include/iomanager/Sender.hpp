@@ -13,6 +13,7 @@
 #include "iomanager/QueueRegistry.hpp"
 
 #include "ipm/Sender.hpp"
+#include "logging/Logging.hpp"
 #include "networkmanager/NetworkManager.hpp"
 #include "serialization/Serialization.hpp"
 
@@ -24,13 +25,16 @@ namespace dunedaq {
 namespace iomanager {
 
 // Typeless
-class Sender
+class Sender : public utilities::NamedObject
 {
 public:
   using timeout_t = std::chrono::milliseconds;
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
+  explicit Sender(std::string const& name)
+    : utilities::NamedObject(name)
+  {}
   virtual ~Sender() = default;
 };
 
@@ -39,6 +43,9 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
+  explicit SenderConcept(std::string const& name)
+    : Sender(name)
+  {}
   virtual void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
 };
 
@@ -48,7 +55,8 @@ class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
   explicit QueueSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : m_conn_id(conn_id)
+    : SenderConcept<Datatype>(conn_ref.name)
+     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
@@ -56,6 +64,13 @@ public:
     TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
     // get queue ref from queueregistry based on conn_id
   }
+
+  QueueSenderModel(QueueSenderModel&& other)
+    : SenderConcept<Datatype>(other.get_name())
+    , m_conn_id(other.m_conn_id)
+    , m_conn_ref(other.m_conn_ref)
+    , m_queue(other.m_queue)
+  {}
 
   void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
@@ -81,13 +96,21 @@ public:
   using SenderConcept<Datatype>::send;
 
   explicit NetworkSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : m_conn_id(conn_id)
+    : SenderConcept<Datatype>(conn_ref.name) 
+    , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
     m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.uid);
   }
+
+  NetworkSenderModel(NetworkSenderModel&& other)
+    : SenderConcept<Datatype>(other.get_name())
+    , m_conn_id(other.m_conn_id)
+    , m_conn_ref(other.m_conn_ref)
+    , m_network_sender_ptr(other.m_network_sender_ptr)
+  {}
 
   void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {

@@ -27,6 +27,10 @@ ERS_DECLARE_ISSUE(iomanager,
                   ConnectionNotFound,
                   "Connection with uid " << conn_uid << " not found!",
                   ((std::string)conn_uid))
+ERS_DECLARE_ISSUE(iomanager,
+                  ConnectionDirectionMismatch,
+                  "Connection reference with name " << name << " specified direction " << direction << ", but tried to obtain a " << handle_type,
+                  ((std::string)name)((std::string)direction)((std::string)handle_type))
 
 namespace iomanager {
 
@@ -82,6 +86,9 @@ public:
   template<typename Datatype>
   std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionRef const& conn_ref)
   {
+    if (conn_ref.dir == Direction::kInput) {
+      throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", "sender");
+    }
     if (!m_senders.count(conn_ref)) {
       // create from lookup service's factory function
       // based on connID we know if it's queue or network
@@ -102,6 +109,10 @@ public:
   template<typename Datatype>
   std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionRef const& conn_ref)
   {
+    if (conn_ref.dir == Direction::kOutput) {
+      throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", "receiver");
+    }
+
     if (!m_receivers.count(conn_ref)) {
       auto conn_id = ref_to_id(conn_ref);
       if (conn_id.service_type == ServiceType::kQueue) { // if queue

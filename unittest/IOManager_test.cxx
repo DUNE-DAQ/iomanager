@@ -115,7 +115,7 @@ struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    dunedaq::iomanager::ConnectionIds_t connections;
+    ConnectionIds_t connections;
     connections.emplace_back(
       ConnectionId{ "test_queue", ServiceType::kQueue, "NonCopyableData", "queue://StdDeQueue:10" });
     connections.emplace_back(
@@ -124,16 +124,16 @@ struct ConfigurationTestFixture
     conn_ref = ConnectionRef{ "network", "test_connection" };
     queue_ref = ConnectionRef{ "queue", "test_queue" };
   }
-  ~ConfigurationTestFixture() { dunedaq::iomanager::IOManager::reset(); }
+  ~ConfigurationTestFixture() { IOManager::reset(); }
 
   ConfigurationTestFixture(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture(ConfigurationTestFixture&&) = default;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
 
-  dunedaq::iomanager::IOManager iom;
-  dunedaq::iomanager::ConnectionRef conn_ref;
-  dunedaq::iomanager::ConnectionRef queue_ref;
+  IOManager iom;
+  ConnectionRef conn_ref;
+  ConnectionRef queue_ref;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
@@ -142,6 +142,35 @@ BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
   BOOST_REQUIRE(!std::is_copy_assignable_v<IOManager>);
   BOOST_REQUIRE(!std::is_move_constructible_v<IOManager>);
   BOOST_REQUIRE(!std::is_move_assignable_v<IOManager>);
+}
+
+BOOST_AUTO_TEST_CASE(Directionality) 
+{
+  IOManager iom;
+ ConnectionIds_t connections;
+  connections.emplace_back(ConnectionId{ "test_connection", ServiceType::kNetwork, "Data", "inproc://foo" });
+  iom.configure(connections);
+  ConnectionRef unspecified_ref = ConnectionRef{ "unspecified", "test_connection", {} };
+  ConnectionRef input_ref = ConnectionRef{ "input", "test_connection", {}, Direction::kInput };
+  ConnectionRef output_ref = ConnectionRef{ "output", "test_connection", {}, Direction::kOutput };
+
+  // Unspecified is always ok
+  auto sender = iom.get_sender<Data>(unspecified_ref);
+  auto receiver = iom.get_receiver<Data>(unspecified_ref);
+
+  // Input can only be receiver
+  BOOST_REQUIRE_EXCEPTION(iom.get_sender<Data>(input_ref),
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
+  receiver = iom.get_receiver<Data>(input_ref);
+
+  // Output can only be sender
+  sender = iom.get_sender<Data>(output_ref);
+  BOOST_REQUIRE_EXCEPTION(iom.get_receiver<Data>(output_ref),
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
+
+  iom.reset();
 }
 
 BOOST_FIXTURE_TEST_CASE(SimpleSendReceive, ConfigurationTestFixture)

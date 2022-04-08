@@ -40,13 +40,16 @@ ERS_DECLARE_ISSUE(iomanager,
 namespace iomanager {
 
 // Typeless
-class Receiver
+class Receiver : public utilities::NamedObject
 {
 public:
   using timeout_t = std::chrono::milliseconds;
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
+  explicit Receiver(std::string const& name)
+    : utilities::NamedObject(name)
+  {}
   virtual ~Receiver() = default;
 };
 
@@ -55,6 +58,9 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
+  explicit ReceiverConcept(std::string const& name)
+    : Receiver(name)
+  {}
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
   virtual void add_callback(std::function<void(Datatype&)> callback) = 0;
   virtual void remove_callback() = 0;
@@ -66,7 +72,8 @@ class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
   explicit QueueReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : m_conn_id(conn_id)
+    : ReceiverConcept<Datatype>(conn_ref.name) 
+    , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
@@ -78,7 +85,8 @@ public:
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
-    : m_conn_id(other.m_conn_id)
+    : ReceiverConcept<Datatype>(other.get_name())
+    , m_conn_id(other.m_conn_id)
     , m_conn_ref(other.m_conn_ref)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
@@ -151,7 +159,8 @@ class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
   explicit NetworkReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : m_conn_id(conn_id)
+    : ReceiverConcept<Datatype>(conn_ref.name)
+    , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
     TLOG() << "NetworkReceiverModel created with DT! Addr: " << static_cast<void*>(this);
@@ -168,7 +177,8 @@ public:
   ~NetworkReceiverModel() { remove_callback(); }
 
   NetworkReceiverModel(NetworkReceiverModel&& other)
-    : m_conn_id(other.m_conn_id)
+    : ReceiverConcept<Datatype>(other.get_name())
+    , m_conn_id(other.m_conn_id)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
