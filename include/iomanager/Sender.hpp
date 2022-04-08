@@ -10,17 +10,15 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
 
 #include "iomanager/ConnectionId.hpp"
+#include "iomanager/QueueRegistry.hpp"
 
-#include "appfwk/QueueRegistry.hpp"
 #include "ipm/Sender.hpp"
 #include "networkmanager/NetworkManager.hpp"
 #include "serialization/Serialization.hpp"
 
-#include <any>
-#include <atomic>
-#include <iostream>
-#include <mutex>
-#include <thread>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace dunedaq {
 namespace iomanager {
@@ -53,9 +51,9 @@ public:
     : m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this;
-    m_queue = appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
-    TLOG() << "QueueSenderModel m_queue=" << (void*)m_queue.get();
+    TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
+    m_queue = QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
+    TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
     // get queue ref from queueregistry based on conn_id
   }
 
@@ -72,7 +70,7 @@ public:
 private:
   ConnectionId m_conn_id;
   ConnectionRef m_conn_ref;
-  std::shared_ptr<appfwk::Queue<Datatype>> m_queue;
+  std::shared_ptr<Queue<Datatype>> m_queue;
 };
 
 // NImpl
@@ -86,7 +84,7 @@ public:
     : m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "NetworkSenderModel created with DT! Addr: " << (void*)this;
+    TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
     m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.uid);
   }

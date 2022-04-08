@@ -12,18 +12,18 @@
 #include "iomanager/ConnectionId.hpp"
 #include "iomanager/GenericCallback.hpp"
 
-#include "appfwk/QueueRegistry.hpp"
+#include "iomanager/QueueRegistry.hpp"
 #include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
 #include "networkmanager/NetworkManager.hpp"
 #include "serialization/Serialization.hpp"
 #include "utilities/ReusableThread.hpp"
 
-#include <any>
 #include <atomic>
-#include <iostream>
-#include <mutex>
+#include <memory>
+#include <string>
 #include <thread>
+#include <utility>
 
 namespace dunedaq {
 
@@ -33,7 +33,7 @@ ERS_DECLARE_ISSUE(iomanager,
                   ((std::string)conn_uid))
 
 ERS_DECLARE_ISSUE(iomanager,
-                  QueueNotFound,
+                  QueueInstanceNotFound,
                   "Queue Instance not found for queue " << queue_name,
                   ((std::string)queue_name))
 
@@ -73,8 +73,8 @@ public:
     // get queue ref from queueregistry based on conn_id
     // std::string sink_name = conn_id to sink_name;
     // m_source = std::make_unique<appfwk::DAQSource<Datatype>>(sink_name);
-    m_queue = appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
-    TLOG() << "QueueReceiverModel m_queue=" << (void*)m_queue.get();
+    m_queue = QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
+    TLOG() << "QueueReceiverModel m_queue=" << static_cast<void*>(m_queue.get());
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
@@ -95,7 +95,7 @@ public:
       throw ReceiveCallbackConflict(ERS_HERE, m_conn_id.uid);
     }
     if (m_queue == nullptr) {
-      throw QueueNotFound(ERS_HERE, m_conn_id.uid);
+      throw QueueInstanceNotFound(ERS_HERE, m_conn_id.uid);
     }
     // TLOG() << "Hand off data...";
     Datatype dt;
@@ -118,7 +118,7 @@ public:
         try {
           m_queue->pop(dt, std::chrono::milliseconds(500));
           m_callback(dt);
-        } catch (appfwk::QueueTimeoutExpired&) {
+        } catch (QueueTimeoutExpired&) {
         }
       }
     }));
@@ -142,8 +142,7 @@ private:
   std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
   std::unique_ptr<std::thread> m_event_loop_runner;
-  std::shared_ptr<appfwk::Queue<Datatype>> m_queue;
-  // std::unique_ptr<appfwk::DAQSource<Datatype>> m_source;
+  std::shared_ptr<Queue<Datatype>> m_queue;
 };
 
 // NImpl
@@ -155,7 +154,7 @@ public:
     : m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "NetworkReceiverModel created with DT! Addr: " << (void*)this;
+    TLOG() << "NetworkReceiverModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
     try {
       m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);

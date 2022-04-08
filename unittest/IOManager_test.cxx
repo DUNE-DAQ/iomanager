@@ -8,10 +8,6 @@
 
 #include "iomanager/IOManager.hpp"
 
-#include "appfwk/QueueRegistry.hpp"
-#include "appfwk/app/Nljs.hpp"
-#include "networkmanager/NetworkManager.hpp"
-#include "networkmanager/nwmgr/Structs.hpp"
 #include "serialization/Serialization.hpp"
 
 #define BOOST_TEST_MODULE IOManager_test // NOLINT
@@ -119,32 +115,16 @@ struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    dunedaq::networkmanager::nwmgr::Connections nwCfg;
-    dunedaq::networkmanager::nwmgr::Connection testConn;
-    testConn.name = "test_connection";
-    testConn.address = "inproc://foo";
-    nwCfg.push_back(testConn);
-    dunedaq::networkmanager::NetworkManager::get().configure(nwCfg);
-
-    std::map<std::string, dunedaq::appfwk::QueueConfig> config_map;
-    dunedaq::appfwk::QueueConfig qspec;
-    qspec.kind = dunedaq::appfwk::QueueConfig::queue_kind::kStdDeQueue;
-    qspec.capacity = 10;
-    config_map["test_queue"] = qspec;
-    dunedaq::appfwk::QueueRegistry::get().configure(config_map);
-
     dunedaq::iomanager::ConnectionIds_t connections;
-    connections.emplace_back(ConnectionId{ "test_queue", ServiceType::kQueue, "NonCopyableData", "queue://StdDeque:10" });
-    connections.emplace_back(ConnectionId{ "test_connection", ServiceType::kNetwork, "NonCopyableData", "inproc://foo" });
+    connections.emplace_back(
+      ConnectionId{ "test_queue", ServiceType::kQueue, "NonCopyableData", "queue://StdDeQueue:10" });
+    connections.emplace_back(
+      ConnectionId{ "test_connection", ServiceType::kNetwork, "NonCopyableData", "inproc://foo" });
     iom.configure(connections);
     conn_ref = ConnectionRef{ "network", "test_connection" };
     queue_ref = ConnectionRef{ "queue", "test_queue" };
   }
-  ~ConfigurationTestFixture()
-  {
-    dunedaq::networkmanager::NetworkManager::get().reset();
-    dunedaq::appfwk::QueueRegistry::get().reset();
-  }
+  ~ConfigurationTestFixture() { dunedaq::iomanager::IOManager::reset(); }
 
   ConfigurationTestFixture(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture(ConfigurationTestFixture&&) = default;

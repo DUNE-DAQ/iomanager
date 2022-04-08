@@ -15,6 +15,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <map>
 #include <memory>
 #include <random>
 #include <string>
@@ -23,21 +24,12 @@
 int
 main(int /*argc*/, char** /*argv[]*/)
 {
-  std::map<std::string, dunedaq::appfwk::QueueConfig> config_map;
-  dunedaq::appfwk::QueueConfig qspec;
-  qspec.kind = dunedaq::appfwk::QueueConfig::queue_kind::kStdDeQueue;
-  qspec.capacity = 10;
-  config_map["bar"] = qspec;
-  config_map["foo"] = qspec;
-  config_map["dsa"] = qspec;
-  config_map["zyx"] = qspec;
-  dunedaq::appfwk::QueueRegistry::get().configure(config_map);
-
   dunedaq::iomanager::IOManager iom;
   dunedaq::iomanager::ConnectionIds_t connections;
   dunedaq::iomanager::ConnectionId cid;
   cid.service_type = dunedaq::iomanager::ServiceType::kQueue;
   cid.uid = "bar";
+  cid.uri = "queue://StdDeQueue:10";
   cid.data_type = "int";
   connections.push_back(cid);
   cid.uid = "foo";
@@ -91,7 +83,7 @@ main(int /*argc*/, char** /*argv[]*/)
   std::string got;
   try {
     got = receiver->receive(timeout);
-  } catch (dunedaq::appfwk::QueueTimeoutExpired&) {
+  } catch (dunedaq::iomanager::QueueTimeoutExpired&) {
     // This is expected
   }
   std::cout << "\n\n";
