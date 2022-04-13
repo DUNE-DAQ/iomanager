@@ -27,7 +27,7 @@ constexpr int initial_size = 100; ///< the initial size of the queue ;
 
 constexpr auto test_time = std::chrono::milliseconds(500);
 
-constexpr auto timeout = std::chrono::milliseconds(1);
+constexpr auto timeout = std::chrono::milliseconds(5);
 
 /**
  * @brief Timeout to use for tests
