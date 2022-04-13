@@ -120,9 +120,23 @@ struct ConfigurationTestFixture
       ConnectionId{ "test_queue", ServiceType::kQueue, "NonCopyableData", "queue://StdDeQueue:10" });
     connections.emplace_back(
       ConnectionId{ "test_connection", ServiceType::kNetwork, "NonCopyableData", "inproc://foo" });
+    connections.emplace_back(ConnectionId{ "test_pubsub_connection",
+                                           ServiceType::kPubSub,
+                                           "NonCopyableData",
+                                           "inproc://foo",
+                                           { "test_topic", "another_test_topic" } });
+    connections.emplace_back(ConnectionId{ "another_test_pubsub_connection",
+                                           ServiceType::kPubSub,
+                                           "NonCopyableData",
+                                           "inproc://bar",
+                                           { "another_test_topic" } });
     iom.configure(connections);
     conn_ref = ConnectionRef{ "network", "test_connection" };
     queue_ref = ConnectionRef{ "queue", "test_queue" };
+    pub1_ref = ConnectionRef{ "pub1", "test_pubsub_connection" };
+    pub2_ref = ConnectionRef{ "pub2", "another_test_pubsub_connection", Direction::kOutput };
+    sub1_ref = ConnectionRef{ "sub1", "test_topic", Direction::kInput };
+    sub2_ref = ConnectionRef{ "sub2", "another_test_topic", Direction::kInput };
   }
   ~ConfigurationTestFixture() { IOManager::reset(); }
 
@@ -134,6 +148,10 @@ struct ConfigurationTestFixture
   IOManager iom;
   ConnectionRef conn_ref;
   ConnectionRef queue_ref;
+  ConnectionRef pub1_ref;
+  ConnectionRef pub2_ref;
+  ConnectionRef sub1_ref;
+  ConnectionRef sub2_ref;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
@@ -144,15 +162,15 @@ BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
   BOOST_REQUIRE(!std::is_move_assignable_v<IOManager>);
 }
 
-BOOST_AUTO_TEST_CASE(Directionality) 
+BOOST_AUTO_TEST_CASE(Directionality)
 {
   IOManager iom;
- ConnectionIds_t connections;
+  ConnectionIds_t connections;
   connections.emplace_back(ConnectionId{ "test_connection", ServiceType::kNetwork, "Data", "inproc://foo" });
   iom.configure(connections);
-  ConnectionRef unspecified_ref = ConnectionRef{ "unspecified", "test_connection", {} };
-  ConnectionRef input_ref = ConnectionRef{ "input", "test_connection", {}, Direction::kInput };
-  ConnectionRef output_ref = ConnectionRef{ "output", "test_connection", {}, Direction::kOutput };
+  ConnectionRef unspecified_ref = ConnectionRef{ "unspecified", "test_connection" };
+  ConnectionRef input_ref = ConnectionRef{ "input", "test_connection", Direction::kInput };
+  ConnectionRef output_ref = ConnectionRef{ "output", "test_connection", Direction::kOutput };
 
   // Unspecified is always ok
   auto sender = iom.get_sender<Data>(unspecified_ref);
@@ -195,6 +213,100 @@ BOOST_FIXTURE_TEST_CASE(SimpleSendReceive, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(ret.d1, 57);
   BOOST_CHECK_EQUAL(ret.d2, 27.5);
   BOOST_CHECK_EQUAL(ret.d3, "test2");
+}
+
+BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
+{
+  auto pub1_sender = iom.get_sender<Data>(pub1_ref);
+  auto pub2_sender = iom.get_sender<Data>(pub2_ref);
+  auto sub1_receiver = iom.get_receiver<Data>(sub1_ref);
+  auto sub2_receiver = iom.get_receiver<Data>(sub2_ref);
+  auto sub3_receiver = iom.get_receiver<Data>(pub1_ref);
+
+  Data sent_t1(56, 26.5, "test1");
+  Data sent_t2(57, 27.5, "test2");
+  Data sent_t3(58, 28.5, "test3");
+  pub1_sender->send(sent_t1, dunedaq::iomanager::Sender::s_no_block, "test_topic");
+
+  auto ret1 = sub1_receiver->receive(std::chrono::milliseconds(10));
+  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  auto ret3 = sub3_receiver->receive(std::chrono::milliseconds(10));
+  BOOST_CHECK_EQUAL(ret1.d1, 56);
+  BOOST_CHECK_EQUAL(ret1.d2, 26.5);
+  BOOST_CHECK_EQUAL(ret1.d3, "test1");
+  BOOST_CHECK_EQUAL(ret3.d1, 56);
+  BOOST_CHECK_EQUAL(ret3.d2, 26.5);
+  BOOST_CHECK_EQUAL(ret3.d3, "test1");
+
+  pub1_sender->send(sent_t2, dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
+
+  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  auto ret2 = sub2_receiver->receive(std::chrono::milliseconds(10));
+  ret3 = sub3_receiver->receive(std::chrono::milliseconds(10));
+  BOOST_CHECK_EQUAL(ret2.d1, 57);
+  BOOST_CHECK_EQUAL(ret2.d2, 27.5);
+  BOOST_CHECK_EQUAL(ret2.d3, "test2");
+  BOOST_CHECK_EQUAL(ret3.d1, 57);
+  BOOST_CHECK_EQUAL(ret3.d2, 27.5);
+  BOOST_CHECK_EQUAL(ret3.d3, "test2");
+
+  pub1_sender->send(sent_t3, dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
+
+  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+
+  Data sent_t4(59, 29.5, "test4");
+  Data sent_t5(60, 30.5, "test5");
+  Data sent_t6(61, 31.5, "test6");
+  
+  pub2_sender->send(sent_t4, dunedaq::iomanager::Sender::s_no_block, "test_topic");
+  
+  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  
+  pub2_sender->send(sent_t5, dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
+  
+  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  ret2 = sub2_receiver->receive(std::chrono::milliseconds(10));
+  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  BOOST_CHECK_EQUAL(ret2.d1, 60);
+  BOOST_CHECK_EQUAL(ret2.d2, 30.5);
+  BOOST_CHECK_EQUAL(ret2.d3, "test5");
+
+  pub2_sender->send(sent_t6, dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
+  
+  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)),
+                          ReceiveTimeoutExpired,
+                          [](ReceiveTimeoutExpired const&) { return true; });
+
 }
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)

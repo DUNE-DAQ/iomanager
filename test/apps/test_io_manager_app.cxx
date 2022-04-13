@@ -45,7 +45,6 @@ main(int /*argc*/, char** /*argv[]*/)
   // Int sender
   dunedaq::iomanager::ConnectionRef cref;
   cref.uid = "bar";
-  cref.topics = {};
 
   int msg = 5;
   std::chrono::milliseconds timeout(100);
@@ -64,7 +63,6 @@ main(int /*argc*/, char** /*argv[]*/)
   // String sender
   dunedaq::iomanager::ConnectionRef cref2;
   cref2.uid = "foo";
-  cref2.topics = {};
 
   auto ssender = iom.get_sender<std::string>(cref2);
   std::cout << "Type: " << typeid(ssender).name() << '\n';
@@ -76,7 +74,6 @@ main(int /*argc*/, char** /*argv[]*/)
   // String receiver
   dunedaq::iomanager::ConnectionRef cref3;
   cref3.uid = "dsa";
-  cref3.topics = {};
 
   auto receiver = iom.get_receiver<std::string>(cref3);
   std::cout << "Type: " << typeid(receiver).name() << '\n';
@@ -92,7 +89,6 @@ main(int /*argc*/, char** /*argv[]*/)
   // Callback receiver
   dunedaq::iomanager::ConnectionRef cref4;
   cref4.uid = "zyx";
-  cref4.topics = {};
 
   // CB function
   std::function<void(std::string)> str_receiver_cb = [&](std::string data) {

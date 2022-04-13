@@ -22,6 +22,10 @@
 #include <utility>
 
 namespace dunedaq {
+ERS_DECLARE_ISSUE(iomanager,
+                  SendTimeoutExpired,
+                  "Timeout expired while sending to " << name,
+                  ((std::string)name))
 namespace iomanager {
 
 // Typeless
@@ -77,9 +81,11 @@ public:
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
     }
-    // TLOG() << "Handle data: " << data;
-    m_queue->push(std::move(data), timeout);
-    // if (m_queue->write(
+    try {
+      m_queue->push(std::move(data), timeout);
+    } catch (QueueTimeoutExpired& ex) {
+      throw SendTimeoutExpired(ERS_HERE, m_conn_id.uid, ex);
+    }
   }
 
 private:
@@ -114,7 +120,11 @@ public:
 
   void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
-    write_network<Datatype>(data, timeout, topic);
+    try {
+      write_network<Datatype>(data, timeout, topic);
+    } catch (ipm::SendTimeoutExpired& ex) {
+      throw SendTimeoutExpired(ERS_HERE, m_conn_id.uid, ex);
+    }
   }
 
 private:

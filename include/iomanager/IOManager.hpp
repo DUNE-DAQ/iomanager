@@ -29,7 +29,8 @@ ERS_DECLARE_ISSUE(iomanager,
                   ((std::string)conn_uid))
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionDirectionMismatch,
-                  "Connection reference with name " << name << " specified direction " << direction << ", but tried to obtain a " << handle_type,
+                  "Connection reference with name " << name << " specified direction " << direction
+                                                    << ", but tried to obtain a " << handle_type,
                   ((std::string)name)((std::string)direction)((std::string)handle_type))
 
 namespace iomanager {
@@ -64,6 +65,12 @@ public:
         qCfg[connection.uid].capacity = stoi(sm[2]);
       } else if (connection.service_type == ServiceType::kNetwork) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
+        this_conn.name = connection.uid;
+        this_conn.address = connection.uri;
+        nwCfg.push_back(this_conn);
+      } else if (connection.service_type == ServiceType::kPubSub) {
+        dunedaq::networkmanager::nwmgr::Connection this_conn;
+        this_conn.topics = connection.topics;
         this_conn.name = connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
@@ -119,10 +126,15 @@ public:
         TLOG() << "Creating QueueReceiverModel for service_name " << conn_id.uid;
         m_receivers[conn_ref] =
           std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(conn_id, conn_ref));
-      } else {
+      } else if (conn_id.service_type == ServiceType::kNetwork) {
         TLOG() << "Creating NetworkReceiverModel for service_name " << conn_id.uid;
         m_receivers[conn_ref] =
           std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id, conn_ref));
+      } else if (conn_id.service_type == ServiceType::kPubSub) {
+        TLOG() << "Creating NetworkReceiverModel for service_name " << conn_ref.uid;
+        // This ConnectionRef refers to a topic if its uid is not the same as the returned ConnectionId's uid
+        m_receivers[conn_ref] =
+          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id, conn_ref, conn_id.uid != conn_ref.uid));
       }
     }
     return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[conn_ref]); // NOLINT
@@ -148,6 +160,18 @@ private:
     for (auto& conn : s_connections) {
       if (conn.uid == ref.uid)
         return conn;
+    }
+
+    // Subscribers can have a UID that is a topic they are interested in. Return the first matching conn ID
+    if (ref.dir == Direction::kInput) {
+      for (auto& conn : s_connections) {
+        if (conn.service_type == ServiceType::kPubSub) {
+          for (auto& topic : conn.topics) {
+            if (topic == ref.uid)
+              return conn;
+          }
+        }
+      }
     }
 
     throw ConnectionNotFound(ERS_HERE, ref.uid);

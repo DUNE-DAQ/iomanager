@@ -33,9 +33,11 @@ ERS_DECLARE_ISSUE(iomanager,
                   ((std::string)conn_uid))
 
 ERS_DECLARE_ISSUE(iomanager,
-                  QueueInstanceNotFound,
-                  "Queue Instance not found for queue " << queue_name,
-                  ((std::string)queue_name))
+                  ConnectionInstanceNotFound,
+                  "Connection Instance not found for name " << name,
+                  ((std::string)name))
+
+ERS_DECLARE_ISSUE(iomanager, ReceiveTimeoutExpired, "Timeout expired while receiving from " << name, ((std::string)name))
 
 namespace iomanager {
 
@@ -72,7 +74,7 @@ class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
   explicit QueueReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : ReceiverConcept<Datatype>(conn_ref.name) 
+    : ReceiverConcept<Datatype>(conn_ref.name)
     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
@@ -103,11 +105,16 @@ public:
       throw ReceiveCallbackConflict(ERS_HERE, m_conn_id.uid);
     }
     if (m_queue == nullptr) {
-      throw QueueInstanceNotFound(ERS_HERE, m_conn_id.uid);
+      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
     }
     // TLOG() << "Hand off data...";
     Datatype dt;
-    m_queue->pop(dt, timeout);
+    try {
+      m_queue->pop(dt, timeout);
+    }
+    catch (QueueTimeoutExpired& ex) {
+      throw ReceiveTimeoutExpired(ERS_HERE, m_conn_id.uid, ex);
+    }
     return dt;
     // if (m_queue->write(
   }
@@ -158,20 +165,31 @@ template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit NetworkReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit NetworkReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref, bool ref_to_topic = false)
     : ReceiverConcept<Datatype>(conn_ref.name)
     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
     TLOG() << "NetworkReceiverModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
-    try {
-      m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
-    } catch (networkmanager::ConnectionNotFound&) {
-    }
-    try {
-      m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_id.uid);
-    } catch (networkmanager::ConnectionNotFound&) {
+    if (m_conn_id.service_type == ServiceType::kNetwork) {
+
+      try {
+        m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
+      } catch (networkmanager::ConnectionNotFound& ex) {
+        throw ConnectionInstanceNotFound(ERS_HERE, conn_id.uid, ex);
+      }
+    } else {
+      try {
+        if (ref_to_topic) {
+          m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_ref.uid);
+        } else {
+          m_network_subscriber_ptr =
+            std::dynamic_pointer_cast<ipm::Subscriber>(networkmanager::NetworkManager::get().get_receiver(conn_id.uid));
+        }
+      } catch (networkmanager::ConnectionNotFound& ex) {
+        throw ConnectionInstanceNotFound(ERS_HERE, conn_ref.uid, ex);
+      }
     }
   }
   ~NetworkReceiverModel() { remove_callback(); }
@@ -186,7 +204,13 @@ public:
     , m_network_subscriber_ptr(other.m_network_subscriber_ptr)
   {}
 
-  Datatype receive(Receiver::timeout_t timeout) override { return read_network<Datatype>(timeout); }
+  Datatype receive(Receiver::timeout_t timeout) override {
+    try {
+      return read_network<Datatype>(timeout);
+    } catch (ipm::ReceiveTimeoutExpired& ex) {
+      throw ReceiveTimeoutExpired(ERS_HERE, m_conn_ref.uid, ex);
+    }
+  }
 
   void add_callback(std::function<void(Datatype&)> callback)
   {
