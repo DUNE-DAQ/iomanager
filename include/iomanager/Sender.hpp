@@ -11,6 +11,7 @@
 
 #include "iomanager/ConnectionId.hpp"
 #include "iomanager/QueueRegistry.hpp"
+#include "iomanager/CommonIssues.hpp"
 
 #include "ipm/Sender.hpp"
 #include "logging/Logging.hpp"
@@ -22,10 +23,7 @@
 #include <utility>
 
 namespace dunedaq {
-ERS_DECLARE_ISSUE(iomanager,
-                  SendTimeoutExpired,
-                  "Timeout expired while sending to " << name,
-                  ((std::string)name))
+
 namespace iomanager {
 
 // Typeless
@@ -81,10 +79,14 @@ public:
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
     }
+
+    if (m_queue == nullptr)
+      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
+
     try {
       m_queue->push(std::move(data), timeout);
     } catch (QueueTimeoutExpired& ex) {
-      throw SendTimeoutExpired(ERS_HERE, m_conn_id.uid, ex);
+      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "push", timeout.count(), ex);
     }
   }
 
@@ -123,7 +125,7 @@ public:
     try {
       write_network<Datatype>(data, timeout, topic);
     } catch (ipm::SendTimeoutExpired& ex) {
-      throw SendTimeoutExpired(ERS_HERE, m_conn_id.uid, ex);
+      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "send", timeout.count(), ex);
     }
   }
 
@@ -133,7 +135,8 @@ private:
   write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
   {
     if (m_network_sender_ptr == nullptr)
-      return;
+      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
+
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     // TLOG() << "Serialized message for network sending: " << serialized.size();
     m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);

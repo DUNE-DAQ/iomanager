@@ -91,6 +91,13 @@ public:
   }
 
   template<typename Datatype>
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& connection_uid)
+  {
+    ConnectionRef dummy_ref{ connection_uid, connection_uid, Direction::kOutput };
+    return get_sender<Datatype>(dummy_ref);
+  }
+
+  template<typename Datatype>
   std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionRef const& conn_ref)
   {
     if (conn_ref.dir == Direction::kInput) {
@@ -111,6 +118,13 @@ public:
       }
     }
     return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[conn_ref]);
+  }
+
+  template<typename Datatype>
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& connection_uid)
+  {
+    ConnectionRef dummy_ref{ connection_uid, connection_uid, Direction::kInput };
+    return get_receiver<Datatype>(dummy_ref);
   }
 
   template<typename Datatype>

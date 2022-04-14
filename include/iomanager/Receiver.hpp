@@ -9,8 +9,8 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_
 
+#include "iomanager/CommonIssues.hpp"
 #include "iomanager/ConnectionId.hpp"
-#include "iomanager/GenericCallback.hpp"
 
 #include "iomanager/QueueRegistry.hpp"
 #include "ipm/Subscriber.hpp"
@@ -31,13 +31,6 @@ ERS_DECLARE_ISSUE(iomanager,
                   ReceiveCallbackConflict,
                   "QueueReceiverModel for uid " << conn_uid << " is equipped with callback! Ignoring receive call.",
                   ((std::string)conn_uid))
-
-ERS_DECLARE_ISSUE(iomanager,
-                  ConnectionInstanceNotFound,
-                  "Connection Instance not found for name " << name,
-                  ((std::string)name))
-
-ERS_DECLARE_ISSUE(iomanager, ReceiveTimeoutExpired, "Timeout expired while receiving from " << name, ((std::string)name))
 
 namespace iomanager {
 
@@ -111,9 +104,8 @@ public:
     Datatype dt;
     try {
       m_queue->pop(dt, timeout);
-    }
-    catch (QueueTimeoutExpired& ex) {
-      throw ReceiveTimeoutExpired(ERS_HERE, m_conn_id.uid, ex);
+    } catch (QueueTimeoutExpired& ex) {
+      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "pop", timeout.count(), ex);
     }
     return dt;
     // if (m_queue->write(
@@ -204,11 +196,12 @@ public:
     , m_network_subscriber_ptr(other.m_network_subscriber_ptr)
   {}
 
-  Datatype receive(Receiver::timeout_t timeout) override {
+  Datatype receive(Receiver::timeout_t timeout) override
+  {
     try {
       return read_network<Datatype>(timeout);
     } catch (ipm::ReceiveTimeoutExpired& ex) {
-      throw ReceiveTimeoutExpired(ERS_HERE, m_conn_ref.uid, ex);
+      throw TimeoutExpired(ERS_HERE, m_conn_ref.uid, "receive", timeout.count(), ex);
     }
   }
 
