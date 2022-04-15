@@ -149,8 +149,8 @@ public:
       } else if (conn_id.service_type == ServiceType::kPubSub) {
         TLOG() << "Creating NetworkReceiverModel for service_name " << conn_ref.uid;
         // This ConnectionRef refers to a topic if its uid is not the same as the returned ConnectionId's uid
-        m_receivers[conn_ref] =
-          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id, conn_ref, conn_id.uid != conn_ref.uid));
+        m_receivers[conn_ref] = std::make_shared<NetworkReceiverModel<Datatype>>(
+          NetworkReceiverModel<Datatype>(conn_id, conn_ref, conn_id.uid != conn_ref.uid));
       }
     }
     return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[conn_ref]); // NOLINT

@@ -9,9 +9,9 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
 
+#include "iomanager/CommonIssues.hpp"
 #include "iomanager/ConnectionId.hpp"
 #include "iomanager/QueueRegistry.hpp"
-#include "iomanager/CommonIssues.hpp"
 
 #include "ipm/Sender.hpp"
 #include "logging/Logging.hpp"
@@ -58,7 +58,7 @@ class QueueSenderModel : public SenderConcept<Datatype>
 public:
   explicit QueueSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
     : SenderConcept<Datatype>(conn_ref.name)
-     , m_conn_id(conn_id)
+    , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
@@ -104,7 +104,7 @@ public:
   using SenderConcept<Datatype>::send;
 
   explicit NetworkSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : SenderConcept<Datatype>(conn_ref.name) 
+    : SenderConcept<Datatype>(conn_ref.name)
     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {

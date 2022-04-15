@@ -15,6 +15,7 @@
 #include "boost/test/unit_test.hpp"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace dunedaq::iomanager;
@@ -253,8 +254,8 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   pub1_sender->send(sent_t1, dunedaq::iomanager::Sender::s_no_block, "test_topic");
 
   auto ret1 = sub1_receiver->receive(std::chrono::milliseconds(10));
-  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   auto ret3 = sub3_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret1.d1, 56);
   BOOST_CHECK_EQUAL(ret1.d2, 26.5);
@@ -265,8 +266,8 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
 
   pub1_sender->send(sent_t2, dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
 
-  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   auto ret2 = sub2_receiver->receive(std::chrono::milliseconds(10));
   ret3 = sub3_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret2.d1, 57);
@@ -278,46 +279,45 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
 
   pub1_sender->send(sent_t3, dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
 
-  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
-  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
-  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired,
-                          [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
 
   Data sent_t4(59, 29.5, "test4");
   Data sent_t5(60, 30.5, "test5");
   Data sent_t6(61, 31.5, "test6");
-  
+
   pub2_sender->send(sent_t4, dunedaq::iomanager::Sender::s_no_block, "test_topic");
-  
-  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
-  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
-  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
-  
+
+  BOOST_REQUIRE_EXCEPTION(
+    sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+
   pub2_sender->send(sent_t5, dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
-  
-  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
+
+  BOOST_REQUIRE_EXCEPTION(
+    sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   ret2 = sub2_receiver->receive(std::chrono::milliseconds(10));
-  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   BOOST_CHECK_EQUAL(ret2.d1, 60);
   BOOST_CHECK_EQUAL(ret2.d2, 30.5);
   BOOST_CHECK_EQUAL(ret2.d3, "test5");
 
   pub2_sender->send(sent_t6, dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
-  
-  BOOST_REQUIRE_EXCEPTION(sub1_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
-  BOOST_REQUIRE_EXCEPTION(sub2_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
-  BOOST_REQUIRE_EXCEPTION(sub3_receiver->receive(std::chrono::milliseconds(10)),
-                          TimeoutExpired, [](TimeoutExpired const&) { return true; });
 
+  BOOST_REQUIRE_EXCEPTION(
+    sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
 }
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)

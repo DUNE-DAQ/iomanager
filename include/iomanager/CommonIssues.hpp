@@ -20,7 +20,7 @@ ERS_DECLARE_ISSUE(iomanager,
                   "Connection Instance not found for name " << name,
                   ((std::string)name))
 
-ERS_DECLARE_ISSUE(iomanager,             // namespace
+ERS_DECLARE_ISSUE(iomanager,      // namespace
                   TimeoutExpired, // issue class name
                   name << ": Unable to " << func_name << " within timeout period (timeout period was " << timeout
                        << " milliseconds)",                                  // message
