@@ -14,7 +14,7 @@
 #include <string>
 
 namespace dunedaq {
-
+// Disable coverage collection LCOV_EXCL_START
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionInstanceNotFound,
                   "Connection Instance not found for name " << name,
@@ -25,6 +25,7 @@ ERS_DECLARE_ISSUE(iomanager,             // namespace
                   name << ": Unable to " << func_name << " within timeout period (timeout period was " << timeout
                        << " milliseconds)",                                  // message
                   ((std::string)name)((std::string)func_name)((int)timeout)) // NOLINT(readability/casting)
+// Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq
 

@@ -80,7 +80,7 @@ main(int /*argc*/, char** /*argv[]*/)
   std::string got;
   try {
     got = receiver->receive(timeout);
-  } catch (dunedaq::iomanager::QueueTimeoutExpired&) {
+  } catch (dunedaq::iomanager::TimeoutExpired&) {
     // This is expected
   }
   std::cout << "\n\n";

@@ -27,10 +27,12 @@
 
 namespace dunedaq {
 
+// Disable coverage collection LCOV_EXCL_START
 ERS_DECLARE_ISSUE(iomanager,
                   ReceiveCallbackConflict,
                   "QueueReceiverModel for uid " << conn_uid << " is equipped with callback! Ignoring receive call.",
                   ((std::string)conn_uid))
+// Re-enable coverage collection LCOV_EXCL_STOP
 
 namespace iomanager {
 

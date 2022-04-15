@@ -23,6 +23,7 @@
 #include <string>
 
 namespace dunedaq {
+// Disable coverage collection LCOV_EXCL_START
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionNotFound,
                   "Connection with uid " << conn_uid << " not found!",
@@ -32,6 +33,7 @@ ERS_DECLARE_ISSUE(iomanager,
                   "Connection reference with name " << name << " specified direction " << direction
                                                     << ", but tried to obtain a " << handle_type,
                   ((std::string)name)((std::string)direction)((std::string)handle_type))
+// Re-enable coverage collection LCOV_EXCL_STOP
 
 namespace iomanager {
 
