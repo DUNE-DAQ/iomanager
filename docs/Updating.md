@@ -28,6 +28,8 @@ DUNE_DAQ_SERIALIZABLE(mypackage::Data);
 } // namespace dunedaq
 ```
 
+* Note: Data types which are serialized using `DUNE_DAQ_SERIALIZE_NON_INTRUSIVE` do not need to be updated, `DUNE_DAQ_SERIALIZABLE` is called as part of that macro.
+
 ## Use IOManager::configure() instead of NetworkManager/QueueRegistry configuration in tests
 
 Any tests that directly configure QueueRegistry and/or NetworkManager should instead configure IOManager. This translation is fairly straightforward, see [IOManager's unit test](https://github.com/DUNE-DAQ/iomanager/blob/f3a9eefe75811984b4b0864511e1ce61537ff342/unittest/IOManager_test.cxx#L117) for examples.
