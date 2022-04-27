@@ -14,6 +14,9 @@ A simplified API for passing messages between DAQModules
 
 * ConnectionId defines a connection, with required initialization
   * uid Field uniquely identifies the connection
+  * uri Field is used by lower-level code to configure the connection
+    * Scheme `queue://` should be used for queues, with the queue type and size, e.g. `queue://StdDeQueue:10` creating a StdDeQueue of size 10
+    * For network connections, standard ZMQ URI should be used, e.g. `tcp://localhost:1234` (name translation is provided by IPM)
 * ConnectionRef is a user-facing reference to a connection
 
 ### Receiver

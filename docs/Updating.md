@@ -28,6 +28,10 @@ DUNE_DAQ_SERIALIZABLE(mypackage::Data);
 } // namespace dunedaq
 ```
 
+## Use IOManager::configure() instead of NetworkManager/QueueRegistry configuration in tests
+
+Any tests that directly configure QueueRegistry and/or NetworkManager should instead configure IOManager. This translation is fairly straightforward, see [IOManager's unit test](https://github.com/DUNE-DAQ/iomanager/blob/f3a9eefe75811984b4b0864511e1ce61537ff342/unittest/IOManager_test.cxx#L117) for examples.
+
 ## Update DAQModuleHelper Usage
 
 Instead of `appfwk::queue_index` or `appfwk::queue_inst`, use `appfwk::connection_index` or `appfwk::connection_inst`. These methods return the iomanager::ConnectionRef objects needed to get the Sender and Receiver objects from the IOManager.
