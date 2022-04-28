@@ -49,12 +49,20 @@ Instead of `appfwk::queue_index` or `appfwk::queue_inst`, use `appfwk::connectio
 ## Replace DAQSink with Sender, DAQSource with Receiver
 
 Unfortunately, the signature changes are not easily replaceable with `sed`. 
+
+### DAQSink
+
+* `#include "appfwk/DAQSink.hpp` use `#include "iomanager/Sender.hpp"`
 * `queue_.reset(new DAQSink<T>("name"));` must become `queue_ = iom.get_sender<T>(ref);`
 * Instead of `std::unique_ptr<DAQSink<T>>`, use `std::shared_ptr<iomanager::SenderConcept<T>>`
-* The above also apply to `DAQSource<T>` -> `ReceiverConcept<T>` and `iom.get_receiver<T>`
-* `queue_->pop(result, timeout);` becomes `result = queue_->receive(timeout);`
 * `queue_->push(std::move(obj), timeout);` becomes `queue_->send(obj, timeout);`
-* `catch(QueueTimeoutExpired&)` becomes `catch(iomanager::TimeoutExpired&)`
+
+### DAQSource
+
+* `#include "appfwk/DAQSource.hpp` use `#include "iomanager/Receiver.hpp"`
+* `queue_.reset(new DAQSource<T>("name"));` must become `queue_ = iom.get_receiver<T>(ref);`
+* Instead of `std::unique_ptr<DAQSource<T>>`, use `std::shared_ptr<iomanager::ReceiverConcept<T>>`
+* `queue_->pop(result, timeout);` becomes `result = queue_->receive(timeout);`
 
 ## Change Queue-centric send/receive loops
 
