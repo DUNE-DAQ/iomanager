@@ -52,14 +52,14 @@ Unfortunately, the signature changes are not easily replaceable with `sed`.
 
 ### DAQSink
 
-* `#include "appfwk/DAQSink.hpp` use `#include "iomanager/Sender.hpp"`
+* `#include "appfwk/DAQSink.hpp` becomes `#include "iomanager/Sender.hpp"`
 * `queue_.reset(new DAQSink<T>("name"));` must become `queue_ = iom.get_sender<T>(ref);`
 * Instead of `std::unique_ptr<DAQSink<T>>`, use `std::shared_ptr<iomanager::SenderConcept<T>>`
 * `queue_->push(std::move(obj), timeout);` becomes `queue_->send(obj, timeout);`
 
 ### DAQSource
 
-* `#include "appfwk/DAQSource.hpp` use `#include "iomanager/Receiver.hpp"`
+* `#include "appfwk/DAQSource.hpp` becomes `#include "iomanager/Receiver.hpp"`
 * `queue_.reset(new DAQSource<T>("name"));` must become `queue_ = iom.get_receiver<T>(ref);`
 * Instead of `std::unique_ptr<DAQSource<T>>`, use `std::shared_ptr<iomanager::ReceiverConcept<T>>`
 * `queue_->pop(result, timeout);` becomes `result = queue_->receive(timeout);`
