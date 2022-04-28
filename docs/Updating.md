@@ -11,6 +11,7 @@ Since all communication is now handled by IOManager's Sender and Receiver classe
 Instead, all data structs which may be transmitted over the network should have the DUNE_DAQ_SERIALIZABLE macro called:
 
 ```CPP
+namespace dunedaq {
 namespace mypackage {
 struct Data
 {

@@ -26,7 +26,7 @@ local c = {
 
   ref: s.record("ConnectionRef", [
         s.field("name", self.label, doc="The name by which this connection is known to the module"),
-        s.field("uid", self.uid, doc="Name of the connection"),
+        s.field("uid", self.uid, doc="Name of the connection, or topic associated with a subscriber"),
         s.field("dir", self.direction,"kUnspecified", doc="Direction of this connection reference")
   ], doc="Reference to a connection"),
 
