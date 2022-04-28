@@ -77,7 +77,7 @@ if(queue_->can_push()) {
 becomes
 ```CPP
 try {
-  queue_->send(obj, std::chrono::microseconds(10));
+  queue_->send(obj, iomanager::Sender::s_no_block);
 } catch(iomanager::TimeoutExpired&) {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
