@@ -1,5 +1,9 @@
 # Updating Existing Code to Use _iomanager_
 
+## Add iomanager to CMakeLists.txt if necessary
+
+Specifically, if you're using `DEP_PKGS appfwk` in your `daq_codegen` call, you will have to add `iomanager` to the `DEP_PKGS` list.
+
 ## Remove _nwqueueadapters_ and register Serializable data types
 
 Since all communication is now handled by IOManager's Sender and Receiver classes in a transport-agnostic way, the NQ classes are no longer needed.
@@ -34,6 +38,10 @@ DUNE_DAQ_SERIALIZABLE(mypackage::Data);
 
 Any tests that directly configure QueueRegistry and/or NetworkManager should instead configure IOManager. This translation is fairly straightforward, see [IOManager's unit test](https://github.com/DUNE-DAQ/iomanager/blob/f3a9eefe75811984b4b0864511e1ce61537ff342/unittest/IOManager_test.cxx#L117) for examples.
 
+## Update Schema Usage
+
+For modules which loop over ModInit::qinfos, they should now loop over ModInit::conn_refs (or update to using DAQModuleHelper, below)
+
 ## Update DAQModuleHelper Usage
 
 Instead of `appfwk::queue_index` or `appfwk::queue_inst`, use `appfwk::connection_index` or `appfwk::connection_inst`. These methods return the iomanager::ConnectionRef objects needed to get the Sender and Receiver objects from the IOManager.
@@ -47,6 +55,25 @@ Unfortunately, the signature changes are not easily replaceable with `sed`.
 * `queue_->pop(result, timeout);` becomes `result = queue_->receive(timeout);`
 * `queue_->push(std::move(obj), timeout);` becomes `queue_->send(obj, timeout);`
 * `catch(QueueTimeoutExpired&)` becomes `catch(iomaanger::TimeoutExpired&)`
+
+## Change Queue-centric send/receive loops
+
+`can_push()` and `can_pop()` are not supported by Sender and Receiver. Their usage should be replaced with `try..catch` blocks:
+```CPP
+if(queue_->can_push()) {
+  queue_->push(obj);
+} else {
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+```
+becomes
+```CPP
+try {
+  queue_->send(obj, std::chrono::milliseconds(10));
+} catch(iomanager::TimeoutExpired&) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+```
 
 ## Update NetworkManager Usage
 
