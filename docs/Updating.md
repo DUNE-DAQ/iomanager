@@ -40,7 +40,7 @@ Any tests that directly configure QueueRegistry and/or NetworkManager should ins
 
 ## Update Schema Usage
 
-For modules which loop over ModInit::qinfos, they should now loop over ModInit::conn_refs (or update to using DAQModuleHelper, below)
+For modules which loop over `ModInit::qinfos`, they should now loop over `ModInit::conn_refs` (or update to using DAQModuleHelper, below)
 
 ## Update DAQModuleHelper Usage
 
@@ -54,7 +54,7 @@ Unfortunately, the signature changes are not easily replaceable with `sed`.
 * The above also apply to `DAQSource<T>` -> `ReceiverConcept<T>` and `iom.get_receiver<T>`
 * `queue_->pop(result, timeout);` becomes `result = queue_->receive(timeout);`
 * `queue_->push(std::move(obj), timeout);` becomes `queue_->send(obj, timeout);`
-* `catch(QueueTimeoutExpired&)` becomes `catch(iomaanger::TimeoutExpired&)`
+* `catch(QueueTimeoutExpired&)` becomes `catch(iomanager::TimeoutExpired&)`
 
 ## Change Queue-centric send/receive loops
 
