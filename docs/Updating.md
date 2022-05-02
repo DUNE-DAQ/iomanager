@@ -43,9 +43,77 @@ Any tests that directly configure QueueRegistry and/or NetworkManager should ins
 
 For modules which loop over `ModInit::qinfos`, they should now loop over `ModInit::conn_refs` (or update to using DAQModuleHelper, below)
 
+```CPP
+// BEFORE
+ auto ini = init_data.get<appfwk::app::ModInit>();
+  for (const auto& qi : ini.qinfos) {
+    if (qi.dir != "output") {
+      continue;                 // skip all but "output" direction
+    }
+    try
+    {
+      outputQueues_.emplace_back(new sink_t(qi.inst));
+    }
+    catch (const ers::Issue& excpt)
+    {
+      throw InvalidQueueFatalError(ERS_HERE, get_name(), qi.name, excpt);
+    }
+  }
+
+  // AFTER
+ auto ini = init_data.get<appfwk::app::ModInit>();
+  iomanager::IOManager iom;
+  for (const auto& cr : ini.conn_refs) {
+    if (cr.dir != iomanager::connection::Direction::kOutput) {
+      continue; // skip all but "output" direction
+    }
+    try {
+      outputQueues_.emplace_back(iom.get_sender<IntList>(cr));
+    } catch (const ers::Issue& excpt) {
+      throw InvalidQueueFatalError(ERS_HERE, get_name(), cr.name, excpt);
+    }
+  }
+
+```
+
 ## Update DAQModuleHelper Usage
 
 Instead of `appfwk::queue_index` or `appfwk::queue_inst`, use `appfwk::connection_index` or `appfwk::connection_inst`. These methods return the iomanager::ConnectionRef objects needed to get the Sender and Receiver objects from the IOManager.
+
+```CPP
+// BEFORE
+auto qi = appfwk::queue_index(iniobj, {"input","output"});
+  try
+  {
+    inputQueue_.reset(new source_t(qi["input"].inst));
+  }
+  catch (const ers::Issue& excpt)
+  {
+    throw InvalidQueueFatalError(ERS_HERE, get_name(), "input", excpt);
+  }
+  try
+  {
+    outputQueue_.reset(new sink_t(qi["output"].inst));
+  }
+  catch (const ers::Issue& excpt)
+  {
+    throw InvalidQueueFatalError(ERS_HERE, get_name(), "output", excpt);
+  }
+
+// AFTER
+ auto qi = appfwk::connection_index(iniobj, { "input", "output" });
+  iomanager::IOManager iom;
+  try {
+    inputQueue_ = iom.get_receiver<IntList>(qi["input"]);
+  } catch (const ers::Issue& excpt) {
+    throw InvalidQueueFatalError(ERS_HERE, get_name(), "input", excpt);
+  }
+  try {
+    outputQueue_ = iom.get_sender<IntList>(qi["output"]);
+  } catch (const ers::Issue& excpt) {
+    throw InvalidQueueFatalError(ERS_HERE, get_name(), "output", excpt);
+  }
+```
 
 ## Replace DAQSink with Sender, DAQSource with Receiver
 
