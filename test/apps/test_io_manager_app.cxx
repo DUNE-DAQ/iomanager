@@ -50,13 +50,15 @@ main(int /*argc*/, char** /*argv[]*/)
   std::chrono::milliseconds timeout(100);
   auto isender = iom.get_sender<int>(cref);
   std::cout << "Type: " << typeid(isender).name() << '\n';
-  isender->send(msg, timeout);
-  isender->send(msg, timeout);
+  isender->send(std::move(msg), timeout);
+  msg = 6;
+  isender->send(std::move(msg), timeout);
   std::cout << "\n\n";
 
   std::cout << "Test one line sender.\n";
   // One line send
-  iom.get_sender<int>(cref)->send(msg, timeout);
+  msg = 7;
+  iom.get_sender<int>(cref)->send(std::move(msg), timeout);
   std::cout << "\n\n\n";
 
   std::cout << "Test string sender.\n";
@@ -67,7 +69,7 @@ main(int /*argc*/, char** /*argv[]*/)
   auto ssender = iom.get_sender<std::string>(cref2);
   std::cout << "Type: " << typeid(ssender).name() << '\n';
   std::string asd("asd");
-  ssender->send(asd, timeout);
+  ssender->send(std::move(asd), timeout);
   std::cout << "\n\n";
 
   std::cout << "Test string receiver.\n";

@@ -48,7 +48,7 @@ public:
   explicit SenderConcept(std::string const& name)
     : Sender(name)
   {}
-  virtual void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
+  virtual void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
 };
 
 // QImpl
@@ -74,7 +74,7 @@ public:
     , m_queue(other.m_queue)
   {}
 
-  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
@@ -120,7 +120,7 @@ public:
     , m_network_sender_ptr(other.m_network_sender_ptr)
   {}
 
-  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
     try {
       write_network<Datatype>(data, timeout, topic);

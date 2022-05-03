@@ -74,7 +74,7 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistrationNetwork, ConfigurationTestFixture)
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < n_sends; ++i) {
     dunedaq::data_t temp(message_size, i % 200);
-    net_sender->send(temp, Sender::s_no_block);
+    net_sender->send(std::move(temp), Sender::s_no_block);
   }
   BOOST_TEST_MESSAGE("Messages sent, waiting for receives");
   while (received_count < n_sends) {
@@ -101,7 +101,7 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistrationQueue, ConfigurationTestFixture)
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < n_sends; ++i) {
     dunedaq::data_t temp(message_size, i % 200);
-    queue_sender->send(temp, std::chrono::milliseconds(1000));
+    queue_sender->send(std::move(temp), std::chrono::milliseconds(1000));
   }
   BOOST_TEST_MESSAGE("Messages sent, waiting for receives");
   while (received_count < n_sends) {
@@ -134,7 +134,7 @@ BOOST_FIXTURE_TEST_CASE(DirectReadNetwork, ConfigurationTestFixture)
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < total_send; ++i) {
     dunedaq::data_t temp(message_size, i % 200);
-    net_sender->send(temp, dunedaq::iomanager::Sender::s_no_block);
+    net_sender->send(std::move(temp), dunedaq::iomanager::Sender::s_no_block);
   }
   BOOST_TEST_MESSAGE("Messages sent, waiting for receives");
   rcv_ftr.get();
@@ -164,7 +164,7 @@ BOOST_FIXTURE_TEST_CASE(DirectReadQueue, ConfigurationTestFixture)
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < total_send; ++i) {
     dunedaq::data_t temp(message_size, i % 200);
-    queue_sender->send(temp, std::chrono::milliseconds(10));
+    queue_sender->send(std::move(temp), std::chrono::milliseconds(10));
   }
   BOOST_TEST_MESSAGE("Messages sent, waiting for receives");
   rcv_ftr.get();

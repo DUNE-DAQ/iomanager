@@ -201,14 +201,14 @@ BOOST_FIXTURE_TEST_CASE(SimpleSendReceive, ConfigurationTestFixture)
 
   Data sent_nw(56, 26.5, "test1");
   Data sent_q(57, 27.5, "test2");
-  net_sender->send(sent_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
 
   auto ret = net_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 56);
   BOOST_CHECK_EQUAL(ret.d2, 26.5);
   BOOST_CHECK_EQUAL(ret.d3, "test1");
 
-  q_sender->send(sent_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_q), std::chrono::milliseconds(10));
 
   ret = q_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 57);
@@ -225,14 +225,14 @@ BOOST_FIXTURE_TEST_CASE(GetByName, ConfigurationTestFixture)
 
   Data sent_nw(56, 26.5, "test1");
   Data sent_q(57, 27.5, "test2");
-  net_sender->send(sent_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
 
   auto ret = net_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 56);
   BOOST_CHECK_EQUAL(ret.d2, 26.5);
   BOOST_CHECK_EQUAL(ret.d3, "test1");
 
-  q_sender->send(sent_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_q), std::chrono::milliseconds(10));
 
   ret = q_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 57);
@@ -251,7 +251,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   Data sent_t1(56, 26.5, "test1");
   Data sent_t2(57, 27.5, "test2");
   Data sent_t3(58, 28.5, "test3");
-  pub1_sender->send(sent_t1, dunedaq::iomanager::Sender::s_no_block, "test_topic");
+  pub1_sender->send(std::move(sent_t1), dunedaq::iomanager::Sender::s_no_block, "test_topic");
 
   auto ret1 = sub1_receiver->receive(std::chrono::milliseconds(10));
   BOOST_REQUIRE_EXCEPTION(
@@ -264,7 +264,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(ret3.d2, 26.5);
   BOOST_CHECK_EQUAL(ret3.d3, "test1");
 
-  pub1_sender->send(sent_t2, dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
+  pub1_sender->send(std::move(sent_t2), dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
 
   BOOST_REQUIRE_EXCEPTION(
     sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
@@ -277,7 +277,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(ret3.d2, 27.5);
   BOOST_CHECK_EQUAL(ret3.d3, "test2");
 
-  pub1_sender->send(sent_t3, dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
+  pub1_sender->send(std::move(sent_t3), dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
 
   BOOST_REQUIRE_EXCEPTION(
     sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
@@ -290,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   Data sent_t5(60, 30.5, "test5");
   Data sent_t6(61, 31.5, "test6");
 
-  pub2_sender->send(sent_t4, dunedaq::iomanager::Sender::s_no_block, "test_topic");
+  pub2_sender->send(std::move(sent_t4), dunedaq::iomanager::Sender::s_no_block, "test_topic");
 
   BOOST_REQUIRE_EXCEPTION(
     sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
@@ -299,7 +299,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   BOOST_REQUIRE_EXCEPTION(
     sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
 
-  pub2_sender->send(sent_t5, dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
+  pub2_sender->send(std::move(sent_t5), dunedaq::iomanager::Sender::s_no_block, "another_test_topic");
 
   BOOST_REQUIRE_EXCEPTION(
     sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
@@ -310,7 +310,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(ret2.d2, 30.5);
   BOOST_CHECK_EQUAL(ret2.d3, "test5");
 
-  pub2_sender->send(sent_t6, dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
+  pub2_sender->send(std::move(sent_t6), dunedaq::iomanager::Sender::s_no_block, "invalid_topic");
 
   BOOST_REQUIRE_EXCEPTION(
     sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
@@ -329,14 +329,14 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)
 
   NonSerializableData sent_nw(56, 26.5, "test1");
   NonSerializableData sent_q(57, 27.5, "test2");
-  net_sender->send(sent_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
 
   auto ret = net_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 0);
   BOOST_CHECK_EQUAL(ret.d2, 0);
   BOOST_CHECK_EQUAL(ret.d3, "");
 
-  q_sender->send(sent_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_q), std::chrono::milliseconds(10));
 
   ret = q_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 57);
@@ -353,14 +353,14 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableSendReceive, ConfigurationTestFixture)
 
   NonCopyableData sent_nw(56, 26.5, "test1");
   NonCopyableData sent_q(57, 27.5, "test2");
-  net_sender->send(sent_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
 
   auto ret = net_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 56);
   BOOST_CHECK_EQUAL(ret.d2, 26.5);
   BOOST_CHECK_EQUAL(ret.d3, "test1");
 
-  q_sender->send(sent_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_q), std::chrono::milliseconds(10));
 
   ret = q_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 57);
@@ -377,14 +377,14 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableSendReceive, ConfigurationTest
 
   NonSerializableNonCopyable sent_nw(56, 26.5, "test1");
   NonSerializableNonCopyable sent_q(57, 27.5, "test2");
-  net_sender->send(sent_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
 
   auto ret = net_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 0);
   BOOST_CHECK_EQUAL(ret.d2, 0);
   BOOST_CHECK_EQUAL(ret.d3, "");
 
-  q_sender->send(sent_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_q), std::chrono::milliseconds(10));
 
   ret = q_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret.d1, 57);
@@ -412,7 +412,7 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistration, ConfigurationTestFixture)
 
   usleep(1000);
 
-  net_sender->send(sent_data_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_data_nw), dunedaq::iomanager::Sender::s_no_block);
 
   while (!has_received_data.load())
     usleep(1000);
@@ -422,7 +422,7 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistration, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(recv_data.d3, "test1");
 
   has_received_data = false;
-  q_sender->send(sent_data_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_data_q), std::chrono::milliseconds(10));
 
   while (!has_received_data.load())
     usleep(1000);
@@ -455,7 +455,7 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableCallbackRegistration, ConfigurationTestFixtur
 
   usleep(1000);
 
-  net_sender->send(sent_data_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_data_nw), dunedaq::iomanager::Sender::s_no_block);
 
   while (!has_received_data.load())
     usleep(1000);
@@ -465,7 +465,7 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableCallbackRegistration, ConfigurationTestFixtur
   BOOST_CHECK_EQUAL(recv_data.d3, "test1");
 
   has_received_data = false;
-  q_sender->send(sent_data_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_data_q), std::chrono::milliseconds(10));
 
   while (!has_received_data.load())
     usleep(1000);
@@ -498,7 +498,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
 
   usleep(1000);
 
-  net_sender->send(sent_data_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_data_nw), dunedaq::iomanager::Sender::s_no_block);
 
   while (!has_received_data.load())
     usleep(1000);
@@ -510,7 +510,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
   // Have to stop the callback from endlessly setting recv_data to default-constructed object
   iom.remove_callback<NonSerializableData>(conn_ref);
   has_received_data = false;
-  q_sender->send(sent_data_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_data_q), std::chrono::milliseconds(10));
 
   while (!has_received_data.load())
     usleep(1000);
@@ -542,7 +542,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
 
   usleep(1000);
 
-  net_sender->send(sent_data_nw, dunedaq::iomanager::Sender::s_no_block);
+  net_sender->send(std::move(sent_data_nw), dunedaq::iomanager::Sender::s_no_block);
 
   while (!has_received_data.load())
     usleep(1000);
@@ -554,7 +554,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
   // Have to stop the callback from endlessly setting recv_data to default-constructed object
   iom.remove_callback<NonSerializableNonCopyable>(conn_ref);
   has_received_data = false;
-  q_sender->send(sent_data_q, std::chrono::milliseconds(10));
+  q_sender->send(std::move(sent_data_q), std::chrono::milliseconds(10));
 
   while (!has_received_data.load())
     usleep(1000);
