@@ -157,5 +157,5 @@ try {
 * Replace `NetworkManager::get().send_to(conn_name, data)` with `iom.get_receiver<T>(conn_name)->send(data)`
 * Similar changes for `receive_from`
 * Callbacks should change signature from `ipm::Receiver::Response message` to whatever type is desired on that connection. Updating the method itself should be straightforward; simply remove the code that takes the message and deserializes it (since that is now handled internally in iomanager::Receiver classes).
-  * Callback registration can be done via `iom.add_callback<T>(conn_ref, &method)` or `m_receiver = iom.get_receiver<T>(conn_ref); m_receiver->add_callback(&method)`
+  * Callback registration can be done via `m_receiver = iom.get_receiver<T>(conn_ref); m_receiver->add_callback(&method)`
   * Note: Receiver objects remove their callbacks upon destruction, which will occur when IOManager goes out of scope unless the Receiver object is stored as a class member (this may be natually resolved if we decide to change IOManager to a Singleton pattern)
