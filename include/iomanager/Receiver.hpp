@@ -169,7 +169,7 @@ public:
     if (m_conn_id.service_type == ServiceType::kNetwork) {
 
       try {
-        m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
+        m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.partition + "." + conn_id.uid);
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_id.uid, ex);
       }
@@ -179,7 +179,7 @@ public:
           m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_ref.uid);
         } else {
           m_network_subscriber_ptr =
-            std::dynamic_pointer_cast<ipm::Subscriber>(networkmanager::NetworkManager::get().get_receiver(conn_id.uid));
+            std::dynamic_pointer_cast<ipm::Subscriber>(networkmanager::NetworkManager::get().get_receiver(conn_id.partition + "." + conn_id.uid));
         }
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_ref.uid, ex);
