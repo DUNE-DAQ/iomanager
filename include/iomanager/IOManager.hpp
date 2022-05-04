@@ -35,6 +35,7 @@ ERS_DECLARE_ISSUE(iomanager,
                   ((std::string)name)((std::string)direction)((std::string)handle_type))
 // Re-enable coverage collection LCOV_EXCL_STOP
 
+
 namespace iomanager {
 
 /**
@@ -46,20 +47,24 @@ class IOManager
 {
 
 public:
-  IOManager() {}
+    static std::shared_ptr<IOManager> get() {
+        if (!s_instance) s_instance = std::shared_ptr<IOManager>(new IOManager());
+            
+            return s_instance;
+    }
 
   IOManager(const IOManager&) = delete;            ///< IOManager is not copy-constructible
   IOManager& operator=(const IOManager&) = delete; ///< IOManager is not copy-assignable
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  static void configure(ConnectionIds_t connections)
+  void configure(ConnectionIds_t connections)
   {
-    s_connections = connections;
+    m_connections = connections;
     std::map<std::string, QueueConfig> qCfg;
     dunedaq::networkmanager::nwmgr::Connections nwCfg;
     std::regex queue_uri_regex("queue://(\\w+):(\\d+)");
-    for (auto& connection : s_connections) {
+    for (auto& connection : m_connections) {
       if (connection.service_type == ServiceType::kQueue) {
         std::smatch sm;
         std::regex_match(connection.uri, sm, queue_uri_regex);
@@ -85,11 +90,14 @@ public:
     networkmanager::NetworkManager::get().configure(nwCfg);
   }
 
-  static void reset()
+  void reset()
   {
-    s_connections.clear();
+    m_connections.clear();
     QueueRegistry::get().reset();
     networkmanager::NetworkManager::get().reset();
+    m_senders.clear();
+    m_receivers.clear();
+    s_instance = nullptr;
   }
 
   template<typename Datatype>
@@ -171,16 +179,18 @@ public:
   }
 
 private:
-  static ConnectionId ref_to_id(ConnectionRef const& ref)
+    IOManager() {}
+
+  ConnectionId ref_to_id(ConnectionRef const& ref)
   {
-    for (auto& conn : s_connections) {
+    for (auto& conn : m_connections) {
       if (conn.uid == ref.uid)
         return conn;
     }
 
     // Subscribers can have a UID that is a topic they are interested in. Return the first matching conn ID
     if (ref.dir == Direction::kInput) {
-      for (auto& conn : s_connections) {
+      for (auto& conn : m_connections) {
         if (conn.service_type == ServiceType::kPubSub) {
           for (auto& topic : conn.topics) {
             if (topic == ref.uid)
@@ -195,12 +205,42 @@ private:
 
   using SenderMap = std::map<ConnectionRef, std::shared_ptr<Sender>>;
   using ReceiverMap = std::map<ConnectionRef, std::shared_ptr<Receiver>>;
-  static ConnectionIds_t s_connections;
+  ConnectionIds_t m_connections;
   SenderMap m_senders;
   ReceiverMap m_receivers;
+
+  static std::shared_ptr<IOManager> s_instance;
 };
 
 } // namespace iomanager
+
+// Helper functions
+[[maybe_unused]]
+static std::shared_ptr<iomanager::IOManager> get_iomanager() {
+    return iomanager::IOManager::get();
+}
+
+template<typename Datatype>
+static std::shared_ptr<iomanager::SenderConcept<Datatype>> get_iom_sender(iomanager::ConnectionRef const& conn_ref) {
+    return iomanager::IOManager::get()->get_sender<Datatype>(conn_ref);
+}
+
+template<typename Datatype>
+static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> get_iom_receiver(iomanager::ConnectionRef const& conn_ref) {
+    return iomanager::IOManager::get()->get_receiver<Datatype>(conn_ref);
+}
+
+template<typename Datatype>
+static std::shared_ptr<iomanager::SenderConcept<Datatype>> get_iom_sender(std::string const& conn_uid) {
+    return iomanager::IOManager::get()->get_sender<Datatype>(conn_uid);
+}
+
+template<typename Datatype>
+static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> get_iom_receiver(std::string const& conn_uid) {
+    return iomanager::IOManager::get()->get_receiver<Datatype>(conn_uid);
+}
+
+
 } // namespace dunedaq
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_

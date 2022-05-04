@@ -68,7 +68,7 @@ For modules which loop over `ModInit::qinfos`, they should now loop over `ModIni
       continue; // skip all but "output" direction
     }
     try {
-      outputQueues_.emplace_back(iom.get_sender<IntList>(cr));
+      outputQueues_.emplace_back(IOManager::get()->get_sender<IntList>(cr));
     } catch (const ers::Issue& excpt) {
       throw InvalidQueueFatalError(ERS_HERE, get_name(), cr.name, excpt);
     }
@@ -104,12 +104,12 @@ auto qi = appfwk::queue_index(iniobj, {"input","output"});
  auto qi = appfwk::connection_index(iniobj, { "input", "output" });
   iomanager::IOManager iom;
   try {
-    inputQueue_ = iom.get_receiver<IntList>(qi["input"]);
+    inputQueue_ = IOManager::get()->get_receiver<IntList>(qi["input"]);
   } catch (const ers::Issue& excpt) {
     throw InvalidQueueFatalError(ERS_HERE, get_name(), "input", excpt);
   }
   try {
-    outputQueue_ = iom.get_sender<IntList>(qi["output"]);
+    outputQueue_ = IOManager::get()->get_sender<IntList>(qi["output"]);
   } catch (const ers::Issue& excpt) {
     throw InvalidQueueFatalError(ERS_HERE, get_name(), "output", excpt);
   }
@@ -122,14 +122,14 @@ Unfortunately, the signature changes are not easily replaceable with `sed`.
 ### DAQSink
 
 * `#include "appfwk/DAQSink.hpp` becomes `#include "iomanager/Sender.hpp"`
-* `queue_.reset(new DAQSink<T>("name"));` must become `queue_ = iom.get_sender<T>(ref);`
+* `queue_.reset(new DAQSink<T>("name"));` must become `queue_ = IOManager::get()->get_sender<T>(ref);`
 * Instead of `std::unique_ptr<DAQSink<T>>`, use `std::shared_ptr<iomanager::SenderConcept<T>>`
 * `queue_->push(std::move(obj), timeout);` becomes `queue_->send(obj, timeout);`
 
 ### DAQSource
 
 * `#include "appfwk/DAQSource.hpp` becomes `#include "iomanager/Receiver.hpp"`
-* `queue_.reset(new DAQSource<T>("name"));` must become `queue_ = iom.get_receiver<T>(ref);`
+* `queue_.reset(new DAQSource<T>("name"));` must become `queue_ = IOManager::get()->get_receiver<T>(ref);`
 * Instead of `std::unique_ptr<DAQSource<T>>`, use `std::shared_ptr<iomanager::ReceiverConcept<T>>`
 * `queue_->pop(result, timeout);` becomes `result = queue_->receive(timeout);`
 
@@ -154,8 +154,8 @@ try {
 
 ## Update NetworkManager Usage
 
-* Replace `NetworkManager::get().send_to(conn_name, data)` with `iom.get_sender<T>(conn_name)->send(data)`
-* Replace `ipm::Receiver::Response res = NetworkManager::get().receive_from(conn_name, tmo)` with `T res_T = iom.get_receiver<T>(conn_name)->receive(tmo)`
+* Replace `NetworkManager::get().send_to(conn_name, data)` with `IOManager::get()->get_sender<T>(conn_name)->send(data)`
+* Replace `ipm::Receiver::Response res = NetworkManager::get().receive_from(conn_name, tmo)` with `T res_T = IOManager::get()->get_receiver<T>(conn_name)->receive(tmo)`
 * Callbacks should change signature from `ipm::Receiver::Response message` to whatever type is desired on that connection. Updating the method itself should be straightforward; simply remove the code that takes the message and deserializes it (since that is now handled internally in iomanager::Receiver classes).
-  * Callback registration can be done via `m_receiver = iom.get_receiver<T>(conn_ref); m_receiver->add_callback(&method)`
+  * Callback registration can be done via `m_receiver = IOManager::get()->get_receiver<T>(conn_ref); m_receiver->add_callback(&method)`
   * Note: Receiver objects remove their callbacks upon destruction, which will occur when IOManager goes out of scope unless the Receiver object is stored as a class member (this may be natually resolved if we decide to change IOManager to a Singleton pattern)
