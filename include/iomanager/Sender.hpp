@@ -110,7 +110,7 @@ public:
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
-    m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.uid);
+    m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.partition + "." + conn_id.uid);
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)

@@ -14,6 +14,7 @@ A simplified API for passing messages between DAQModules
 
 * ConnectionId defines a connection, with required initialization
   * uid Field uniquely identifies the connection
+  * partition Field identifies the partition that the connection is associated with
   * uri Field is used by lower-level code to configure the connection
     * Scheme `queue://` should be used for queues, with the queue type and size, e.g. `queue://StdDeQueue:10` creating a StdDeQueue of size 10
     * For network connections, standard ZMQ URI should be used, e.g. `tcp://localhost:1234` (name translation is provided by IPM)
@@ -48,12 +49,12 @@ A simplified API for passing messages between DAQModules
 
   int msg = 5;
   std::chrono::milliseconds timeout(100);
-  auto isender = iom.get_sender<int>(cref);
+  auto isender = IOManager::get()->get_sender<int>(cref);
   isender->send(msg, timeout);
   isender->send(msg, timeout);
 
   // One line send
-  iom.get_sender<int>(cref)->send(msg, timeout);
+  IOManager::get()->get_sender<int>(cref)->send(msg, timeout);
 
 ```
 
@@ -65,7 +66,7 @@ A simplified API for passing messages between DAQModules
   cref3.uid = "dsa";
   cref3.topics = {};
 
-  auto receiver = iom.get_receiver<std::string>(cref3);
+  auto receiver = IOManager::get()->get_receiver<std::string>(cref3);
   std::string got;
   try {
     got = receiver->receive(timeout);
@@ -88,13 +89,13 @@ A simplified API for passing messages between DAQModules
     std::cout << "Str receiver callback called with data: " << data << '\n';
   };
 
-  auto cbrec = iom.get_receiver<std::string>(cref4);
+  auto cbrec = IOManager::get()->get_receiver<std::string>(cref4);
   cbrec->add_callback(str_receiver_cb);
   try {
     got = cbrec->receive(timeout);
   } catch (dunedaq::iomanager::ReceiveCallbackConflict&) {
     // This is expected
   }
-  iom.remove_callback(cref4);
+  IOManager::get()->remove_callback(cref4);
 
 ```
