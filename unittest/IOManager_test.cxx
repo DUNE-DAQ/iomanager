@@ -164,12 +164,11 @@ BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
 
 BOOST_AUTO_TEST_CASE(Singleton)
 {
-    auto iom = IOManager::get();
-    auto another_iom = IOManager::get();
+  auto iom = IOManager::get();
+  auto another_iom = IOManager::get();
 
-    BOOST_REQUIRE_EQUAL(iom.get(), another_iom.get());
+  BOOST_REQUIRE_EQUAL(iom.get(), another_iom.get());
 }
-
 
 BOOST_AUTO_TEST_CASE(Directionality)
 {

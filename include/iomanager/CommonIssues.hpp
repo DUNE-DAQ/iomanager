@@ -26,10 +26,7 @@ ERS_DECLARE_ISSUE(iomanager,      // namespace
                        << " milliseconds)",                                  // message
                   ((std::string)name)((std::string)func_name)((int)timeout)) // NOLINT(readability/casting)
 
-ERS_DECLARE_ISSUE(iomanager,
-		  OperationFailed,
-		  message,
-		  ((std::string)message))  
+ERS_DECLARE_ISSUE(iomanager, OperationFailed, message, ((std::string)message))
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq

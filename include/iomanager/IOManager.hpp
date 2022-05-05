@@ -35,7 +35,6 @@ ERS_DECLARE_ISSUE(iomanager,
                   ((std::string)name)((std::string)direction)((std::string)handle_type))
 // Re-enable coverage collection LCOV_EXCL_STOP
 
-
 namespace iomanager {
 
 /**
@@ -47,11 +46,13 @@ class IOManager
 {
 
 public:
-    static std::shared_ptr<IOManager> get() {
-        if (!s_instance) s_instance = std::shared_ptr<IOManager>(new IOManager());
-            
-            return s_instance;
-    }
+  static std::shared_ptr<IOManager> get()
+  {
+    if (!s_instance)
+      s_instance = std::shared_ptr<IOManager>(new IOManager());
+
+    return s_instance;
+  }
 
   IOManager(const IOManager&) = delete;            ///< IOManager is not copy-constructible
   IOManager& operator=(const IOManager&) = delete; ///< IOManager is not copy-assignable
@@ -179,7 +180,7 @@ public:
   }
 
 private:
-    IOManager() {}
+  IOManager() {}
 
   ConnectionId ref_to_id(ConnectionRef const& ref)
   {
@@ -215,31 +216,39 @@ private:
 } // namespace iomanager
 
 // Helper functions
-[[maybe_unused]]
-static std::shared_ptr<iomanager::IOManager> get_iomanager() {
-    return iomanager::IOManager::get();
+[[maybe_unused]] static std::shared_ptr<iomanager::IOManager>
+get_iomanager()
+{
+  return iomanager::IOManager::get();
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::SenderConcept<Datatype>> get_iom_sender(iomanager::ConnectionRef const& conn_ref) {
-    return iomanager::IOManager::get()->get_sender<Datatype>(conn_ref);
+static std::shared_ptr<iomanager::SenderConcept<Datatype>>
+get_iom_sender(iomanager::ConnectionRef const& conn_ref)
+{
+  return iomanager::IOManager::get()->get_sender<Datatype>(conn_ref);
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> get_iom_receiver(iomanager::ConnectionRef const& conn_ref) {
-    return iomanager::IOManager::get()->get_receiver<Datatype>(conn_ref);
+static std::shared_ptr<iomanager::ReceiverConcept<Datatype>>
+get_iom_receiver(iomanager::ConnectionRef const& conn_ref)
+{
+  return iomanager::IOManager::get()->get_receiver<Datatype>(conn_ref);
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::SenderConcept<Datatype>> get_iom_sender(std::string const& conn_uid) {
-    return iomanager::IOManager::get()->get_sender<Datatype>(conn_uid);
+static std::shared_ptr<iomanager::SenderConcept<Datatype>>
+get_iom_sender(std::string const& conn_uid)
+{
+  return iomanager::IOManager::get()->get_sender<Datatype>(conn_uid);
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> get_iom_receiver(std::string const& conn_uid) {
-    return iomanager::IOManager::get()->get_receiver<Datatype>(conn_uid);
+static std::shared_ptr<iomanager::ReceiverConcept<Datatype>>
+get_iom_receiver(std::string const& conn_uid)
+{
+  return iomanager::IOManager::get()->get_receiver<Datatype>(conn_uid);
 }
-
 
 } // namespace dunedaq
 

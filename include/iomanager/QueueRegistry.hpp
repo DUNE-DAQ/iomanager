@@ -26,7 +26,7 @@ namespace iomanager {
 /**
  * @brief The QueueConfig class encapsulates the basic configuration common to
  * all Queue types
- * 
+ *
  * NB This class is separate from the schema definition QueueSpec because
  * we need the custom implementation of stoqk.
  */
