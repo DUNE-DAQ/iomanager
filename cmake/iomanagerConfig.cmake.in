@@ -8,6 +8,7 @@ find_dependency(utilities)
 find_dependency(opmonlib)
 find_dependency(ipm)
 find_dependency(networkmanager)
+find_dependency(folly)
 
 # Figure out whether or not this dependency is an installed package or
 # in repo form
