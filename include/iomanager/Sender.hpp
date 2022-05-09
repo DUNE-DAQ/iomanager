@@ -138,7 +138,10 @@ private:
       throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-    // TLOG() << "Serialized message for network sending: " << serialized.size();
+    // TLOG() << "Serialized message for network sending: " << serialized.size() << ", this=" << (void*)this;
+    static std::mutex mt_send_mutex;
+    std::lock_guard<std::mutex> lk(mt_send_mutex);
+
     m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
   }
 
