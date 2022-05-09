@@ -212,7 +212,7 @@ public:
   {
     remove_callback();
     {
-        std::lock_guard<std::mutex> lk(m_mutex);
+        std::lock_guard<std::mutex> lk(m_callback_mutex);
     }
     TLOG() << "Registering callback.";
     m_callback = callback;
@@ -232,7 +232,7 @@ public:
 
   void remove_callback() override
   {
-      std::lock_guard<std::mutex> lk(m_mutex);
+      std::lock_guard<std::mutex> lk(m_callback_mutex);
     m_with_callback = false;
     if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
       m_event_loop_runner->join();
@@ -248,7 +248,8 @@ private:
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout)
   {
-      std::lock_guard<std::mutex> lk(m_mutex);
+      static std::mutex receive_mutex;
+      std::lock_guard<std::mutex> lk(receive_mutex);
 
     if (m_network_subscriber_ptr != nullptr) {
       auto response = m_network_subscriber_ptr->receive(timeout);
@@ -282,7 +283,7 @@ private:
   std::unique_ptr<std::thread> m_event_loop_runner;
   std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
   std::shared_ptr<ipm::Subscriber> m_network_subscriber_ptr{ nullptr };
-  std::mutex m_mutex;
+  std::mutex m_callback_mutex;
 };
 
 } // namespace iomanager
