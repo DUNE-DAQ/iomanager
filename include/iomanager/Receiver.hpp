@@ -211,7 +211,9 @@ public:
   void add_callback(std::function<void(Datatype&)> callback)
   {
     remove_callback();
-    std::lock_guard<std::mutex> lk(m_mutex);
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+    }
     TLOG() << "Registering callback.";
     m_callback = callback;
     m_with_callback = true;
