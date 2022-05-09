@@ -114,6 +114,10 @@ public:
     if (conn_ref.dir == Direction::kInput) {
       throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", "sender");
     }
+    
+    static std::mutex dt_sender_mutex;
+    std::lock_guard<std::mutex> lk(dt_sender_mutex);
+
     if (!m_senders.count(conn_ref)) {
       // create from lookup service's factory function
       // based on connID we know if it's queue or network
@@ -144,6 +148,9 @@ public:
     if (conn_ref.dir == Direction::kOutput) {
       throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", "receiver");
     }
+
+    static std::mutex dt_receiver_mutex;
+    std::lock_guard<std::mutex> lk(dt_receiver_mutex);
 
     if (!m_receivers.count(conn_ref)) {
       auto conn_id = ref_to_id(conn_ref);
