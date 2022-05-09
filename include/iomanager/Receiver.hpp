@@ -246,14 +246,18 @@ private:
   {
     if (m_network_subscriber_ptr != nullptr) {
       auto response = m_network_subscriber_ptr->receive(timeout);
-      return dunedaq::serialization::deserialize<MessageType>(response.data);
+      if (response.data.size() > 0) {
+          return dunedaq::serialization::deserialize<MessageType>(response.data);
+      }
     }
     if (m_network_receiver_ptr != nullptr) {
       auto response = m_network_receiver_ptr->receive(timeout);
-      return dunedaq::serialization::deserialize<MessageType>(response.data);
+      if (response.data.size() > 0) {
+          return dunedaq::serialization::deserialize<MessageType>(response.data);
+      }
     }
 
-    TLOG() << "No receiver instance!";
+    throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "network receive", timeout.count());
     return MessageType();
   }
 
