@@ -9,30 +9,34 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
 
+#include "iomanager/CommonIssues.hpp"
 #include "iomanager/ConnectionId.hpp"
+#include "iomanager/QueueRegistry.hpp"
 
-#include "appfwk/QueueRegistry.hpp"
 #include "ipm/Sender.hpp"
+#include "logging/Logging.hpp"
 #include "networkmanager/NetworkManager.hpp"
 #include "serialization/Serialization.hpp"
 
-#include <any>
-#include <atomic>
-#include <iostream>
-#include <mutex>
-#include <thread>
+#include <memory>
+#include <string>
+#include <utility>
 
 namespace dunedaq {
+
 namespace iomanager {
 
 // Typeless
-class Sender
+class Sender : public utilities::NamedObject
 {
 public:
   using timeout_t = std::chrono::milliseconds;
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
+  explicit Sender(std::string const& name)
+    : utilities::NamedObject(name)
+  {}
   virtual ~Sender() = default;
 };
 
@@ -41,7 +45,10 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  virtual void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
+  explicit SenderConcept(std::string const& name)
+    : Sender(name)
+  {}
+  virtual void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
 };
 
 // QImpl
@@ -50,29 +57,43 @@ class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
   explicit QueueSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : m_conn_id(conn_id)
+    : SenderConcept<Datatype>(conn_ref.name)
+    , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "QueueSenderModel created with DT! Addr: " << (void*)this;
-    m_queue = appfwk::QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
-    TLOG() << "QueueSenderModel m_queue=" << (void*)m_queue.get();
+    TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
+    m_queue = QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
+    TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
     // get queue ref from queueregistry based on conn_id
   }
 
-  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  QueueSenderModel(QueueSenderModel&& other)
+    : SenderConcept<Datatype>(other.get_name())
+    , m_conn_id(other.m_conn_id)
+    , m_conn_ref(other.m_conn_ref)
+    , m_queue(other.m_queue)
+  {}
+
+  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
     }
-    // TLOG() << "Handle data: " << data;
-    m_queue->push(std::move(data), timeout);
-    // if (m_queue->write(
+
+    if (m_queue == nullptr)
+      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
+
+    try {
+      m_queue->push(std::move(data), timeout);
+    } catch (QueueTimeoutExpired& ex) {
+      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "push", timeout.count(), ex);
+    }
   }
 
 private:
   ConnectionId m_conn_id;
   ConnectionRef m_conn_ref;
-  std::shared_ptr<appfwk::Queue<Datatype>> m_queue;
+  std::shared_ptr<Queue<Datatype>> m_queue;
 };
 
 // NImpl
@@ -83,17 +104,29 @@ public:
   using SenderConcept<Datatype>::send;
 
   explicit NetworkSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : m_conn_id(conn_id)
+    : SenderConcept<Datatype>(conn_ref.name)
+    , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "NetworkSenderModel created with DT! Addr: " << (void*)this;
+    TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
-    m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.uid);
+    m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.partition + "." + conn_id.uid);
   }
 
-  void send(Datatype& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  NetworkSenderModel(NetworkSenderModel&& other)
+    : SenderConcept<Datatype>(other.get_name())
+    , m_conn_id(other.m_conn_id)
+    , m_conn_ref(other.m_conn_ref)
+    , m_network_sender_ptr(other.m_network_sender_ptr)
+  {}
+
+  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
-    write_network<Datatype>(data, timeout, topic);
+    try {
+      write_network<Datatype>(data, timeout, topic);
+    } catch (ipm::SendTimeoutExpired& ex) {
+      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "send", timeout.count(), ex);
+    }
   }
 
 private:
@@ -102,9 +135,13 @@ private:
   write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
   {
     if (m_network_sender_ptr == nullptr)
-      return;
+      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
+
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-    // TLOG() << "Serialized message for network sending: " << serialized.size();
+    // TLOG() << "Serialized message for network sending: " << serialized.size() << ", this=" << (void*)this;
+    static std::mutex mt_send_mutex;
+    std::lock_guard<std::mutex> lk(mt_send_mutex);
+
     m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
   }
 

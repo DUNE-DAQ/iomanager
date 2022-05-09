@@ -13,6 +13,7 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_GENERICCALLBACK_HPP_
 
 #include <any>
+#include <functional>
 #include <memory>
 #include <tuple>
 #include <utility>

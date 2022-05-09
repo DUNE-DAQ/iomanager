@@ -34,7 +34,7 @@ operator<(const ConnectionRef& l, const ConnectionRef& r)
   return l.uid < r.uid;
 }
 
-}
+} // namespace connection
 // We are doing this here because we really, really want these structs to be in the iomanager namespace!
 using namespace connection; // NOLINT
 
