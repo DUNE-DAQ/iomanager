@@ -20,11 +20,13 @@ ERS_DECLARE_ISSUE(iomanager,
                   "Connection Instance not found for name " << name,
                   ((std::string)name))
 
-ERS_DECLARE_ISSUE(iomanager,             // namespace
+ERS_DECLARE_ISSUE(iomanager,      // namespace
                   TimeoutExpired, // issue class name
                   name << ": Unable to " << func_name << " within timeout period (timeout period was " << timeout
                        << " milliseconds)",                                  // message
                   ((std::string)name)((std::string)func_name)((int)timeout)) // NOLINT(readability/casting)
+
+ERS_DECLARE_ISSUE(iomanager, OperationFailed, message, ((std::string)message))
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq

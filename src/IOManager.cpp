@@ -8,4 +8,4 @@
 
 #include "iomanager/IOManager.hpp"
 
-dunedaq::iomanager::connection::ConnectionIds_t dunedaq::iomanager::IOManager::s_connections;
+std::shared_ptr<dunedaq::iomanager::IOManager> dunedaq::iomanager::IOManager::s_instance = nullptr;

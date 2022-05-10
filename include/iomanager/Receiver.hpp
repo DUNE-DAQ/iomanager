@@ -169,7 +169,8 @@ public:
     if (m_conn_id.service_type == ServiceType::kNetwork) {
 
       try {
-        m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
+        m_network_receiver_ptr =
+          networkmanager::NetworkManager::get().get_receiver(conn_id.partition + "." + conn_id.uid);
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_id.uid, ex);
       }
@@ -178,8 +179,8 @@ public:
         if (ref_to_topic) {
           m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_ref.uid);
         } else {
-          m_network_subscriber_ptr =
-            std::dynamic_pointer_cast<ipm::Subscriber>(networkmanager::NetworkManager::get().get_receiver(conn_id.uid));
+          m_network_subscriber_ptr = std::dynamic_pointer_cast<ipm::Subscriber>(
+            networkmanager::NetworkManager::get().get_receiver(conn_id.partition + "." + conn_id.uid));
         }
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_ref.uid, ex);
@@ -210,6 +211,9 @@ public:
   void add_callback(std::function<void(Datatype&)> callback)
   {
     remove_callback();
+    {
+        std::lock_guard<std::mutex> lk(m_callback_mutex);
+    }
     TLOG() << "Registering callback.";
     m_callback = callback;
     m_with_callback = true;
@@ -228,6 +232,7 @@ public:
 
   void remove_callback() override
   {
+      std::lock_guard<std::mutex> lk(m_callback_mutex);
     m_with_callback = false;
     if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
       m_event_loop_runner->join();
@@ -243,16 +248,23 @@ private:
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout)
   {
+      static std::mutex receive_mutex;
+      std::lock_guard<std::mutex> lk(receive_mutex);
+
     if (m_network_subscriber_ptr != nullptr) {
       auto response = m_network_subscriber_ptr->receive(timeout);
-      return dunedaq::serialization::deserialize<MessageType>(response.data);
+      if (response.data.size() > 0) {
+          return dunedaq::serialization::deserialize<MessageType>(response.data);
+      }
     }
     if (m_network_receiver_ptr != nullptr) {
       auto response = m_network_receiver_ptr->receive(timeout);
-      return dunedaq::serialization::deserialize<MessageType>(response.data);
+      if (response.data.size() > 0) {
+          return dunedaq::serialization::deserialize<MessageType>(response.data);
+      }
     }
 
-    TLOG() << "No receiver instance!";
+    throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "network receive", timeout.count());
     return MessageType();
   }
 
@@ -271,6 +283,7 @@ private:
   std::unique_ptr<std::thread> m_event_loop_runner;
   std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
   std::shared_ptr<ipm::Subscriber> m_network_subscriber_ptr{ nullptr };
+  std::mutex m_callback_mutex;
 };
 
 } // namespace iomanager

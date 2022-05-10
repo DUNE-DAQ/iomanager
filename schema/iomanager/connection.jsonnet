@@ -15,6 +15,7 @@ local c = {
   topic: s.string("Topic_t", doc="Name of a topic"),
   topics: s.sequence("Topics_t", self.topic, doc="Topics used by an instance of a connection"),
   label: s.string("Label_t", moo.re.ident_only, doc="A label hard-wired into code"),
+  partition: s.string("Partition_t", doc="Name of the partition"),
 
   ConnectionId: s.record("ConnectionId", [
         s.field("uid", self.uid, doc="Name of the connection"),
@@ -22,11 +23,12 @@ local c = {
         s.field("data_type", self.datatype, doc="Name of the expected data type"),
         s.field("uri", self.uri, doc="Initialization information for the connection"),
         s.field("topics", self.topics,[], doc="Topics used by this connection (kPubSub) only"),
+        s.field("partition", self.partition, "", doc="Partition name for the connection"),
   ], doc="Information about a connection"),
 
   ref: s.record("ConnectionRef", [
         s.field("name", self.label, doc="The name by which this connection is known to the module"),
-        s.field("uid", self.uid, doc="Name of the connection"),
+        s.field("uid", self.uid, doc="Name of the connection, or topic associated with a subscriber"),
         s.field("dir", self.direction,"kUnspecified", doc="Direction of this connection reference")
   ], doc="Reference to a connection"),
 
