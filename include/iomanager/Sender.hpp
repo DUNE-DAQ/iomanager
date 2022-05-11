@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <typeinfo>
 
 namespace dunedaq {
 
@@ -149,7 +150,7 @@ private:
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
   write_network(MessageType&, Sender::timeout_t const&, std::string const&)
   {
-    TLOG() << "Not sending non-serializable message!";
+      throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
   }
 
   ConnectionId m_conn_id;

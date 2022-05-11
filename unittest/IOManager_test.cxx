@@ -335,12 +335,10 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)
 
   NonSerializableData sent_nw(56, 26.5, "test1");
   NonSerializableData sent_q(57, 27.5, "test2");
-  net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
+  BOOST_REQUIRE_EXCEPTION(net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block), NetworkMessageNotSerializable, [](NetworkMessageNotSerializable const&) {return true; });
 
-  auto ret = net_receiver->receive(std::chrono::milliseconds(10));
-  BOOST_CHECK_EQUAL(ret.d1, 0);
-  BOOST_CHECK_EQUAL(ret.d2, 0);
-  BOOST_CHECK_EQUAL(ret.d3, "");
+  NonSerializableData ret;
+  BOOST_REQUIRE_EXCEPTION( ret = net_receiver->receive(std::chrono::milliseconds(10)), NetworkMessageNotSerializable, [](NetworkMessageNotSerializable const&) {return true; });
 
   q_sender->send(std::move(sent_q), std::chrono::milliseconds(10));
 
@@ -383,12 +381,10 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableSendReceive, ConfigurationTest
 
   NonSerializableNonCopyable sent_nw(56, 26.5, "test1");
   NonSerializableNonCopyable sent_q(57, 27.5, "test2");
-  net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
+  BOOST_REQUIRE_EXCEPTION( net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block), NetworkMessageNotSerializable, [](NetworkMessageNotSerializable const&) {return true; });
 
-  auto ret = net_receiver->receive(std::chrono::milliseconds(10));
-  BOOST_CHECK_EQUAL(ret.d1, 0);
-  BOOST_CHECK_EQUAL(ret.d2, 0);
-  BOOST_CHECK_EQUAL(ret.d3, "");
+  NonSerializableNonCopyable ret;
+  BOOST_REQUIRE_EXCEPTION( ret = net_receiver->receive(std::chrono::milliseconds(10)), NetworkMessageNotSerializable, [](NetworkMessageNotSerializable const&) {return true; });
 
   q_sender->send(std::move(sent_q), std::chrono::milliseconds(10));
 
@@ -499,19 +495,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
     recv_data = std::move(d);
   };
 
-  IOManager::get()->add_callback<NonSerializableData>(conn_ref, callback);
+  BOOST_REQUIRE_EXCEPTION(IOManager::get()->add_callback<NonSerializableData>(conn_ref, callback), NetworkMessageNotSerializable, [](NetworkMessageNotSerializable const&) {return true; });
   IOManager::get()->add_callback<NonSerializableData>(queue_ref, callback);
-
-  usleep(1000);
-
-  net_sender->send(std::move(sent_data_nw), dunedaq::iomanager::Sender::s_no_block);
-
-  while (!has_received_data.load())
-    usleep(1000);
-
-  BOOST_CHECK_EQUAL(recv_data.d1, 0);
-  BOOST_CHECK_EQUAL(recv_data.d2, 0.0);
-  BOOST_CHECK_EQUAL(recv_data.d3, "");
 
   // Have to stop the callback from endlessly setting recv_data to default-constructed object
   IOManager::get()->remove_callback<NonSerializableData>(conn_ref);
@@ -543,19 +528,10 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
     recv_data = std::move(d);
   };
 
-  IOManager::get()->add_callback<NonSerializableNonCopyable>(conn_ref, callback);
+  BOOST_REQUIRE_EXCEPTION(IOManager::get()->add_callback<NonSerializableNonCopyable>(conn_ref, callback), NetworkMessageNotSerializable, [](NetworkMessageNotSerializable const&) {return true; });
   IOManager::get()->add_callback<NonSerializableNonCopyable>(queue_ref, callback);
 
   usleep(1000);
-
-  net_sender->send(std::move(sent_data_nw), dunedaq::iomanager::Sender::s_no_block);
-
-  while (!has_received_data.load())
-    usleep(1000);
-
-  BOOST_CHECK_EQUAL(recv_data.d1, 0);
-  BOOST_CHECK_EQUAL(recv_data.d2, 0.0);
-  BOOST_CHECK_EQUAL(recv_data.d3, "");
 
   // Have to stop the callback from endlessly setting recv_data to default-constructed object
   IOManager::get()->remove_callback<NonSerializableNonCopyable>(conn_ref);
