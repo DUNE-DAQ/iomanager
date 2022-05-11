@@ -209,13 +209,11 @@ public:
     }
   }
 
-  void add_callback(std::function<void(Datatype&)> callback) {
-      add_callback_impl<Datatype>(callback);
-  }
+  void add_callback(std::function<void(Datatype&)> callback) { add_callback_impl<Datatype>(callback); }
 
   void remove_callback() override
   {
-      std::lock_guard<std::mutex> lk(m_callback_mutex);
+    std::lock_guard<std::mutex> lk(m_callback_mutex);
     m_with_callback = false;
     if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
       m_event_loop_runner->join();
@@ -231,19 +229,19 @@ private:
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout)
   {
-      static std::mutex receive_mutex;
-      std::lock_guard<std::mutex> lk(receive_mutex);
+    static std::mutex receive_mutex;
+    std::lock_guard<std::mutex> lk(receive_mutex);
 
     if (m_network_subscriber_ptr != nullptr) {
       auto response = m_network_subscriber_ptr->receive(timeout);
       if (response.data.size() > 0) {
-          return dunedaq::serialization::deserialize<MessageType>(response.data);
+        return dunedaq::serialization::deserialize<MessageType>(response.data);
       }
     }
     if (m_network_receiver_ptr != nullptr) {
       auto response = m_network_receiver_ptr->receive(timeout);
       if (response.data.size() > 0) {
-          return dunedaq::serialization::deserialize<MessageType>(response.data);
+        return dunedaq::serialization::deserialize<MessageType>(response.data);
       }
     }
 
@@ -255,39 +253,39 @@ private:
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const&)
   {
-      throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
+    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
     return MessageType();
   }
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
-      add_callback_impl(std::function<void(MessageType&)> callback)
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
+    std::function<void(MessageType&)> callback)
   {
-      remove_callback();
-      {
-          std::lock_guard<std::mutex> lk(m_callback_mutex);
+    remove_callback();
+    {
+      std::lock_guard<std::mutex> lk(m_callback_mutex);
+    }
+    TLOG() << "Registering callback.";
+    m_callback = callback;
+    m_with_callback = true;
+    // start event loop (thread that calls when receive happens)
+    m_event_loop_runner.reset(new std::thread([&]() {
+      while (m_with_callback.load()) {
+        try {
+          auto message = read_network<Datatype>(std::chrono::milliseconds(1));
+          m_callback(message);
+        } catch (const ers::Issue&) {
+          ;
+        }
       }
-      TLOG() << "Registering callback.";
-      m_callback = callback;
-      m_with_callback = true;
-      // start event loop (thread that calls when receive happens)
-      m_event_loop_runner.reset(new std::thread([&]() {
-          while (m_with_callback.load()) {
-              try {
-                  auto message = read_network<Datatype>(std::chrono::milliseconds(1));
-                  m_callback(message);
-              }
-              catch (const ers::Issue&) {
-                  ;
-              }
-          }
-          }));
+    }));
   }
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
-      add_callback_impl(std::function<void(MessageType&)>) {
-      throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
+    std::function<void(MessageType&)>)
+  {
+    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
   }
 
   ConnectionId m_conn_id;
