@@ -164,9 +164,9 @@ public:
     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "NetworkReceiverModel created with DT! Addr: " << static_cast<void*>(this);
+    TLOG() << "NetworkReceiverModel created with DT! ID: " << (ref_to_topic ? conn_ref.uid : conn_id.uid) << " Addr: " << static_cast<void*>(this);
     // get network resources
-    if (m_conn_id.service_type == ServiceType::kNetwork) {
+    if (m_conn_id.service_type == ServiceType::kNetReceiver) {
 
       try {
         m_network_receiver_ptr =

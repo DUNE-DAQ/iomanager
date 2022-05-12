@@ -65,21 +65,25 @@ public:
     std::map<std::string, QueueConfig> qCfg;
     dunedaq::networkmanager::nwmgr::Connections nwCfg;
     std::regex queue_uri_regex("queue://(\\w+):(\\d+)");
+    auto partition_c = getenv("DUNEDAQ_PARTITION");
+    std::string partition = "";
+    if (partition_c != nullptr) { partition = "." + std::string(partition_c); }
+
     for (auto& connection : m_connections) {
       if (connection.service_type == ServiceType::kQueue) {
         std::smatch sm;
         std::regex_match(connection.uri, sm, queue_uri_regex);
         qCfg[connection.uid].kind = QueueConfig::stoqk(sm[1]);
         qCfg[connection.uid].capacity = stoi(sm[2]);
-      } else if (connection.service_type == ServiceType::kNetwork) {
+      } else if (connection.service_type == ServiceType::kNetSender || connection.service_type == ServiceType::kNetReceiver) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
-        this_conn.name = connection.uid;
+        this_conn.name = partition + connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
-      } else if (connection.service_type == ServiceType::kPubSub) {
+      } else if (connection.service_type == ServiceType::kPublisher || connection.service_type == ServiceType::kSubscriber) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
         this_conn.topics = connection.topics;
-        this_conn.name = connection.uid;
+        this_conn.name = partition + connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
       } else {
@@ -126,10 +130,12 @@ public:
         TLOG() << "Creating QueueSenderModel for service_name " << conn_id.uid;
         m_senders[conn_ref] =
           std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(conn_id, conn_ref));
-      } else {
+      } else if (conn_id.service_type == ServiceType::kNetSender || conn_id.service_type == ServiceType::kPublisher) {
         TLOG() << "Creating NetworkSenderModel for service_name " << conn_id.uid;
         m_senders[conn_ref] =
           std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(conn_id, conn_ref));
+      } else {
+          throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", connection::str(conn_id.service_type));
       }
     }
     return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[conn_ref]);
@@ -158,15 +164,17 @@ public:
         TLOG() << "Creating QueueReceiverModel for service_name " << conn_id.uid;
         m_receivers[conn_ref] =
           std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(conn_id, conn_ref));
-      } else if (conn_id.service_type == ServiceType::kNetwork) {
+      } else if (conn_id.service_type == ServiceType::kNetReceiver) {
         TLOG() << "Creating NetworkReceiverModel for service_name " << conn_id.uid;
         m_receivers[conn_ref] =
           std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id, conn_ref));
-      } else if (conn_id.service_type == ServiceType::kPubSub) {
+      } else if (conn_id.service_type == ServiceType::kSubscriber) {
         TLOG() << "Creating NetworkReceiverModel for service_name " << conn_ref.uid;
         // This ConnectionRef refers to a topic if its uid is not the same as the returned ConnectionId's uid
         m_receivers[conn_ref] = std::make_shared<NetworkReceiverModel<Datatype>>(
           NetworkReceiverModel<Datatype>(conn_id, conn_ref, conn_id.uid != conn_ref.uid));
+      } else {
+          throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", connection::str(conn_id.service_type));
       }
     }
     return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[conn_ref]); // NOLINT
@@ -199,7 +207,7 @@ private:
     // Subscribers can have a UID that is a topic they are interested in. Return the first matching conn ID
     if (ref.dir == Direction::kInput) {
       for (auto& conn : m_connections) {
-        if (conn.service_type == ServiceType::kPubSub) {
+        if (conn.service_type == ServiceType::kSubscriber) {
           for (auto& topic : conn.topics) {
             if (topic == ref.uid)
               return conn;

@@ -9,7 +9,7 @@ local s = moo.oschema.schema("dunedaq.iomanager.connection");
 local c = {
   uid: s.string("Uid_t", doc="An identifier"),
   uri: s.string("Uri_t", doc="Location of a resource"),
-  service_type: s.enum("ServiceType", ["kQueue", "kNetwork","kPubSub", "kUnknown"]),
+  service_type: s.enum("ServiceType", ["kQueue", "kNetSender", "kNetReceiver", "kPublisher", "kSubscriber", "kUnknown"]),
   direction: s.enum("Direction", ["kUnspecified", "kInput", "kOutput"]),
   datatype: s.string("DataType_t", doc="Name of a data type"),
   topic: s.string("Topic_t", doc="Name of a topic"),
@@ -21,7 +21,7 @@ local c = {
         s.field("service_type", self.service_type,"kUnknown", doc="Type of the connection"),
         s.field("data_type", self.datatype, doc="Name of the expected data type"),
         s.field("uri", self.uri, doc="Initialization information for the connection"),
-        s.field("topics", self.topics,[], doc="Topics used by this connection (kPubSub) only"),
+        s.field("topics", self.topics,[], doc="Topics used by this connection (Pub/Sub) only"),
   ], doc="Information about a connection"),
 
   ref: s.record("ConnectionRef", [
