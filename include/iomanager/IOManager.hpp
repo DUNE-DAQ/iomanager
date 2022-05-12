@@ -73,13 +73,13 @@ public:
         qCfg[connection.uid].capacity = stoi(sm[2]);
       } else if (connection.service_type == ServiceType::kNetwork) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
-        this_conn.name = connection.partition + "." + connection.uid;
+        this_conn.name = connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
       } else if (connection.service_type == ServiceType::kPubSub) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
         this_conn.topics = connection.topics;
-        this_conn.name = connection.partition + "." + connection.uid;
+        this_conn.name = connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
       } else {
