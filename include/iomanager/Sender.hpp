@@ -140,8 +140,7 @@ private:
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     // TLOG() << "Serialized message for network sending: " << serialized.size() << ", this=" << (void*)this;
-    static std::mutex mt_send_mutex;
-    std::lock_guard<std::mutex> lk(mt_send_mutex);
+    std::lock_guard<std::mutex> lk(m_send_mutex);
 
     m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
   }
@@ -156,6 +155,7 @@ private:
   ConnectionId m_conn_id;
   ConnectionRef m_conn_ref;
   std::shared_ptr<ipm::Sender> m_network_sender_ptr;
+  std::mutex m_send_mutex;
 };
 
 } // namespace iomanager
