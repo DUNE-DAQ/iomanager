@@ -248,8 +248,7 @@ private:
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout)
   {
-      static std::mutex receive_mutex;
-      std::lock_guard<std::mutex> lk(receive_mutex);
+      std::lock_guard<std::mutex> lk(m_receive_mutex);
 
     if (m_network_subscriber_ptr != nullptr) {
       auto response = m_network_subscriber_ptr->receive(timeout);
@@ -284,6 +283,7 @@ private:
   std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
   std::shared_ptr<ipm::Subscriber> m_network_subscriber_ptr{ nullptr };
   std::mutex m_callback_mutex;
+  std::mutex m_receive_mutex;
 };
 
 } // namespace iomanager
