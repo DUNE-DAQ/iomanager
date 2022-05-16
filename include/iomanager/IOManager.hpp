@@ -65,9 +65,6 @@ public:
     std::map<std::string, QueueConfig> qCfg;
     dunedaq::networkmanager::nwmgr::Connections nwCfg;
     std::regex queue_uri_regex("queue://(\\w+):(\\d+)");
-    auto partition_c = getenv("DUNEDAQ_PARTITION");
-    std::string partition = "";
-    if (partition_c != nullptr) { partition = "." + std::string(partition_c); }
 
     for (auto& connection : m_connections) {
       if (connection.service_type == ServiceType::kQueue) {
@@ -77,13 +74,13 @@ public:
         qCfg[connection.uid].capacity = stoi(sm[2]);
       } else if (connection.service_type == ServiceType::kNetSender || connection.service_type == ServiceType::kNetReceiver) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
-        this_conn.name = partition + connection.uid;
+        this_conn.name = connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
       } else if (connection.service_type == ServiceType::kPublisher || connection.service_type == ServiceType::kSubscriber) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
         this_conn.topics = connection.topics;
-        this_conn.name = partition + connection.uid;
+        this_conn.name = connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
       } else {
