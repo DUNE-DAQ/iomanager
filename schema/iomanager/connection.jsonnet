@@ -9,21 +9,19 @@ local s = moo.oschema.schema("dunedaq.iomanager.connection");
 local c = {
   uid: s.string("Uid_t", doc="An identifier"),
   uri: s.string("Uri_t", doc="Location of a resource"),
-  service_type: s.enum("ServiceType", ["kQueue", "kNetwork","kPubSub", "kUnknown"]),
+  service_type: s.enum("ServiceType", ["kQueue", "kNetSender", "kNetReceiver", "kPublisher", "kSubscriber", "kUnknown"]),
   direction: s.enum("Direction", ["kUnspecified", "kInput", "kOutput"]),
   datatype: s.string("DataType_t", doc="Name of a data type"),
   topic: s.string("Topic_t", doc="Name of a topic"),
   topics: s.sequence("Topics_t", self.topic, doc="Topics used by an instance of a connection"),
   label: s.string("Label_t", moo.re.ident_only, doc="A label hard-wired into code"),
-  partition: s.string("Partition_t", doc="Name of the partition"),
 
   ConnectionId: s.record("ConnectionId", [
         s.field("uid", self.uid, doc="Name of the connection"),
         s.field("service_type", self.service_type,"kUnknown", doc="Type of the connection"),
         s.field("data_type", self.datatype, doc="Name of the expected data type"),
         s.field("uri", self.uri, doc="Initialization information for the connection"),
-        s.field("topics", self.topics,[], doc="Topics used by this connection (kPubSub) only"),
-        s.field("partition", self.partition, "", doc="Partition name for the connection"),
+        s.field("topics", self.topics,[], doc="Topics used by this connection (Pub/Sub) only"),
   ], doc="Information about a connection"),
 
   ref: s.record("ConnectionRef", [

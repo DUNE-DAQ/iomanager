@@ -165,13 +165,13 @@ public:
     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {
-    TLOG() << "NetworkReceiverModel created with DT! Addr: " << static_cast<void*>(this);
+    TLOG() << "NetworkReceiverModel created with DT! ID: " << (ref_to_topic ? conn_ref.uid : conn_id.uid) << " Addr: " << static_cast<void*>(this);
     // get network resources
-    if (m_conn_id.service_type == ServiceType::kNetwork) {
+    if (m_conn_id.service_type == ServiceType::kNetReceiver) {
 
       try {
         m_network_receiver_ptr =
-          networkmanager::NetworkManager::get().get_receiver(conn_id.partition + "." + conn_id.uid);
+          networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_id.uid, ex);
       }
@@ -181,7 +181,7 @@ public:
           m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_ref.uid);
         } else {
           m_network_subscriber_ptr = std::dynamic_pointer_cast<ipm::Subscriber>(
-            networkmanager::NetworkManager::get().get_receiver(conn_id.partition + "." + conn_id.uid));
+            networkmanager::NetworkManager::get().get_receiver(conn_id.uid));
         }
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_ref.uid, ex);
