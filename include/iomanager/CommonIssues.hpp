@@ -27,6 +27,11 @@ ERS_DECLARE_ISSUE(iomanager,      // namespace
                   ((std::string)name)((std::string)func_name)((int)timeout)) // NOLINT(readability/casting)
 
 ERS_DECLARE_ISSUE(iomanager, OperationFailed, message, ((std::string)message))
+
+ERS_DECLARE_ISSUE(iomanager,
+                  NetworkMessageNotSerializable,
+                  "Object of type " << type << " is not serializable but configured for network transfer!",
+                  ((std::string)type))
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq

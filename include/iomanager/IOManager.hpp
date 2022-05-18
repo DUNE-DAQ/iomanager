@@ -115,7 +115,7 @@ public:
     if (conn_ref.dir == Direction::kInput) {
       throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", "sender");
     }
-    
+
     static std::mutex dt_sender_mutex;
     std::lock_guard<std::mutex> lk(dt_sender_mutex);
 
