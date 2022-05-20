@@ -99,3 +99,11 @@ A simplified API for passing messages between DAQModules
   IOManager::get()->remove_callback(cref4);
 
 ```
+
+## Updating existing code to use IOManager
+
+Please see [this page](Updating.md) for information about updating your code to use IOManager.
+
+## APIs used by IOManager
+
+The API used for queues is documented [here](Queue.md). Network connections use [IPM](https://dune-daq-sw.readthedocs.io/en/latest/packages/ipm/) and [NetworkManager](https://dune-daq-sw.readthedocs.io/en/latest/packages/networkmanager/)
