@@ -60,6 +60,7 @@ public:
     : Receiver(name)
   {}
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
+  virtual std::pair<bool, std::unique_ptr<Datatype>> receive_noexcept(Receiver::timeout_t timeout) = 0;
   virtual void add_callback(std::function<void(Datatype&)> callback) = 0;
   virtual void remove_callback() = 0;
 };
@@ -114,6 +115,24 @@ public:
     // if (m_queue->write(
   }
 
+  std::pair<bool, std::unique_ptr<Datatype>> receive_noexcept(Receiver::timeout_t timeout) override
+  {
+      if (m_with_callback) {
+          TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
+          ers::error( ReceiveCallbackConflict(ERS_HERE, m_conn_id.uid));
+          return std::make_pair(false, nullptr);
+      }
+      if (m_queue == nullptr) {
+          ers::error( ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid) );
+          return std::make_pair(false, nullptr);
+      }
+      // TLOG() << "Hand off data...";
+      Datatype dt;
+          auto ret = m_queue->pop_noexcept(dt, timeout);
+          return std::make_pair(ret, std::make_unique<Datatype>(std::move(dt)));
+      // if (m_queue->write(
+  }
+
   void add_callback(std::function<void(Datatype&)> callback) override
   {
     remove_callback();
@@ -122,14 +141,14 @@ public:
     m_with_callback = true;
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner.reset(new std::thread([&]() {
+        Datatype dt;
+        bool ret;
       while (m_with_callback.load()) {
         // TLOG() << "Take data from q then invoke callback...";
-        Datatype dt;
-        try {
-          m_queue->pop(dt, std::chrono::milliseconds(500));
-          m_callback(dt);
-        } catch (QueueTimeoutExpired&) {
-        }
+          ret = m_queue->pop_noexcept(dt, std::chrono::milliseconds(500));
+          if (ret) {
+              m_callback(dt);
+          }
       }
     }));
   }
@@ -209,6 +228,10 @@ public:
     }
   }
 
+  std::pair<bool, std::unique_ptr<Datatype>> receive_noexcept(Receiver::timeout_t timeout) override
+  {
+          return read_network_noexcept<Datatype>(timeout);
+  }
   void add_callback(std::function<void(Datatype&)> callback) { add_callback_impl<Datatype>(callback); }
 
   void remove_callback() override
@@ -255,6 +278,36 @@ private:
     throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
     return MessageType();
   }
+  
+  template<typename MessageType>
+      typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::pair<bool, std::unique_ptr<MessageType>>>::type read_network_noexcept(
+          Receiver::timeout_t const& timeout)
+  {
+          ipm::Receiver::Response res;
+      std::lock_guard<std::mutex> lk(m_receive_mutex);
+
+      if (m_network_subscriber_ptr != nullptr) {
+          res = m_network_subscriber_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
+      }
+      if (m_network_receiver_ptr != nullptr) {
+          res = m_network_receiver_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
+      }
+
+      if (res.data.size() > 0) {
+          return std::make_pair(true, std::make_unique<MessageType>(dunedaq::serialization::deserialize<MessageType>(res.data)));
+      }
+  
+      ers::error( TimeoutExpired(ERS_HERE, m_conn_id.uid, "network receive", timeout.count()) );
+      return std::make_pair(false, nullptr);
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, std::pair<bool,std::unique_ptr<MessageType>>>::type read_network_noexcept(Receiver::timeout_t const&)
+  {
+      ers::error( NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
+      return std::make_pair(false, nullptr);
+  }
+
 
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(

@@ -49,9 +49,11 @@ public:
 
   bool can_pop() const noexcept override { return this->get_num_elements() > 0; }
   void pop(value_t& val, const duration_t&) override; // Throws QueueTimeoutExpired if a timeout occurs
+  bool pop_noexcept(value_t& val, const duration_t&) override;
 
   bool can_push() const noexcept override { return this->get_num_elements() < this->get_capacity(); }
   void push(value_t&&, const duration_t&) override; // Throws QueueTimeoutExpired if a timeout occurs
+  bool push_noexcept(value_t&&, const duration_t&) override;
 
   size_t get_capacity() const override { return m_capacity; }
 

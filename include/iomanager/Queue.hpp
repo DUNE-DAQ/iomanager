@@ -87,6 +87,9 @@ public:
    */
   virtual void pop(value_t& val, const duration_t& timeout) = 0;
 
+  virtual bool push_noexcept(value_t&& val, const duration_t& timeout) = 0;
+  virtual bool pop_noexcept(value_t& val, const duration_t& timeout) = 0;
+
 private:
   Queue(const Queue&) = delete;
   Queue& operator=(const Queue&) = delete;

@@ -17,6 +17,7 @@
 
 #include "iomanager/Queue.hpp"
 
+#include "logging/Logging.hpp"
 #include "folly/concurrency/DynamicBoundedQueue.h"
 
 #include <string>
@@ -50,6 +51,16 @@ public:
         ERS_HERE, this->get_name(), "pop", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
     }
   }
+  bool pop_noexcept(value_t& val, const duration_t& dur) override
+  {
+      if (!m_queue.try_dequeue_for(val, dur)) {
+          ers::error( QueueTimeoutExpired(
+              ERS_HERE, this->get_name(), "pop", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count()));
+          return false;
+      }
+      return true;
+  }
+
 
   bool can_push() const noexcept override { return m_queue.size() < this->get_capacity(); }
 
@@ -59,6 +70,15 @@ public:
       throw QueueTimeoutExpired(
         ERS_HERE, this->get_name(), "push", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
     }
+  }
+  bool push_noexcept(value_t&& t, const duration_t& dur) override
+  {
+      if (!m_queue.try_enqueue_for(std::move(t), dur)) {
+          ers::error( QueueTimeoutExpired(
+              ERS_HERE, this->get_name(), "push", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count()));
+          return false;
+      }
+      return true;
   }
 
   // Delete the copy and move operations

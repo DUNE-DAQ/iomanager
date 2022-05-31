@@ -31,6 +31,8 @@ public:
 
   void push(T&&, const std::chrono::milliseconds&) override {}
   void pop(T&, const std::chrono::milliseconds&) override {}
+  bool push_noexcept(T&&, const std::chrono::milliseconds&) override { return true; }
+  bool pop_noexcept(T&, const std::chrono::milliseconds&) override { return true; }
   size_t get_capacity() const override { return 1; }
   size_t get_num_elements() const override { return 0; }
 };
