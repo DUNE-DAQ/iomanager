@@ -72,12 +72,14 @@ public:
         std::regex_match(connection.uri, sm, queue_uri_regex);
         qCfg[connection.uid].kind = QueueConfig::stoqk(sm[1]);
         qCfg[connection.uid].capacity = stoi(sm[2]);
-      } else if (connection.service_type == ServiceType::kNetSender || connection.service_type == ServiceType::kNetReceiver) {
+      } else if (connection.service_type == ServiceType::kNetSender ||
+                 connection.service_type == ServiceType::kNetReceiver) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
         this_conn.name = connection.uid;
         this_conn.address = connection.uri;
         nwCfg.push_back(this_conn);
-      } else if (connection.service_type == ServiceType::kPublisher || connection.service_type == ServiceType::kSubscriber) {
+      } else if (connection.service_type == ServiceType::kPublisher ||
+                 connection.service_type == ServiceType::kSubscriber) {
         dunedaq::networkmanager::nwmgr::Connection this_conn;
         this_conn.topics = connection.topics;
         this_conn.name = connection.uid;
@@ -132,7 +134,7 @@ public:
         m_senders[conn_ref] =
           std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(conn_id, conn_ref));
       } else {
-          throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", connection::str(conn_id.service_type));
+        throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", connection::str(conn_id.service_type));
       }
     }
     return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[conn_ref]);
@@ -171,7 +173,7 @@ public:
         m_receivers[conn_ref] = std::make_shared<NetworkReceiverModel<Datatype>>(
           NetworkReceiverModel<Datatype>(conn_id, conn_ref, conn_id.uid != conn_ref.uid));
       } else {
-          throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", connection::str(conn_id.service_type));
+        throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", connection::str(conn_id.service_type));
       }
     }
     return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[conn_ref]); // NOLINT
@@ -215,7 +217,6 @@ public:
 
 private:
   IOManager() {}
-
 
   using SenderMap = std::map<ConnectionRef, std::shared_ptr<Sender>>;
   using ReceiverMap = std::map<ConnectionRef, std::shared_ptr<Receiver>>;
