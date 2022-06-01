@@ -48,7 +48,7 @@ struct ConfigurationTestFixture
     connections.emplace_back(ConnectionId{ "test_connection_s", ServiceType::kNetSender, "data_t", "inproc://foo" });
     connections.emplace_back(ConnectionId{ "test_connection_r", ServiceType::kNetReceiver, "data_t", "inproc://foo" });
     IOManager::get()->configure(connections);
-    conn_ref_s = ConnectionRef{ "network_s", "test_connection_s", Direction::kOutput};
+    conn_ref_s = ConnectionRef{ "network_s", "test_connection_s", Direction::kOutput };
     conn_ref_r = ConnectionRef{ "network_r", "test_connection_r", Direction::kInput };
     queue_ref = ConnectionRef{ "queue", "test_queue" };
   }

@@ -87,6 +87,9 @@ public:
    */
   virtual void pop(value_t& val, const duration_t& timeout) = 0;
 
+  virtual bool try_push(value_t&& val, const duration_t& timeout) = 0;
+  virtual bool try_pop(value_t& val, const duration_t& timeout) = 0;
+
 private:
   Queue(const Queue&) = delete;
   Queue& operator=(const Queue&) = delete;

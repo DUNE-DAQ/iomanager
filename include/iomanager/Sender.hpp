@@ -37,8 +37,8 @@ public:
 
   explicit Sender(ConnectionId conn_id, ConnectionRef conn_ref)
     : utilities::NamedObject(conn_ref.name)
-      , m_conn_id(conn_id)
-      , m_conn_ref(conn_ref)
+    , m_conn_id(conn_id)
+    , m_conn_ref(conn_ref)
   {}
   virtual ~Sender() = default;
 
@@ -59,6 +59,7 @@ public:
     : Sender(conn_id, conn_ref)
   {}
   virtual void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
+  virtual bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
 };
 
 // QImpl
@@ -96,6 +97,20 @@ public:
     }
   }
 
+  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  {
+    if (topic != "") {
+      TLOG() << "Topics are invalid for queues! Check config!";
+    }
+
+    if (m_queue == nullptr) {
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
+      return false;
+    }
+
+    return m_queue->try_push(std::move(data), timeout);
+  }
+
 private:
   std::shared_ptr<Queue<Datatype>> m_queue;
 };
@@ -129,6 +144,11 @@ public:
     }
   }
 
+  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  {
+    return try_write_network<Datatype>(data, timeout, topic);
+  }
+
 private:
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
@@ -149,6 +169,30 @@ private:
   write_network(MessageType&, Sender::timeout_t const&, std::string const&)
   {
     throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
+      try_write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
+  {
+    if (m_network_sender_ptr == nullptr) {
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
+      return false;
+    }
+
+    auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
+    // TLOG() << "Serialized message for network sending: " << serialized.size() << ", this=" << (void*)this;
+    std::lock_guard<std::mutex> lk(m_send_mutex);
+
+    return m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic, true);
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
+      try_write_network(MessageType&, Sender::timeout_t const&, std::string const&)
+  {
+    ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
+    return false;
   }
 
   std::shared_ptr<ipm::Sender> m_network_sender_ptr;

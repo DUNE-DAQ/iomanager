@@ -21,6 +21,7 @@
 
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <typeinfo>
@@ -47,8 +48,8 @@ public:
 
   explicit Receiver(ConnectionId conn_id, ConnectionRef conn_ref)
     : utilities::NamedObject(conn_ref.name)
-      , m_conn_id(conn_id)
-      , m_conn_ref(conn_ref)
+    , m_conn_id(conn_id)
+    , m_conn_ref(conn_ref)
   {}
   virtual ~Receiver() = default;
 
@@ -56,8 +57,8 @@ public:
   ConnectionRef const conn_ref() const { return m_conn_ref; }
 
 protected:
-    ConnectionId m_conn_id;
-    ConnectionRef m_conn_ref;
+  ConnectionId m_conn_id;
+  ConnectionRef m_conn_ref;
 };
 
 // Interface
@@ -69,6 +70,7 @@ public:
     : Receiver(conn_id, conn_ref)
   {}
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
+  virtual std::optional<Datatype> try_receive(Receiver::timeout_t timeout) = 0;
   virtual void add_callback(std::function<void(Datatype&)> callback) = 0;
   virtual void remove_callback() = 0;
 };
@@ -119,6 +121,27 @@ public:
     // if (m_queue->write(
   }
 
+  std::optional<Datatype> try_receive(Receiver::timeout_t timeout) override
+  {
+    if (m_with_callback) {
+      TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
+      ers::error(ReceiveCallbackConflict(ERS_HERE, this->conn_id().uid));
+      return std::nullopt;
+    }
+    if (m_queue == nullptr) {
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
+      return std::nullopt;
+    }
+    // TLOG() << "Hand off data...";
+    Datatype dt;
+    auto ret = m_queue->try_pop(dt, timeout);
+    if (ret) {
+      return std::make_optional(std::move(dt));
+    }
+    return std::nullopt;
+    // if (m_queue->write(
+  }
+
   void add_callback(std::function<void(Datatype&)> callback) override
   {
     remove_callback();
@@ -127,13 +150,13 @@ public:
     m_with_callback = true;
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner.reset(new std::thread([&]() {
+      Datatype dt;
+      bool ret;
       while (m_with_callback.load()) {
         // TLOG() << "Take data from q then invoke callback...";
-        Datatype dt;
-        try {
-          m_queue->pop(dt, std::chrono::milliseconds(500));
+        ret = m_queue->try_pop(dt, std::chrono::milliseconds(500));
+        if (ret) {
           m_callback(dt);
-        } catch (QueueTimeoutExpired&) {
         }
       }
     }));
@@ -166,13 +189,13 @@ public:
   explicit NetworkReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref, bool ref_to_topic = false)
     : ReceiverConcept<Datatype>(conn_id, conn_ref)
   {
-    TLOG() << "NetworkReceiverModel created with DT! ID: " << (ref_to_topic ? conn_ref.uid : conn_id.uid) << " Addr: " << static_cast<void*>(this);
+    TLOG() << "NetworkReceiverModel created with DT! ID: " << (ref_to_topic ? conn_ref.uid : conn_id.uid)
+           << " Addr: " << static_cast<void*>(this);
     // get network resources
     if (conn_id.service_type == ServiceType::kNetReceiver) {
 
       try {
-        m_network_receiver_ptr =
-          networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
+        m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_id.uid, ex);
       }
@@ -181,8 +204,8 @@ public:
         if (ref_to_topic) {
           m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_ref.uid);
         } else {
-          m_network_subscriber_ptr = std::dynamic_pointer_cast<ipm::Subscriber>(
-            networkmanager::NetworkManager::get().get_receiver(conn_id.uid));
+          m_network_subscriber_ptr =
+            std::dynamic_pointer_cast<ipm::Subscriber>(networkmanager::NetworkManager::get().get_receiver(conn_id.uid));
         }
       } catch (networkmanager::ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_ref.uid, ex);
@@ -209,6 +232,10 @@ public:
     }
   }
 
+  std::optional<Datatype> try_receive(Receiver::timeout_t timeout) override
+  {
+    return try_read_network<Datatype>(timeout);
+  }
   void add_callback(std::function<void(Datatype&)> callback) { add_callback_impl<Datatype>(callback); }
 
   void remove_callback() override
@@ -229,7 +256,7 @@ private:
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout)
   {
-      std::lock_guard<std::mutex> lk(m_receive_mutex);
+    std::lock_guard<std::mutex> lk(m_receive_mutex);
 
     if (m_network_subscriber_ptr != nullptr) {
       auto response = m_network_subscriber_ptr->receive(timeout);
@@ -254,6 +281,36 @@ private:
   {
     throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
     return MessageType();
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
+      try_read_network(Receiver::timeout_t const& timeout)
+  {
+    ipm::Receiver::Response res;
+    std::lock_guard<std::mutex> lk(m_receive_mutex);
+
+    if (m_network_subscriber_ptr != nullptr) {
+      res = m_network_subscriber_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
+    }
+    if (m_network_receiver_ptr != nullptr) {
+      res = m_network_receiver_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
+    }
+
+    if (res.data.size() > 0) {
+      return std::make_optional<MessageType>(dunedaq::serialization::deserialize<MessageType>(res.data));
+    }
+
+    return std::nullopt;
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value,
+                          std::optional<MessageType>>::type
+      try_read_network(Receiver::timeout_t const&)
+  {
+    ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
+    return std::nullopt;
   }
 
   template<typename MessageType>

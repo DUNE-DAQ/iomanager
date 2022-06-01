@@ -122,7 +122,7 @@ struct ConfigurationTestFixture
     connections.emplace_back(
       ConnectionId{ "test_connection_r", ServiceType::kNetReceiver, "NonCopyableData", "inproc://foo" });
     connections.emplace_back(
-        ConnectionId{ "test_connection_s", ServiceType::kNetSender, "NonCopyableData", "inproc://foo" });
+      ConnectionId{ "test_connection_s", ServiceType::kNetSender, "NonCopyableData", "inproc://foo" });
     connections.emplace_back(ConnectionId{ "test_pubsub_connection_p",
                                            ServiceType::kPublisher,
                                            "NonCopyableData",
@@ -133,11 +133,8 @@ struct ConfigurationTestFixture
                                            "NonCopyableData",
                                            "inproc://qui",
                                            { "test_topic", "another_test_topic" } });
-    connections.emplace_back(ConnectionId{ "test_pubsub_connection_s2",
-                                           ServiceType::kSubscriber,
-                                           "NonCopyableData",
-                                           "inproc://bar",
-                                           { "" } });
+    connections.emplace_back(
+      ConnectionId{ "test_pubsub_connection_s2", ServiceType::kSubscriber, "NonCopyableData", "inproc://bar", { "" } });
     connections.emplace_back(ConnectionId{ "another_test_pubsub_connection_p",
                                            ServiceType::kPublisher,
                                            "NonCopyableData",
@@ -210,11 +207,11 @@ BOOST_AUTO_TEST_CASE(Directionality)
 
   // But mismatching service type is not
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->get_sender<Data>(unspecified_ref_r),
-      ConnectionDirectionMismatch,
-      [](ConnectionDirectionMismatch const&) { return true; });
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->get_receiver<Data>(unspecified_ref_s),
-      ConnectionDirectionMismatch,
-      [](ConnectionDirectionMismatch const&) { return true; });
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
 
   // Input can only be receiver
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->get_sender<Data>(input_ref_s),
@@ -230,19 +227,19 @@ BOOST_AUTO_TEST_CASE(Directionality)
 
   // Receiver can only be input
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->get_sender<Data>(input_ref_r),
-      ConnectionDirectionMismatch,
-      [](ConnectionDirectionMismatch const&) { return true; });
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->get_receiver<Data>(input_ref_s),
-      ConnectionDirectionMismatch,
-      [](ConnectionDirectionMismatch const&) { return true; });
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
 
   // Sender can only be output
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->get_sender<Data>(output_ref_r),
-      ConnectionDirectionMismatch,
-      [](ConnectionDirectionMismatch const&) { return true; });
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->get_receiver<Data>(output_ref_s),
-      ConnectionDirectionMismatch,
-      [](ConnectionDirectionMismatch const&) { return true; });
+                          ConnectionDirectionMismatch,
+                          [](ConnectionDirectionMismatch const&) { return true; });
 
   IOManager::get()->reset();
 }
@@ -355,7 +352,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   BOOST_REQUIRE_EXCEPTION(
     sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   BOOST_REQUIRE_EXCEPTION(
-      sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+    sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
 
   // Sub2 is subscribed to another_test_topic
   Data sent_t5(60, 30.5, "test5");
@@ -365,7 +362,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
     sub1_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   ret2 = sub2_receiver->receive(std::chrono::milliseconds(10));
   BOOST_REQUIRE_EXCEPTION(
-      sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+    sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   BOOST_CHECK_EQUAL(ret2.d1, 60);
   BOOST_CHECK_EQUAL(ret2.d2, 30.5);
   BOOST_CHECK_EQUAL(ret2.d3, "test5");
@@ -379,7 +376,7 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   BOOST_REQUIRE_EXCEPTION(
     sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   BOOST_REQUIRE_EXCEPTION(
-      sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
+    sub3_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
 }
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)
