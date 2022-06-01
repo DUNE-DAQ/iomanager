@@ -46,10 +46,19 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Receiver(std::string const& name)
-    : utilities::NamedObject(name)
+  explicit Receiver(ConnectionId conn_id, ConnectionRef conn_ref)
+    : utilities::NamedObject(conn_ref.name)
+      , m_conn_id(conn_id)
+      , m_conn_ref(conn_ref)
   {}
   virtual ~Receiver() = default;
+
+  ConnectionId const conn_id() const { return m_conn_id; }
+  ConnectionRef const conn_ref() const { return m_conn_ref; }
+
+protected:
+    ConnectionId m_conn_id;
+    ConnectionRef m_conn_ref;
 };
 
 // Interface
@@ -57,8 +66,8 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
-  explicit ReceiverConcept(std::string const& name)
-    : Receiver(name)
+  explicit ReceiverConcept(ConnectionId conn_id, ConnectionRef conn_ref)
+    : Receiver(conn_id, conn_ref)
   {}
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
   virtual std::optional<Datatype> receive_noexcept(Receiver::timeout_t timeout) = 0;
@@ -72,9 +81,7 @@ class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
   explicit QueueReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : ReceiverConcept<Datatype>(conn_ref.name)
-    , m_conn_id(conn_id)
-    , m_conn_ref(conn_ref)
+    : ReceiverConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
     // get queue ref from queueregistry based on conn_id
@@ -85,9 +92,7 @@ public:
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
-    : ReceiverConcept<Datatype>(other.get_name())
-    , m_conn_id(other.m_conn_id)
-    , m_conn_ref(other.m_conn_ref)
+    : ReceiverConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
@@ -100,17 +105,17 @@ public:
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
-      throw ReceiveCallbackConflict(ERS_HERE, m_conn_id.uid);
+      throw ReceiveCallbackConflict(ERS_HERE, this->conn_id().uid);
     }
     if (m_queue == nullptr) {
-      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
+      throw ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid);
     }
     // TLOG() << "Hand off data...";
     Datatype dt;
     try {
       m_queue->pop(dt, timeout);
     } catch (QueueTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "pop", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, this->conn_id().uid, "pop", timeout.count(), ex);
     }
     return dt;
     // if (m_queue->write(
@@ -170,8 +175,6 @@ public:
   }
 
 private:
-  ConnectionId m_conn_id;
-  ConnectionRef m_conn_ref;
   std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
   std::unique_ptr<std::thread> m_event_loop_runner;
@@ -184,13 +187,11 @@ class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
   explicit NetworkReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref, bool ref_to_topic = false)
-    : ReceiverConcept<Datatype>(conn_ref.name)
-    , m_conn_id(conn_id)
-    , m_conn_ref(conn_ref)
+    : ReceiverConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "NetworkReceiverModel created with DT! ID: " << (ref_to_topic ? conn_ref.uid : conn_id.uid) << " Addr: " << static_cast<void*>(this);
     // get network resources
-    if (m_conn_id.service_type == ServiceType::kNetReceiver) {
+    if (conn_id.service_type == ServiceType::kNetReceiver) {
 
       try {
         m_network_receiver_ptr =
@@ -214,8 +215,7 @@ public:
   ~NetworkReceiverModel() { remove_callback(); }
 
   NetworkReceiverModel(NetworkReceiverModel&& other)
-    : ReceiverConcept<Datatype>(other.get_name())
-    , m_conn_id(other.m_conn_id)
+    : ReceiverConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
@@ -228,7 +228,7 @@ public:
     try {
       return read_network<Datatype>(timeout);
     } catch (ipm::ReceiveTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, m_conn_ref.uid, "receive", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, this->conn_ref().uid, "receive", timeout.count(), ex);
     }
   }
 
@@ -271,7 +271,7 @@ private:
       }
     }
 
-    throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "network receive", timeout.count());
+    throw TimeoutExpired(ERS_HERE, this->conn_id().uid, "network receive", timeout.count());
     return MessageType();
   }
 
@@ -343,8 +343,6 @@ private:
     throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
   }
 
-  ConnectionId m_conn_id;
-  ConnectionRef m_conn_ref;
   std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
   std::unique_ptr<std::thread> m_event_loop_runner;

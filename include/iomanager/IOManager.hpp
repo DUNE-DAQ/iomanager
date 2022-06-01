@@ -191,10 +191,7 @@ public:
     receiver->remove_callback();
   }
 
-private:
-  IOManager() {}
-
-  ConnectionId ref_to_id(ConnectionRef const& ref)
+  const ConnectionId ref_to_id(ConnectionRef const& ref) const
   {
     for (auto& conn : m_connections) {
       if (conn.uid == ref.uid)
@@ -215,6 +212,10 @@ private:
 
     throw ConnectionNotFound(ERS_HERE, ref.uid);
   }
+
+private:
+  IOManager() {}
+
 
   using SenderMap = std::map<ConnectionRef, std::shared_ptr<Sender>>;
   using ReceiverMap = std::map<ConnectionRef, std::shared_ptr<Receiver>>;

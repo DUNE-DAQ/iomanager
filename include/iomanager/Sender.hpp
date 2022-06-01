@@ -35,10 +35,19 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Sender(std::string const& name)
-    : utilities::NamedObject(name)
+  explicit Sender(ConnectionId conn_id, ConnectionRef conn_ref)
+    : utilities::NamedObject(conn_ref.name)
+      , m_conn_id(conn_id)
+      , m_conn_ref(conn_ref)
   {}
   virtual ~Sender() = default;
+
+  ConnectionId const conn_id() const { return m_conn_id; }
+  ConnectionRef const conn_ref() const { return m_conn_ref; }
+
+protected:
+  ConnectionId m_conn_id;
+  ConnectionRef m_conn_ref;
 };
 
 // Interface
@@ -46,8 +55,8 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  explicit SenderConcept(std::string const& name)
-    : Sender(name)
+  explicit SenderConcept(ConnectionId conn_id, ConnectionRef conn_ref)
+    : Sender(conn_id, conn_ref)
   {}
   virtual void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
   virtual bool send_noexcept(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
@@ -59,9 +68,7 @@ class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
   explicit QueueSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : SenderConcept<Datatype>(conn_ref.name)
-    , m_conn_id(conn_id)
-    , m_conn_ref(conn_ref)
+    : SenderConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
     m_queue = QueueRegistry::get().get_queue<Datatype>(conn_id.uid);
@@ -70,9 +77,7 @@ public:
   }
 
   QueueSenderModel(QueueSenderModel&& other)
-    : SenderConcept<Datatype>(other.get_name())
-    , m_conn_id(other.m_conn_id)
-    , m_conn_ref(other.m_conn_ref)
+    : SenderConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
     , m_queue(other.m_queue)
   {}
 
@@ -83,12 +88,12 @@ public:
     }
 
     if (m_queue == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
+      throw ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid);
 
     try {
       m_queue->push(std::move(data), timeout);
     } catch (QueueTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "push", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, this->conn_id().uid, "push", timeout.count(), ex);
     }
   }
 
@@ -108,8 +113,6 @@ public:
   }
 
 private:
-  ConnectionId m_conn_id;
-  ConnectionRef m_conn_ref;
   std::shared_ptr<Queue<Datatype>> m_queue;
 };
 
@@ -121,9 +124,7 @@ public:
   using SenderConcept<Datatype>::send;
 
   explicit NetworkSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
-    : SenderConcept<Datatype>(conn_ref.name)
-    , m_conn_id(conn_id)
-    , m_conn_ref(conn_ref)
+    : SenderConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
@@ -131,9 +132,7 @@ public:
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)
-    : SenderConcept<Datatype>(other.get_name())
-    , m_conn_id(other.m_conn_id)
-    , m_conn_ref(other.m_conn_ref)
+    : SenderConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
     , m_network_sender_ptr(other.m_network_sender_ptr)
   {}
 
@@ -142,7 +141,7 @@ public:
     try {
       write_network<Datatype>(data, timeout, topic);
     } catch (ipm::SendTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, m_conn_id.uid, "send", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, this->conn_id().uid, "send", timeout.count(), ex);
     }
   }
 
@@ -157,7 +156,7 @@ private:
   write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
   {
     if (m_network_sender_ptr == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid);
+      throw ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid);
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     // TLOG() << "Serialized message for network sending: " << serialized.size() << ", this=" << (void*)this;
@@ -178,7 +177,7 @@ private:
       write_network_noexcept(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
   {
       if (m_network_sender_ptr == nullptr) {
-          ers::error(ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid));
+          ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
           return false;
       }
 
@@ -197,8 +196,6 @@ private:
       return false;
   }
 
-  ConnectionId m_conn_id;
-  ConnectionRef m_conn_ref;
   std::shared_ptr<ipm::Sender> m_network_sender_ptr;
   std::mutex m_send_mutex;
 };
