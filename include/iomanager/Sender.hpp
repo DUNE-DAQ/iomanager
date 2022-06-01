@@ -105,7 +105,7 @@ public:
 
       if (m_queue == nullptr)
       {
-          ers::error(ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid));
+          ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
           return false;
       }
 

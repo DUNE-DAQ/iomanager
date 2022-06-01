@@ -125,11 +125,11 @@ public:
   {
       if (m_with_callback) {
           TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
-          ers::error( ReceiveCallbackConflict(ERS_HERE, m_conn_id.uid));
+          ers::error( ReceiveCallbackConflict(ERS_HERE, this->conn_id().uid));
           return std::nullopt;
       }
       if (m_queue == nullptr) {
-          ers::error( ConnectionInstanceNotFound(ERS_HERE, m_conn_id.uid) );
+          ers::error( ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid) );
           return std::nullopt;
       }
       // TLOG() << "Hand off data...";
