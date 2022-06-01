@@ -54,8 +54,6 @@ public:
   bool pop_noexcept(value_t& val, const duration_t& dur) override
   {
       if (!m_queue.try_dequeue_for(val, dur)) {
-          ers::error( QueueTimeoutExpired(
-              ERS_HERE, this->get_name(), "pop", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count()));
           return false;
       }
       return true;

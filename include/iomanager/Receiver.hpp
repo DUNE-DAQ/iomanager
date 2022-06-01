@@ -301,7 +301,6 @@ private:
           return std::make_optional<MessageType>(dunedaq::serialization::deserialize<MessageType>(res.data));
       }
   
-      ers::error( TimeoutExpired(ERS_HERE, m_conn_id.uid, "network receive", timeout.count()) );
       return std::nullopt;
   }
 
