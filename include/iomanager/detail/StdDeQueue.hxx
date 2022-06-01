@@ -68,7 +68,7 @@ StdDeQueue<T>::pop(T& val, const duration_t& timeout)
 
 template<class T>
 bool
-StdDeQueue<T>::push_noexcept(value_t&& object_to_push, const duration_t& timeout)
+StdDeQueue<T>::try_push(value_t&& object_to_push, const duration_t& timeout)
 {
 
   auto start_time = std::chrono::steady_clock::now();
@@ -96,7 +96,7 @@ StdDeQueue<T>::push_noexcept(value_t&& object_to_push, const duration_t& timeout
 
 template<class T>
 bool
-StdDeQueue<T>::pop_noexcept(T& val, const duration_t& timeout)
+StdDeQueue<T>::try_pop(T& val, const duration_t& timeout)
 {
 
   auto start_time = std::chrono::steady_clock::now();

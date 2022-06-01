@@ -59,7 +59,7 @@ public:
     : Sender(conn_id, conn_ref)
   {}
   virtual void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
-  virtual bool send_noexcept(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
+  virtual bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
 };
 
 // QImpl
@@ -97,7 +97,7 @@ public:
     }
   }
 
-  bool send_noexcept(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
@@ -108,7 +108,7 @@ public:
       return false;
     }
 
-    return m_queue->push_noexcept(std::move(data), timeout);
+    return m_queue->try_push(std::move(data), timeout);
   }
 
 private:
@@ -144,9 +144,9 @@ public:
     }
   }
 
-  bool send_noexcept(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
   {
-    return write_network_noexcept<Datatype>(data, timeout, topic);
+    return try_write_network<Datatype>(data, timeout, topic);
   }
 
 private:
@@ -173,7 +173,7 @@ private:
 
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
-  write_network_noexcept(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
+      try_write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
   {
     if (m_network_sender_ptr == nullptr) {
       ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
@@ -189,7 +189,7 @@ private:
 
   template<typename MessageType>
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
-  write_network_noexcept(MessageType&, Sender::timeout_t const&, std::string const&)
+      try_write_network(MessageType&, Sender::timeout_t const&, std::string const&)
   {
     ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
     return false;

@@ -51,7 +51,7 @@ public:
         ERS_HERE, this->get_name(), "pop", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
     }
   }
-  bool pop_noexcept(value_t& val, const duration_t& dur) override
+  bool try_pop(value_t& val, const duration_t& dur) override
   {
     if (!m_queue.try_dequeue_for(val, dur)) {
       return false;
@@ -68,7 +68,7 @@ public:
         ERS_HERE, this->get_name(), "push", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
     }
   }
-  bool push_noexcept(value_t&& t, const duration_t& dur) override
+  bool try_push(value_t&& t, const duration_t& dur) override
   {
     if (!m_queue.try_enqueue_for(std::move(t), dur)) {
       ers::error(QueueTimeoutExpired(

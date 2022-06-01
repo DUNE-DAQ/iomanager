@@ -70,7 +70,7 @@ public:
     : Receiver(conn_id, conn_ref)
   {}
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
-  virtual std::optional<Datatype> receive_noexcept(Receiver::timeout_t timeout) = 0;
+  virtual std::optional<Datatype> try_receive(Receiver::timeout_t timeout) = 0;
   virtual void add_callback(std::function<void(Datatype&)> callback) = 0;
   virtual void remove_callback() = 0;
 };
@@ -121,7 +121,7 @@ public:
     // if (m_queue->write(
   }
 
-  std::optional<Datatype> receive_noexcept(Receiver::timeout_t timeout) override
+  std::optional<Datatype> try_receive(Receiver::timeout_t timeout) override
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
@@ -134,7 +134,7 @@ public:
     }
     // TLOG() << "Hand off data...";
     Datatype dt;
-    auto ret = m_queue->pop_noexcept(dt, timeout);
+    auto ret = m_queue->try_pop(dt, timeout);
     if (ret) {
       return std::make_optional(std::move(dt));
     }
@@ -154,7 +154,7 @@ public:
       bool ret;
       while (m_with_callback.load()) {
         // TLOG() << "Take data from q then invoke callback...";
-        ret = m_queue->pop_noexcept(dt, std::chrono::milliseconds(500));
+        ret = m_queue->try_pop(dt, std::chrono::milliseconds(500));
         if (ret) {
           m_callback(dt);
         }
@@ -232,9 +232,9 @@ public:
     }
   }
 
-  std::optional<Datatype> receive_noexcept(Receiver::timeout_t timeout) override
+  std::optional<Datatype> try_receive(Receiver::timeout_t timeout) override
   {
-    return read_network_noexcept<Datatype>(timeout);
+    return try_read_network<Datatype>(timeout);
   }
   void add_callback(std::function<void(Datatype&)> callback) { add_callback_impl<Datatype>(callback); }
 
@@ -285,7 +285,7 @@ private:
 
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
-  read_network_noexcept(Receiver::timeout_t const& timeout)
+      try_read_network(Receiver::timeout_t const& timeout)
   {
     ipm::Receiver::Response res;
     std::lock_guard<std::mutex> lk(m_receive_mutex);
@@ -307,7 +307,7 @@ private:
   template<typename MessageType>
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value,
                           std::optional<MessageType>>::type
-  read_network_noexcept(Receiver::timeout_t const&)
+      try_read_network(Receiver::timeout_t const&)
   {
     ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
     return std::nullopt;
