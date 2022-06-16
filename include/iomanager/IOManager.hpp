@@ -13,7 +13,7 @@
 #include "iomanager/QueueRegistry.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
-#include "networkmanager/NetworkManager.hpp"
+#include "iomanager/NetworkManager.hpp"
 
 #include "nlohmann/json.hpp"
 
@@ -24,10 +24,6 @@
 
 namespace dunedaq {
 // Disable coverage collection LCOV_EXCL_START
-ERS_DECLARE_ISSUE(iomanager,
-                  ConnectionNotFound,
-                  "Connection with uid " << conn_uid << " not found!",
-                  ((std::string)conn_uid))
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionDirectionMismatch,
                   "Connection reference with name " << name << " specified direction " << direction
@@ -63,7 +59,7 @@ public:
   {
     m_connections = connections;
     std::map<std::string, QueueConfig> qCfg;
-    dunedaq::networkmanager::nwmgr::Connections nwCfg;
+    ConnectionIds_t nwCfg;
     std::regex queue_uri_regex("queue://(\\w+):(\\d+)");
 
     for (auto& connection : m_connections) {
@@ -74,31 +70,25 @@ public:
         qCfg[connection.uid].capacity = stoi(sm[2]);
       } else if (connection.service_type == ServiceType::kNetSender ||
                  connection.service_type == ServiceType::kNetReceiver) {
-        dunedaq::networkmanager::nwmgr::Connection this_conn;
-        this_conn.name = connection.uid;
-        this_conn.address = connection.uri;
-        nwCfg.push_back(this_conn);
+        
+        nwCfg.push_back(connection);
       } else if (connection.service_type == ServiceType::kPublisher ||
                  connection.service_type == ServiceType::kSubscriber) {
-        dunedaq::networkmanager::nwmgr::Connection this_conn;
-        this_conn.topics = connection.topics;
-        this_conn.name = connection.uid;
-        this_conn.address = connection.uri;
-        nwCfg.push_back(this_conn);
+                nwCfg.push_back(connection);
       } else {
         // throw ers issue?
       }
     }
 
     QueueRegistry::get().configure(qCfg);
-    networkmanager::NetworkManager::get().configure(nwCfg);
+    NetworkManager::get().configure(nwCfg);
   }
 
   void reset()
   {
     m_connections.clear();
     QueueRegistry::get().reset();
-    networkmanager::NetworkManager::get().reset();
+    NetworkManager::get().reset();
     m_senders.clear();
     m_receivers.clear();
     s_instance = nullptr;

@@ -32,6 +32,24 @@ ERS_DECLARE_ISSUE(iomanager,
                   NetworkMessageNotSerializable,
                   "Object of type " << type << " is not serializable but configured for network transfer!",
                   ((std::string)type))
+
+    ERS_DECLARE_ISSUE(iomanager, ConnectionNotFound, "Connection named " << name << " not found", ((std::string)name))
+    ERS_DECLARE_ISSUE(iomanager, TopicNotFound, "Topic named " << name << " not found", ((std::string)name))
+    ERS_DECLARE_ISSUE(iomanager,
+        ConnectionTopicNotFound,
+        "Topic named " << name << " not found for connection " << connection,
+        ((std::string)name)((std::string)connection))
+    ERS_DECLARE_ISSUE(iomanager, NameCollision, "Multiple instances of name " << name << " exist", ((std::string)name))
+
+    ERS_DECLARE_ISSUE(iomanager,
+        ConnectionAlreadyOpen,
+        "Connection named " << name << " has already been opened for " << direction,
+        ((std::string)name)((std::string)direction))
+    ERS_DECLARE_ISSUE(iomanager,
+        ConnectionNotOpen,
+        "Connection named " << name << " is not open for " << direction,
+        ((std::string)name)((std::string)direction))
+    ERS_DECLARE_ISSUE(iomanager, AlreadyConfigured, "The NetworkManager has already been configured", )
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq
