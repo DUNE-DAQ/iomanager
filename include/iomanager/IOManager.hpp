@@ -10,10 +10,10 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 
 #include "iomanager/ConnectionId.hpp"
+#include "iomanager/NetworkManager.hpp"
 #include "iomanager/QueueRegistry.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
-#include "iomanager/NetworkManager.hpp"
 
 #include "nlohmann/json.hpp"
 
@@ -70,11 +70,11 @@ public:
         qCfg[connection.uid].capacity = stoi(sm[2]);
       } else if (connection.service_type == ServiceType::kNetSender ||
                  connection.service_type == ServiceType::kNetReceiver) {
-        
+
         nwCfg.push_back(connection);
       } else if (connection.service_type == ServiceType::kPublisher ||
                  connection.service_type == ServiceType::kSubscriber) {
-                nwCfg.push_back(connection);
+        nwCfg.push_back(connection);
       } else {
         // throw ers issue?
       }

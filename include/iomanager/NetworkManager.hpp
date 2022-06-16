@@ -36,7 +36,6 @@ class NetworkManager
 {
 
 public:
-
   static NetworkManager& get();
 
   void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
@@ -61,8 +60,7 @@ public:
   bool is_pubsub_connection(std::string const& connection_name) const;
   bool is_listening(std::string const& connection_or_topic) const;
 
-  bool is_connection_open(std::string const& connection_name,
-                          Direction direction = Direction::kInput) const;
+  bool is_connection_open(std::string const& connection_name, Direction direction = Direction::kInput) const;
 
   std::shared_ptr<ipm::Receiver> get_receiver(std::string const& connection_or_topic);
   std::shared_ptr<ipm::Sender> get_sender(std::string const& connection_name);

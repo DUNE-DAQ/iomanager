@@ -35,18 +35,17 @@ void
 NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 {
 
-  for( auto & sender : m_sender_plugins ) {
+  for (auto& sender : m_sender_plugins) {
     opmonlib::InfoCollector tmp_ic;
-    sender.second -> get_info( tmp_ic, level );
-    ci.add( sender.first, tmp_ic );
+    sender.second->get_info(tmp_ic, level);
+    ci.add(sender.first, tmp_ic);
   }
 
-  for( auto & receiver : m_receiver_plugins ) {
+  for (auto& receiver : m_receiver_plugins) {
     opmonlib::InfoCollector tmp_ic;
-    receiver.second -> get_info( tmp_ic, level );
-    ci.add( receiver.first, tmp_ic );
+    receiver.second->get_info(tmp_ic, level);
+    ci.add(receiver.first, tmp_ic);
   }
-  
 }
 
 void
@@ -178,8 +177,7 @@ NetworkManager::is_pubsub_connection(std::string const& connection_name) const
 }
 
 bool
-NetworkManager::is_connection_open(std::string const& connection_name,
-                                   Direction direction) const
+NetworkManager::is_connection_open(std::string const& connection_name, Direction direction) const
 {
   switch (direction) {
     case Direction::kInput: {
@@ -191,7 +189,7 @@ NetworkManager::is_connection_open(std::string const& connection_name,
       return m_sender_plugins.count(connection_name);
     }
     case Direction::kUnspecified: {
-        TLOG_DEBUG(8) << "Connection direction must be specified in is_connection_open!";
+      TLOG_DEBUG(8) << "Connection direction must be specified in is_connection_open!";
     }
   }
 
@@ -201,10 +199,10 @@ NetworkManager::is_connection_open(std::string const& connection_name,
 std::shared_ptr<ipm::Receiver>
 NetworkManager::get_receiver(std::string const& connection_or_topic)
 {
-    TLOG_DEBUG(9) << "Getting receiver for connection or topic " << connection_or_topic;
+  TLOG_DEBUG(9) << "Getting receiver for connection or topic " << connection_or_topic;
   if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
 
-      TLOG_DEBUG(9) << "Connection not found: " << connection_or_topic << "!";
+    TLOG_DEBUG(9) << "Connection not found: " << connection_or_topic << "!";
     throw ConnectionNotFound(ERS_HERE, connection_or_topic);
   }
 
@@ -227,7 +225,7 @@ NetworkManager::get_sender(std::string const& connection_name)
 {
   TLOG_DEBUG(10) << "Checking connection map for " << connection_name;
   if (!m_connection_map.count(connection_name)) {
-      TLOG_DEBUG(10) << "Connection not found: " << connection_name << "!";
+    TLOG_DEBUG(10) << "Connection not found: " << connection_name << "!";
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
 
