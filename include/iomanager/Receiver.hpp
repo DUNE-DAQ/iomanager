@@ -154,7 +154,7 @@ public:
       bool ret;
       while (m_with_callback.load()) {
         // TLOG() << "Take data from q then invoke callback...";
-        ret = m_queue->try_pop(dt, std::chrono::milliseconds(500));
+        ret = m_queue->try_pop(dt, std::chrono::milliseconds(1));
         if (ret) {
           m_callback(dt);
         }
@@ -328,8 +328,10 @@ private:
     m_event_loop_runner.reset(new std::thread([&]() {
       while (m_with_callback.load()) {
         try {
-          auto message = read_network<Datatype>(std::chrono::milliseconds(1));
-          m_callback(message);
+          auto message = try_read_network<Datatype>(std::chrono::milliseconds(1));
+          if (message) {
+              m_callback(*message);
+          }
         } catch (const ers::Issue&) {
           ;
         }
