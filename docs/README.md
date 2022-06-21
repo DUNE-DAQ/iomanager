@@ -55,6 +55,9 @@ A simplified API for passing messages between DAQModules
 
   // One line send
   IOManager::get()->get_sender<int>(cref)->send(msg, timeout);
+  
+  // Send when timeouts may occur
+  bool sent = isender->try_send(msg, timeout);
 
 ```
 
@@ -71,8 +74,12 @@ A simplified API for passing messages between DAQModules
   try {
     got = receiver->receive(timeout);
   } catch (dunedaq::appfwk::QueueTimeoutExpired&) {
-    // This is expected
+    // Deal with exception
   }
+  
+  // Alternate API for when timeouts may be allowed
+  std::optional<std::string> ret = receiver->try_receive(timeout);
+  if(ret) TLOG() << "Received " << *ret;
 
 ```
 
@@ -99,6 +106,9 @@ A simplified API for passing messages between DAQModules
   IOManager::get()->remove_callback(cref4);
 
 ```
+## When to use "try_" methods
+
+The standard send() and receive() methods will throw an ERS exception if they time out. This is ideal for cases where timeouts are an exceptional condition (this applies to most, if not all send calls, for example). In cases where the timeout condition can be safely ignored (such as the callback-driving methods which are retrying the receive in a tight loop), the `try_send` and `try_receive` methods may be used. Note that these methods are **not** `noexcept`, any non-timeout issues will result in an ERS exception.
 
 ## Updating existing code to use IOManager
 
