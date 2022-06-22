@@ -13,9 +13,9 @@
 #include "iomanager/ConnectionId.hpp"
 #include "iomanager/QueueRegistry.hpp"
 
+#include "iomanager/NetworkManager.hpp"
 #include "ipm/Sender.hpp"
 #include "logging/Logging.hpp"
-#include "networkmanager/NetworkManager.hpp"
 #include "serialization/Serialization.hpp"
 
 #include <memory>
@@ -127,7 +127,7 @@ public:
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
-    m_network_sender_ptr = networkmanager::NetworkManager::get().get_sender(conn_id.uid);
+    m_network_sender_ptr = NetworkManager::get().get_sender(conn_id.uid);
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)
@@ -173,7 +173,7 @@ private:
 
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
-      try_write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
+  try_write_network(MessageType& message, Sender::timeout_t const& timeout, std::string const& topic = "")
   {
     if (m_network_sender_ptr == nullptr) {
       ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
@@ -189,7 +189,7 @@ private:
 
   template<typename MessageType>
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
-      try_write_network(MessageType&, Sender::timeout_t const&, std::string const&)
+  try_write_network(MessageType&, Sender::timeout_t const&, std::string const&)
   {
     ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
     return false;

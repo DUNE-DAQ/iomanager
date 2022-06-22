@@ -12,10 +12,10 @@
 #include "iomanager/CommonIssues.hpp"
 #include "iomanager/ConnectionId.hpp"
 
+#include "iomanager/NetworkManager.hpp"
 #include "iomanager/QueueRegistry.hpp"
 #include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
-#include "networkmanager/NetworkManager.hpp"
 #include "serialization/Serialization.hpp"
 #include "utilities/ReusableThread.hpp"
 
@@ -195,19 +195,19 @@ public:
     if (conn_id.service_type == ServiceType::kNetReceiver) {
 
       try {
-        m_network_receiver_ptr = networkmanager::NetworkManager::get().get_receiver(conn_id.uid);
-      } catch (networkmanager::ConnectionNotFound& ex) {
+        m_network_receiver_ptr = NetworkManager::get().get_receiver(conn_id.uid);
+      } catch (ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_id.uid, ex);
       }
     } else {
       try {
         if (ref_to_topic) {
-          m_network_subscriber_ptr = networkmanager::NetworkManager::get().get_subscriber(conn_ref.uid);
+          m_network_subscriber_ptr = NetworkManager::get().get_subscriber(conn_ref.uid);
         } else {
           m_network_subscriber_ptr =
-            std::dynamic_pointer_cast<ipm::Subscriber>(networkmanager::NetworkManager::get().get_receiver(conn_id.uid));
+            std::dynamic_pointer_cast<ipm::Subscriber>(NetworkManager::get().get_receiver(conn_id.uid));
         }
-      } catch (networkmanager::ConnectionNotFound& ex) {
+      } catch (ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, conn_ref.uid, ex);
       }
     }
@@ -285,7 +285,7 @@ private:
 
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
-      try_read_network(Receiver::timeout_t const& timeout)
+  try_read_network(Receiver::timeout_t const& timeout)
   {
     ipm::Receiver::Response res;
     std::lock_guard<std::mutex> lk(m_receive_mutex);
@@ -307,7 +307,7 @@ private:
   template<typename MessageType>
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value,
                           std::optional<MessageType>>::type
-      try_read_network(Receiver::timeout_t const&)
+  try_read_network(Receiver::timeout_t const&)
   {
     ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
     return std::nullopt;
