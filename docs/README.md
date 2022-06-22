@@ -116,4 +116,4 @@ Please see [this page](Updating.md) for information about updating your code to 
 
 ## APIs used by IOManager
 
-The API used for queues is documented [here](Queue.md). Network connections use [IPM](https://dune-daq-sw.readthedocs.io/en/latest/packages/ipm/) and [NetworkManager](https://dune-daq-sw.readthedocs.io/en/latest/packages/networkmanager/)
+The API used for queues is documented [here](Queue.md). Network connections use [IPM](https://dune-daq-sw.readthedocs.io/en/latest/packages/ipm/) and [NetworkManager](NetworkManager.md)
