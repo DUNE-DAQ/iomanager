@@ -14,11 +14,16 @@ A simplified API for passing messages between DAQModules
 
 * ConnectionId defines a connection, with required initialization
   * uid Field uniquely identifies the connection
-  * partition Field identifies the partition that the connection is associated with
+  * service_type Describes what kind of connection (Queue, Net Send/Receive, Pub/Sub)
+  * data_type Indicates the type of data carried on the connection
   * uri Field is used by lower-level code to configure the connection
     * Scheme `queue://` should be used for queues, with the queue type and size, e.g. `queue://StdDeQueue:10` creating a StdDeQueue of size 10
     * For network connections, standard ZMQ URI should be used, e.g. `tcp://localhost:1234` (name translation is provided by IPM)
+  * topics Potential Pub/Sub topics for the connection
 * ConnectionRef is a user-facing reference to a connection
+  * name Name of the connection for DAQModule use
+  * uid UID of the connection
+  * dir Direction (input/output)
 
 ### Receiver
 
