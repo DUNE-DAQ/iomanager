@@ -326,12 +326,12 @@ private:
     m_with_callback = true;
     // start event loop (thread that calls when receive happens)
     m_event_loop_runner.reset(new std::thread([&]() {
-        std::optional<Datatype> message;
-      while (m_with_callback.load() || message ) {
+      std::optional<Datatype> message;
+      while (m_with_callback.load() || message) {
         try {
           message = try_read_network<Datatype>(std::chrono::milliseconds(1));
           if (message) {
-              m_callback(*message);
+            m_callback(*message);
           }
         } catch (const ers::Issue&) {
           ;
