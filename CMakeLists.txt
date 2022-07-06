@@ -12,9 +12,10 @@ find_package(folly REQUIRED)
 find_package(serialization REQUIRED)
 find_package(utilities REQUIRED)
 find_package(networkmanager REQUIRED)
+find_package(configclient REQUIRED)
 
 ##############################################################################
-set(IOMANAGER_DEPENDENCIES serialization::serialization Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm networkmanager::networkmanager)
+set(IOMANAGER_DEPENDENCIES serialization::serialization Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm networkmanager::networkmanager configclient::configclient)
 
 daq_codegen(connection.jsonnet queue.jsonnet TEMPLATES Structs.hpp.j2 Nljs.hpp.j2)
 daq_codegen(queueinfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.hpp.j2 opmonlib/InfoNljs.hpp.j2 )
