@@ -15,7 +15,7 @@
  * received with this code.
  */
 
-#include "iomanager/Queue.hpp"
+#include "iomanager/queue/Queue.hpp"
 
 #include "folly/concurrency/DynamicBoundedQueue.h"
 #include "logging/Logging.hpp"

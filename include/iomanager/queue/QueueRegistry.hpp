@@ -11,7 +11,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
 
-#include "iomanager/Queue.hpp"
+#include "iomanager/queue/Queue.hpp"
 
 #include "ers/Issue.hpp"
 #include "opmonlib/InfoCollector.hpp"
@@ -22,38 +22,6 @@
 
 namespace dunedaq {
 namespace iomanager {
-
-/**
- * @brief The QueueConfig class encapsulates the basic configuration common to
- * all Queue types
- *
- * NB This class is separate from the schema definition QueueSpec because
- * we need the custom implementation of stoqk.
- */
-struct QueueConfig
-{
-  /**
-   * @brief Enumeration of all possible types of Queue
-   */
-  enum queue_kind
-  {
-    kUnknown = -1,
-    kStdDeQueue = 1, ///< The StdDeQueue
-    kFollySPSCQueue = 2,
-    kFollyMPMCQueue = 3,
-  };
-
-  /**
-   * @brief  Transform a string to a queue_kind
-   * @param name Name of the Queue Type
-   * @return Queue type corresponding to the name. Currently only std_deque.
-   */
-  static queue_kind stoqk(const std::string& name);
-
-  QueueConfig::queue_kind kind = queue_kind::kUnknown; ///< The kind of Queue represented by this
-                                                       ///< QueueConfig
-  size_t capacity = 0;                                 ///< The maximum size of the queue
-};
 
 /**
  * @brief The QueueRegistry class manages all Queue instances and gives out
@@ -84,9 +52,9 @@ public:
 
   /**
    * @brief Configure the QueueRegistry
-   * @param configmap Map relating Queue names to their configurations
+   * @param configs Queue configurations
    */
-  void configure(const std::map<std::string, QueueConfig>& config_map);
+  void configure(const std::vector<QueueConfig>& configs);
 
   // Gather statistics from queues
   void gather_stats(opmonlib::InfoCollector& ic, int level);
@@ -104,10 +72,10 @@ private:
   QueueRegistry() = default;
 
   template<typename T>
-  std::shared_ptr<QueueBase> create_queue(const std::string& name, const QueueConfig& config);
+  std::shared_ptr<QueueBase> create_queue(const QueueConfig& config);
 
   std::map<std::string, QueueEntry> m_queue_registry;
-  std::map<std::string, QueueConfig> m_queue_config_map;
+  std::vector<QueueConfig> m_queue_configs;
 
   bool m_configured{ false };
 

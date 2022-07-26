@@ -116,44 +116,44 @@ struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    ConnectionIds_t connections;
+    Connections_t connections;
     connections.emplace_back(
-      ConnectionId{ "test_queue", ServiceType::kQueue, "NonCopyableData", "queue://StdDeQueue:10" });
+      Connection{ "test_queue", ServiceType::kQueue, "NonCopyableData", "queue://StdDeQueue:10" });
     connections.emplace_back(
-      ConnectionId{ "test_connection_r", ServiceType::kNetReceiver, "NonCopyableData", "inproc://foo" });
+      Connection{ "test_connection_r", ServiceType::kNetReceiver, "NonCopyableData", "inproc://foo" });
     connections.emplace_back(
-      ConnectionId{ "test_connection_s", ServiceType::kNetSender, "NonCopyableData", "inproc://foo" });
-    connections.emplace_back(ConnectionId{ "test_pubsub_connection_p",
+      Connection{ "test_connection_s", ServiceType::kNetSender, "NonCopyableData", "inproc://foo" });
+    connections.emplace_back(Connection{ "test_pubsub_connection_p",
                                            ServiceType::kPublisher,
                                            "NonCopyableData",
                                            "inproc://bar",
                                            { "test_topic", "another_test_topic" } });
-    connections.emplace_back(ConnectionId{ "test_pubsub_connection_s",
+    connections.emplace_back(Connection{ "test_pubsub_connection_s",
                                            ServiceType::kSubscriber,
                                            "NonCopyableData",
                                            "inproc://qui",
                                            { "test_topic", "another_test_topic" } });
     connections.emplace_back(
-      ConnectionId{ "test_pubsub_connection_s2", ServiceType::kSubscriber, "NonCopyableData", "inproc://bar", { "" } });
-    connections.emplace_back(ConnectionId{ "another_test_pubsub_connection_p",
+      Connection{ "test_pubsub_connection_s2", ServiceType::kSubscriber, "NonCopyableData", "inproc://bar", { "" } });
+    connections.emplace_back(Connection{ "another_test_pubsub_connection_p",
                                            ServiceType::kPublisher,
                                            "NonCopyableData",
                                            "inproc://baz",
                                            { "another_test_topic" } });
-    connections.emplace_back(ConnectionId{ "another_test_pubsub_connection_s",
+    connections.emplace_back(Connection{ "another_test_pubsub_connection_s",
                                            ServiceType::kSubscriber,
                                            "NonCopyableData",
                                            "inproc://qua",
                                            { "another_test_topic" } });
     IOManager::get()->configure(connections);
-    conn_ref_r = ConnectionRef{ "network_r", "test_connection_r" };
-    conn_ref_s = ConnectionRef{ "network_s", "test_connection_s" };
-    queue_ref = ConnectionRef{ "queue", "test_queue" };
-    pub1_ref = ConnectionRef{ "pub1", "test_pubsub_connection_p", Direction::kOutput };
-    pub2_ref = ConnectionRef{ "pub2", "another_test_pubsub_connection_p", Direction::kOutput };
-    sub1_ref = ConnectionRef{ "sub1", "test_topic", Direction::kInput };
-    sub2_ref = ConnectionRef{ "sub2", "another_test_topic", Direction::kInput };
-    sub3_ref = ConnectionRef{ "sub3", "test_pubsub_connection_s2", Direction::kInput };
+    conn_ref_r = Endpoint{ "network_r", "test_connection_r" };
+    conn_ref_s = Endpoint{ "network_s", "test_connection_s" };
+    queue_ref = Endpoint{ "queue", "test_queue" };
+    pub1_ref = Endpoint{ "pub1", "test_pubsub_connection_p", Direction::kOutput };
+    pub2_ref = Endpoint{ "pub2", "another_test_pubsub_connection_p", Direction::kOutput };
+    sub1_ref = Endpoint{ "sub1", "test_topic", Direction::kInput };
+    sub2_ref = Endpoint{ "sub2", "another_test_topic", Direction::kInput };
+    sub3_ref = Endpoint{ "sub3", "test_pubsub_connection_s2", Direction::kInput };
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -162,14 +162,14 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
 
-  ConnectionRef conn_ref_r;
-  ConnectionRef conn_ref_s;
-  ConnectionRef queue_ref;
-  ConnectionRef pub1_ref;
-  ConnectionRef pub2_ref;
-  ConnectionRef sub1_ref;
-  ConnectionRef sub2_ref;
-  ConnectionRef sub3_ref;
+  Endpoint conn_ref_r;
+  Endpoint conn_ref_s;
+  Endpoint queue_ref;
+  Endpoint pub1_ref;
+  Endpoint pub2_ref;
+  Endpoint sub1_ref;
+  Endpoint sub2_ref;
+  Endpoint sub3_ref;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
@@ -190,16 +190,16 @@ BOOST_AUTO_TEST_CASE(Singleton)
 
 BOOST_AUTO_TEST_CASE(Directionality)
 {
-  ConnectionIds_t connections;
-  connections.emplace_back(ConnectionId{ "test_connection_r", ServiceType::kNetReceiver, "Data", "inproc://foo" });
-  connections.emplace_back(ConnectionId{ "test_connection_s", ServiceType::kNetSender, "Data", "inproc://foo" });
+  Connections_t connections;
+  connections.emplace_back(Connection{ "test_connection_r", ServiceType::kNetReceiver, "Data", "inproc://foo" });
+  connections.emplace_back(Connection{ "test_connection_s", ServiceType::kNetSender, "Data", "inproc://foo" });
   IOManager::get()->configure(connections);
-  ConnectionRef unspecified_ref_r = ConnectionRef{ "unspecified_r", "test_connection_r" };
-  ConnectionRef unspecified_ref_s = ConnectionRef{ "unspecified_s", "test_connection_s" };
-  ConnectionRef input_ref_r = ConnectionRef{ "input_r", "test_connection_r", Direction::kInput };
-  ConnectionRef output_ref_r = ConnectionRef{ "output_r", "test_connection_r", Direction::kOutput };
-  ConnectionRef input_ref_s = ConnectionRef{ "input_s", "test_connection_s", Direction::kInput };
-  ConnectionRef output_ref_s = ConnectionRef{ "output_s", "test_connection_s", Direction::kOutput };
+  Endpoint unspecified_ref_r = Endpoint{ "unspecified_r", "test_connection_r" };
+  Endpoint unspecified_ref_s = Endpoint{ "unspecified_s", "test_connection_s" };
+  Endpoint input_ref_r = Endpoint{ "input_r", "test_connection_r", Direction::kInput };
+  Endpoint output_ref_r = Endpoint{ "output_r", "test_connection_r", Direction::kOutput };
+  Endpoint input_ref_s = Endpoint{ "input_s", "test_connection_s", Direction::kInput };
+  Endpoint output_ref_s = Endpoint{ "output_s", "test_connection_s", Direction::kOutput };
 
   // Unspecified is always ok
   auto sender = IOManager::get()->get_sender<Data>(unspecified_ref_s);

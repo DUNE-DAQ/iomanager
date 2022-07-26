@@ -6,7 +6,7 @@
  * received with this code.
  */
 
-#include "iomanager/NetworkManager.hpp"
+#include "iomanager/network/NetworkManager.hpp"
 
 #include "iomanager/connectioninfo/InfoNljs.hpp"
 
@@ -31,6 +31,43 @@ NetworkManager::get()
   return *s_instance;
 }
 
+std::string
+NetworkManager::GetUriForConnection()
+{
+
+  // Check here if connection is a host or a source name. If
+  // it's a source. look up the host in the config server and
+  // update conn_id.uri
+  if (conn_id.uri.substr(0, 4) == "src:") {
+    std::string connectionServer = "configdict.connections";
+    char* env = getenv("CONNECTION_SERVER");
+    if (env) {
+      connectionServer = std::string(env);
+    }
+    std::string connectionPort = "5000";
+    env = getenv("CONNECTION_PORT");
+    if (env) {
+      connectionPort = std::string(env);
+    }
+    ConfigClient cc(connectionServer, connectionPort);
+    int gstart = 4;
+    if (conn_id.uri.substr(gstart, 2) == "//") {
+      gstart += 2;
+    }
+    std::string app = cc.getSourceApp(conn_id.uri.substr(gstart));
+    std::string conf = cc.getAppConfig(app);
+    auto jsconf = nlohmann::json::parse(conf);
+    std::string host = jsconf["host"];
+    std::string port = jsconf["port"];
+    TLOG() << "Replacing conn_id.uri <" << conn_id.uri << ">"
+           << " with <tcp://" << host << ":" << port << ">";
+    conn_id.uri = "tcp://" + host + ":" + port;
+    Connections_t nwCfg;
+    nwCfg.push_back(conn_id);
+    NetworkManager::get().configure(nwCfg);
+  }
+}
+
 void
 NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 {
@@ -49,7 +86,7 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 }
 
 void
-NetworkManager::configure(const ConnectionIds_t& connections)
+NetworkManager::configure(const Endpoints_t& endpoints, const Connections_t& connections)
 {
   if (!m_connection_map.empty()) {
     throw AlreadyConfigured(ERS_HERE);

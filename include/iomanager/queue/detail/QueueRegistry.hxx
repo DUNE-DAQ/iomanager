@@ -1,5 +1,5 @@
-#include "iomanager/FollyQueue.hpp"
-#include "iomanager/StdDeQueue.hpp"
+#include "iomanager/queue/FollyQueue.hpp"
+#include "iomanager/queue/StdDeQueue.hpp"
 
 #include <cxxabi.h>
 #include <memory>
@@ -28,9 +28,13 @@ QueueRegistry::get_queue(const std::string& name)
     return queuePtr;
   }
 
-  auto config_it = this->m_queue_config_map.find(name);
-  if (config_it != m_queue_config_map.end()) {
-    QueueEntry entry = { &typeid(T), create_queue<T>(name, config_it->second) };
+  auto config_it = this->m_queue_configs.begin();
+  while (config_it != m_queue_configs.end()) {
+    if (config_it->name == name)
+      break;
+  }
+  if (config_it != m_queue_configs.end()) {
+    QueueEntry entry = { &typeid(T), create_queue<T>(*config_it) };
     m_queue_registry[name] = entry;
     return std::dynamic_pointer_cast<Queue<T>>(entry.m_instance);
 
@@ -44,23 +48,22 @@ QueueRegistry::get_queue(const std::string& name)
 
 template<typename T>
 std::shared_ptr<QueueBase>
-QueueRegistry::create_queue(const std::string& name, const QueueConfig& config)
+QueueRegistry::create_queue(const QueueConfig& config)
 {
-
   std::shared_ptr<QueueBase> queue;
-  switch (config.kind) {
-    case QueueConfig::kStdDeQueue:
-      queue = std::make_shared<StdDeQueue<T>>(name, config.capacity);
+  switch (config.queue_type) {
+    case QueueType::kStdDeQueue:
+      queue = std::make_shared<StdDeQueue<T>>(config.name, config.capacity);
       break;
-    case QueueConfig::kFollySPSCQueue:
-      queue = std::make_shared<FollySPSCQueue<T>>(name, config.capacity);
+    case QueueType::kFollySPSCQueue:
+      queue = std::make_shared<FollySPSCQueue<T>>(config.name, config.capacity);
       break;
-    case QueueConfig::kFollyMPMCQueue:
-      queue = std::make_shared<FollyMPMCQueue<T>>(name, config.capacity);
+    case QueueType::kFollyMPMCQueue:
+      queue = std::make_shared<FollyMPMCQueue<T>>(config.name, config.capacity);
       break;
 
     default:
-      throw QueueKindUnknown(ERS_HERE, std::to_string(config.kind));
+      throw QueueKindUnknown(ERS_HERE, str(config.queue_type));
   }
 
   return queue;

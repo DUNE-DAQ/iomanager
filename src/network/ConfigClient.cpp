@@ -6,8 +6,8 @@
  * received with this code.
  */
 
-#include "iomanager/ConfigClient.hpp"
-#include "iomanager/ConfigClientIssues.hpp"
+#include "iomanager/network/ConfigClient.hpp"
+#include "iomanager/network/ConfigClientIssues.hpp"
 
 #include "logging/Logging.hpp"
 

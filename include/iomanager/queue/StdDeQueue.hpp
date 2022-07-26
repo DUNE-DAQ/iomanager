@@ -12,7 +12,7 @@
  * received with this code.
  */
 
-#include "iomanager/Queue.hpp"
+#include "iomanager/queue/Queue.hpp"
 
 #include <atomic>
 #include <cassert>

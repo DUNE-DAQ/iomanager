@@ -29,8 +29,8 @@ struct NetworkManagerTestFixture
 {
   NetworkManagerTestFixture()
   {
-    ConnectionIds_t testConfig;
-    ConnectionId testConn;
+    Connections_t testConfig;
+    Connection testConn;
     testConn.uid = "foo";
     testConn.uri = "inproc://foo";
     testConfig.push_back(testConn);
@@ -109,8 +109,8 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
   BOOST_REQUIRE(!NetworkManager::get().is_pubsub_connection("unknown_connection"));
   BOOST_REQUIRE(!NetworkManager::get().is_pubsub_connection("unknown_topic"));
 
-  ConnectionIds_t testConfig;
-  ConnectionId testConn;
+  Connections_t testConfig;
+  Connection testConn;
   testConn.uid = "oof";
   testConn.uri = "inproc://rab";
   testConfig.push_back(testConn);
@@ -129,22 +129,22 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
 BOOST_FIXTURE_TEST_CASE(NameCollisionInConfiguration, NetworkManagerTestFixture)
 {
   NetworkManager::get().reset();
-  ConnectionIds_t testConfig;
-  testConfig.emplace_back(ConnectionId{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
-  testConfig.emplace_back(ConnectionId{ "foo", ServiceType::kNetSender, "", "inproc://bar", {} });
+  Connections_t testConfig;
+  testConfig.emplace_back(Connection{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
+  testConfig.emplace_back(Connection{ "foo", ServiceType::kNetSender, "", "inproc://bar", {} });
   BOOST_REQUIRE_EXCEPTION(
     NetworkManager::get().configure(testConfig), NameCollision, [&](NameCollision const&) { return true; });
 
-  ConnectionIds_t testConfig2;
-  testConfig2.emplace_back(ConnectionId{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
-  testConfig2.emplace_back(ConnectionId{ "bar", ServiceType::kNetSender, "", "inproc://bar", { "foo" } });
+  Connections_t testConfig2;
+  testConfig2.emplace_back(Connection{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
+  testConfig2.emplace_back(Connection{ "bar", ServiceType::kNetSender, "", "inproc://bar", { "foo" } });
   BOOST_REQUIRE_EXCEPTION(
     NetworkManager::get().configure(testConfig2), NameCollision, [&](NameCollision const&) { return true; });
 
-  ConnectionIds_t testConfig3;
-  testConfig3.emplace_back(ConnectionId{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
-  testConfig3.emplace_back(ConnectionId{ "bar", ServiceType::kNetSender, "", "inproc://bar", { "bax" } });
-  testConfig3.emplace_back(ConnectionId{ "baz", ServiceType::kNetSender, "", "inproc://baz", { "bax" } });
+  Connections_t testConfig3;
+  testConfig3.emplace_back(Connection{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
+  testConfig3.emplace_back(Connection{ "bar", ServiceType::kNetSender, "", "inproc://bar", { "bax" } });
+  testConfig3.emplace_back(Connection{ "baz", ServiceType::kNetSender, "", "inproc://baz", { "bax" } });
   NetworkManager::get().configure(testConfig3);
 }
 
@@ -152,9 +152,9 @@ BOOST_FIXTURE_TEST_CASE(StartPublisher, NetworkManagerTestFixture)
 {
   NetworkManager::get().reset();
 
-  ConnectionIds_t testConfig;
-  testConfig.emplace_back(ConnectionId{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
-  testConfig.emplace_back(ConnectionId{ "bar", ServiceType::kNetSender, "", "inproc://bar", { "bax", "bay", "baz" } });
+  Connections_t testConfig;
+  testConfig.emplace_back(Connection{ "foo", ServiceType::kNetSender, "", "inproc://foo", {} });
+  testConfig.emplace_back(Connection{ "bar", ServiceType::kNetSender, "", "inproc://bar", { "bax", "bay", "baz" } });
   NetworkManager::get().configure(testConfig);
 
   BOOST_REQUIRE(!NetworkManager::get().is_connection_open("bar", Direction::kOutput));

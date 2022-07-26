@@ -8,7 +8,6 @@
  */
 #include "logging/Logging.hpp"
 
-#include "iomanager/ConnectionId.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 
@@ -25,8 +24,8 @@
 int
 main(int /*argc*/, char** /*argv[]*/)
 {
-  dunedaq::iomanager::ConnectionIds_t connections;
-  dunedaq::iomanager::ConnectionId cid;
+  dunedaq::iomanager::Connections_t connections;
+  dunedaq::iomanager::Connection cid;
   cid.service_type = dunedaq::iomanager::ServiceType::kQueue;
   cid.uid = "bar";
   cid.uri = "queue://StdDeQueue:10";
@@ -43,7 +42,7 @@ main(int /*argc*/, char** /*argv[]*/)
 
   std::cout << "Test int sender.\n";
   // Int sender
-  dunedaq::iomanager::ConnectionRef cref;
+  dunedaq::iomanager::Endpoint cref;
   cref.uid = "bar";
 
   int msg = 5;
@@ -63,7 +62,7 @@ main(int /*argc*/, char** /*argv[]*/)
 
   std::cout << "Test string sender.\n";
   // String sender
-  dunedaq::iomanager::ConnectionRef cref2;
+  dunedaq::iomanager::Endpoint cref2;
   cref2.uid = "foo";
 
   auto ssender = dunedaq::get_iom_sender<std::string>(cref2);
@@ -74,7 +73,7 @@ main(int /*argc*/, char** /*argv[]*/)
 
   std::cout << "Test string receiver.\n";
   // String receiver
-  dunedaq::iomanager::ConnectionRef cref3;
+  dunedaq::iomanager::Endpoint cref3;
   cref3.uid = "dsa";
 
   auto receiver = dunedaq::get_iom_receiver<std::string>(cref3);
@@ -89,7 +88,7 @@ main(int /*argc*/, char** /*argv[]*/)
 
   std::cout << "Test callback string receiver.\n";
   // Callback receiver
-  dunedaq::iomanager::ConnectionRef cref4;
+  dunedaq::iomanager::Endpoint cref4;
   cref4.uid = "zyx";
 
   // CB function

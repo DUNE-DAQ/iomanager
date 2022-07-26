@@ -9,12 +9,14 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 
-#include "iomanager/ConfigClient.hpp"
-#include "iomanager/ConnectionId.hpp"
-#include "iomanager/NetworkManager.hpp"
-#include "iomanager/QueueRegistry.hpp"
-#include "iomanager/Receiver.hpp"
-#include "iomanager/Sender.hpp"
+#include "iomanager/connection/Structs.hpp"
+#include "iomanager/network/ConfigClient.hpp"
+#include "iomanager/network/NetworkManager.hpp"
+#include "iomanager/network/NetworkReceiverModel.hpp"
+#include "iomanager/network/NetworkSenderModel.hpp"
+#include "iomanager/queue/QueueReceiverModel.hpp"
+#include "iomanager/queue/QueueRegistry.hpp"
+#include "iomanager/queue/QueueSenderModel.hpp"
 
 #include "nlohmann/json.hpp"
 
@@ -34,6 +36,8 @@ ERS_DECLARE_ISSUE(iomanager,
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 namespace iomanager {
+
+using namespace connection;
 
 /**
  * @class IOManager
@@ -57,38 +61,27 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  void configure(ConnectionIds_t const& connections)
+  void configure(Queues_t queues, Connections_t connections)
   {
-    m_connections = connections;
-    std::map<std::string, QueueConfig> qCfg;
-    ConnectionIds_t nwCfg;
+    Queues_t qCfg = queues;
+    Connections_t nwCfg;
     std::regex queue_uri_regex("queue://(\\w+):(\\d+)");
 
-    for (auto& connection : m_connections) {
-      if (connection.service_type == ServiceType::kQueue) {
+    for (auto& connection : connections) {
+      if (connection.connection_type == ConnectionType::kQueue) {
         std::smatch sm;
         std::regex_match(connection.uri, sm, queue_uri_regex);
-        qCfg[connection.uid].kind = QueueConfig::stoqk(sm[1]);
-        qCfg[connection.uid].capacity = stoi(sm[2]);
+        QueueConfig config;
+        config.name = to_string(connection.bind_endpoint) + "_Queue";
+        config.endpoints.push_back(connection.bind_endpoint);
+        for (auto& ep : connection.connected_endpoints) {
+          config.endpoints.push_back(ep);
+        }
+        config.queue_type = string_to_queue_type(sm[1]);
+        config.capacity = stoi(sm[2]);
+        qCfg.push_back(config);
       } else {
-
-        // here if connection is a host or a source name. If
-        // it's a source, don't add it to the nwmgr config yet
-        // Update connection.uri ahen we want to connect
-        if (connection.uri.substr(0, 4) == "src:") {
-          continue;
-        }
-
-        if (connection.service_type == ServiceType::kNetSender ||
-            connection.service_type == ServiceType::kNetReceiver) {
-
-          nwCfg.push_back(connection);
-        } else if (connection.service_type == ServiceType::kPublisher ||
-                   connection.service_type == ServiceType::kSubscriber) {
-          nwCfg.push_back(connection);
-        } else {
-          // throw ers issue?
-        }
+        nwCfg.push_back(connection);
       }
     }
 
@@ -98,7 +91,6 @@ public:
 
   void reset()
   {
-    m_connections.clear();
     QueueRegistry::get().reset();
     NetworkManager::get().reset();
     m_senders.clear();
@@ -107,155 +99,72 @@ public:
   }
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& connection_uid)
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(Endpoint const& endpoint,
+                                                      ConnectionType const& type_hint = ConnectionType::kSendRecv)
   {
-    ConnectionRef dummy_ref{ connection_uid, connection_uid, Direction::kOutput };
-    return get_sender<Datatype>(dummy_ref);
-  }
-
-  template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionRef const& conn_ref)
-  {
-    if (conn_ref.dir == Direction::kInput) {
-      throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", "sender");
+    if (endpoint.direction == Direction::kInput) {
+      throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), "input", "sender");
     }
 
     static std::mutex dt_sender_mutex;
     std::lock_guard<std::mutex> lk(dt_sender_mutex);
 
-    if (!m_senders.count(conn_ref)) {
-      // create from lookup service's factory function
-      // based on connID we know if it's queue or network
-      auto conn_id = ref_to_id(conn_ref);
-      if (conn_id.service_type == ServiceType::kQueue) { // if queue
-        TLOG() << "Creating QueueSenderModel for service_name " << conn_id.uid;
-        m_senders[conn_ref] =
-          std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(conn_id, conn_ref));
-      } else if (conn_id.service_type == ServiceType::kNetSender || conn_id.service_type == ServiceType::kPublisher) {
-        TLOG() << "Creating NetworkSenderModel for service_name " << conn_id.uid;
-
-        // Check here if connection is a host or a source name. If
-        // it's a source. look up the host in the config server and
-        // update conn_id.uri
-        if (conn_id.uri.substr(0, 4) == "src:") {
-          std::string connectionServer = "configdict.connections";
-          char* env = getenv("CONNECTION_SERVER");
-          if (env) {
-            connectionServer = std::string(env);
-          }
-          std::string connectionPort = "5000";
-          env = getenv("CONNECTION_PORT");
-          if (env) {
-            connectionPort = std::string(env);
-          }
-          ConfigClient cc(connectionServer, connectionPort);
-          int gstart = 4;
-          if (conn_id.uri.substr(gstart, 2) == "//") {
-            gstart += 2;
-          }
-          std::string app = cc.getSourceApp(conn_id.uri.substr(gstart));
-          std::string conf = cc.getAppConfig(app);
-          auto jsconf = nlohmann::json::parse(conf);
-          std::string host = jsconf["host"];
-          std::string port = jsconf["port"];
-          TLOG() << "Replacing conn_id.uri <" << conn_id.uri << ">"
-                 << " with <tcp://" << host << ":" << port << ">";
-          conn_id.uri = "tcp://" + host + ":" + port;
-          ConnectionIds_t nwCfg;
-          nwCfg.push_back(conn_id);
-          NetworkManager::get().configure(nwCfg);
-        }
-
-        m_senders[conn_ref] =
-          std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(conn_id, conn_ref));
+    if (!m_senders.count(endpoint)) {
+      if (type_hint == ConnectionType::kQueue) { // if queue
+        TLOG() << "Creating QueueSenderModel for endpoint " << to_string(endpoint);
+        m_senders[endpoint] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(endpoint));
       } else {
-        throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", connection::str(conn_id.service_type));
+        TLOG() << "Creating NetworkSenderModel for endpoint " << to_string(endpoint);
+        m_senders[endpoint] =
+          std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(endpoint, type_hint));
       }
     }
-    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[conn_ref]);
+    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[endpoint]);
   }
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& connection_uid)
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(Endpoint const& endpoint,
+                                                          ConnectionType const& type_hint = ConnectionType::kSendRecv)
   {
-    ConnectionRef dummy_ref{ connection_uid, connection_uid, Direction::kInput };
-    return get_receiver<Datatype>(dummy_ref);
-  }
-
-  template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionRef const& conn_ref)
-  {
-    if (conn_ref.dir == Direction::kOutput) {
-      throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", "receiver");
+    if (endpoint.direction == Direction::kOutput) {
+      throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), "output", "receiver");
     }
 
     static std::mutex dt_receiver_mutex;
     std::lock_guard<std::mutex> lk(dt_receiver_mutex);
 
-    if (!m_receivers.count(conn_ref)) {
-      auto conn_id = ref_to_id(conn_ref);
-      if (conn_id.service_type == ServiceType::kQueue) { // if queue
-        TLOG() << "Creating QueueReceiverModel for service_name " << conn_id.uid;
-        m_receivers[conn_ref] =
-          std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(conn_id, conn_ref));
-      } else if (conn_id.service_type == ServiceType::kNetReceiver) {
-        TLOG() << "Creating NetworkReceiverModel for service_name " << conn_id.uid;
-        m_receivers[conn_ref] =
-          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(conn_id, conn_ref));
-      } else if (conn_id.service_type == ServiceType::kSubscriber) {
-        TLOG() << "Creating NetworkReceiverModel for service_name " << conn_ref.uid;
-        // This ConnectionRef refers to a topic if its uid is not the same as the returned ConnectionId's uid
-        m_receivers[conn_ref] = std::make_shared<NetworkReceiverModel<Datatype>>(
-          NetworkReceiverModel<Datatype>(conn_id, conn_ref, conn_id.uid != conn_ref.uid));
+    if (!m_receivers.count(endpoint)) {
+      if (type_hint == ConnectionType::kQueue) { // if queue
+        TLOG() << "Creating QueueReceiverModel for endpoint " << to_string(endpoint);
+        m_receivers[endpoint] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(endpoint));
       } else {
-        throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "input", connection::str(conn_id.service_type));
+        TLOG() << "Creating NetworkReceiverModel for endpoint " << to_string(endpoint);
+        m_receivers[endpoint] =
+          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(endpoint, type_hint));
       }
     }
-    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[conn_ref]); // NOLINT
+    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[endpoint]); // NOLINT
   }
 
   template<typename Datatype>
-  void add_callback(ConnectionRef const& conn_ref, std::function<void(Datatype&)> callback)
+  void add_callback(Endpoint const& endpoint, std::function<void(Datatype&)> callback)
   {
-    auto receiver = get_receiver<Datatype>(conn_ref);
+    auto receiver = get_receiver<Datatype>(endpoint);
     receiver->add_callback(callback);
   }
 
   template<typename Datatype>
-  void remove_callback(ConnectionRef const& conn_ref)
+  void remove_callback(Endpoint const& endpoint)
   {
-    auto receiver = get_receiver<Datatype>(conn_ref);
+    auto receiver = get_receiver<Datatype>(endpoint);
     receiver->remove_callback();
-  }
-
-  ConnectionId ref_to_id(ConnectionRef const& ref) const
-  {
-    for (auto& conn : m_connections) {
-      if (conn.uid == ref.uid)
-        return conn;
-    }
-
-    // Subscribers can have a UID that is a topic they are interested in. Return the first matching conn ID
-    if (ref.dir == Direction::kInput) {
-      for (auto& conn : m_connections) {
-        if (conn.service_type == ServiceType::kSubscriber) {
-          for (auto& topic : conn.topics) {
-            if (topic == ref.uid)
-              return conn;
-          }
-        }
-      }
-    }
-
-    throw ConnectionNotFound(ERS_HERE, ref.uid);
   }
 
 private:
   IOManager() {}
 
-  using SenderMap = std::map<ConnectionRef, std::shared_ptr<Sender>>;
-  using ReceiverMap = std::map<ConnectionRef, std::shared_ptr<Receiver>>;
-  ConnectionIds_t m_connections;
+  using SenderMap = std::map<Endpoint, std::shared_ptr<Sender>>;
+  using ReceiverMap = std::map<Endpoint, std::shared_ptr<Receiver>>;
   SenderMap m_senders;
   ReceiverMap m_receivers;
 
@@ -273,16 +182,16 @@ get_iomanager()
 
 template<typename Datatype>
 static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_sender(iomanager::ConnectionRef const& conn_ref)
+get_iom_sender(iomanager::Endpoint const& endpoint)
 {
-  return iomanager::IOManager::get()->get_sender<Datatype>(conn_ref);
+  return iomanager::IOManager::get()->get_sender<Datatype>(endpoint);
 }
 
 template<typename Datatype>
 static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_receiver(iomanager::ConnectionRef const& conn_ref)
+get_iom_receiver(iomanager::Endpoint const& endpoint)
 {
-  return iomanager::IOManager::get()->get_receiver<Datatype>(conn_ref);
+  return iomanager::IOManager::get()->get_receiver<Datatype>(endpoint);
 }
 
 template<typename Datatype>

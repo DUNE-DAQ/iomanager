@@ -44,14 +44,14 @@ struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    dunedaq::iomanager::ConnectionIds_t connections;
-    connections.emplace_back(ConnectionId{ "test_queue", ServiceType::kQueue, "data_t", "queue://FollySPSC:50" });
-    connections.emplace_back(ConnectionId{ "test_connection_s", ServiceType::kNetSender, "data_t", "inproc://foo" });
-    connections.emplace_back(ConnectionId{ "test_connection_r", ServiceType::kNetReceiver, "data_t", "inproc://foo" });
+    dunedaq::iomanager::Connections_t connections;
+    connections.emplace_back(Connection{ "test_queue", ServiceType::kQueue, "data_t", "queue://FollySPSC:50" });
+    connections.emplace_back(Connection{ "test_connection_s", ServiceType::kNetSender, "data_t", "inproc://foo" });
+    connections.emplace_back(Connection{ "test_connection_r", ServiceType::kNetReceiver, "data_t", "inproc://foo" });
     IOManager::get()->configure(connections);
-    conn_ref_s = ConnectionRef{ "network_s", "test_connection_s", Direction::kOutput };
-    conn_ref_r = ConnectionRef{ "network_r", "test_connection_r", Direction::kInput };
-    queue_ref = ConnectionRef{ "queue", "test_queue" };
+    conn_ref_s = Endpoint{ "network_s", "test_connection_s", Direction::kOutput };
+    conn_ref_r = Endpoint{ "network_r", "test_connection_r", Direction::kInput };
+    queue_ref = Endpoint{ "queue", "test_queue" };
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -60,9 +60,9 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = delete;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = delete;
 
-  dunedaq::iomanager::ConnectionRef conn_ref_s;
-  dunedaq::iomanager::ConnectionRef conn_ref_r;
-  dunedaq::iomanager::ConnectionRef queue_ref;
+  dunedaq::iomanager::Endpoint conn_ref_s;
+  dunedaq::iomanager::Endpoint conn_ref_r;
+  dunedaq::iomanager::Endpoint queue_ref;
   const size_t n_sends = 10000;
   const size_t message_size = 55680;
 };

@@ -11,7 +11,7 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
 
 #include "iomanager/CommonIssues.hpp"
-#include "iomanager/ConnectionId.hpp"
+#include "iomanager/connection/Structs.hpp"
 
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
@@ -30,6 +30,9 @@
 #include <vector>
 
 namespace dunedaq::iomanager {
+
+	using namespace connection;
+
 class NetworkManager
 {
 
@@ -37,9 +40,15 @@ public:
   static NetworkManager& get();
 
   void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
-  void configure(const ConnectionIds_t& connections);
+  void configure(const Connections_t& connections);
   void reset();
 
+  
+  std::shared_ptr<ipm::Receiver> get_receiver(Endpoint const& endpoint);
+  std::shared_ptr<ipm::Sender> get_sender(Endpoint const& endpoint, ConnectionType const& type_hint);
+  std::shared_ptr<ipm::Subscriber> get_subscriber(Endpoint const& endpoint);
+
+private:
   // Receive via callback
   void start_listening(std::string const& connection_name);
   void stop_listening(std::string const& connection_name);
@@ -60,9 +69,6 @@ public:
 
   bool is_connection_open(std::string const& connection_name, Direction direction = Direction::kInput) const;
 
-  std::shared_ptr<ipm::Receiver> get_receiver(std::string const& connection_or_topic);
-  std::shared_ptr<ipm::Sender> get_sender(std::string const& connection_name);
-  std::shared_ptr<ipm::Subscriber> get_subscriber(std::string const& topic);
 
 private:
   static std::unique_ptr<NetworkManager> s_instance;
@@ -78,7 +84,7 @@ private:
   void create_receiver(std::string const& connection_or_topic);
   void create_sender(std::string const& connection_name);
 
-  std::unordered_map<std::string, ConnectionId> m_connection_map;
+  std::unordered_map<std::string, Connection> m_connection_map;
   std::unordered_map<std::string, std::vector<std::string>> m_topic_map;
   std::unordered_map<std::string, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;

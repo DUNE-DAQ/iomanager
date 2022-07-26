@@ -8,7 +8,7 @@
  * received with this code.
  */
 
-#include "iomanager/QueueRegistry.hpp"
+#include "iomanager/queue/QueueRegistry.hpp"
 
 #include <map>
 #include <memory>
