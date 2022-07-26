@@ -7,44 +7,46 @@
 #include "logging/Logging.hpp"
 #include <boost/beast/http.hpp>
 
-using tcp = net::ip::tcp;           // from <boost/asio/ip/tcp.hpp>
-namespace http = beast::http;       // from <boost/beast/http.hpp>
+using tcp = net::ip::tcp;     // from <boost/asio/ip/tcp.hpp>
+namespace http = beast::http; // from <boost/beast/http.hpp>
 
 using namespace dunedaq::iomanager;
 
-ConfigClient::ConfigClient(const std::string& server,
-                           const std::string& port)
-  : m_stream(m_ioContext) {
-  char* part=getenv("DUNEDAQ_PARTITION");
+ConfigClient::ConfigClient(const std::string& server, const std::string& port)
+  : m_stream(m_ioContext)
+{
+  char* part = getenv("DUNEDAQ_PARTITION");
   if (part) {
-    m_partition=std::string(part);
-  }
-  else {
-    throw(EnvNotFound(ERS_HERE,"DUNEDAQ_PARTITION"));
+    m_partition = std::string(part);
+  } else {
+    throw(EnvNotFound(ERS_HERE, "DUNEDAQ_PARTITION"));
   }
 
   tcp::resolver resolver(m_ioContext);
-  m_addr=resolver.resolve(server,port);
+  m_addr = resolver.resolve(server, port);
 }
 
-ConfigClient::~ConfigClient(){
-}
+ConfigClient::~ConfigClient() {}
 
-void ConfigClient::publishApp(const std::string& name, const std::string& config,
-                           const std::string& sources) {
-  publish("&app="+name+"&conf="+config+"&sources="+sources);
+void
+ConfigClient::publishApp(const std::string& name, const std::string& config, const std::string& sources)
+{
+  publish("&app=" + name + "&conf=" + config + "&sources=" + sources);
 }
-void ConfigClient::publishConnection(const std::string& config,
-                           const std::string& sources) {
-  publish("&connection="+config+"&sources="+sources);
+void
+ConfigClient::publishConnection(const std::string& config, const std::string& sources)
+{
+  publish("&connection=" + config + "&sources=" + sources);
 }
-void ConfigClient::publish(const std::string& content) {
+void
+ConfigClient::publish(const std::string& content)
+{
 
-  std::string target="/publish";
-  http::request<http::string_body> req{http::verb::post, target, 11};
-  req.set(http::field::content_type,"application/x-www-form-urlencoded");
+  std::string target = "/publish";
+  http::request<http::string_body> req{ http::verb::post, target, 11 };
+  req.set(http::field::content_type, "application/x-www-form-urlencoded");
 
-  req.body()="partition="+m_partition+content;
+  req.body() = "partition=" + m_partition + content;
   req.prepare_payload();
   m_stream.connect(m_addr);
   http::write(m_stream, req);
@@ -53,16 +55,18 @@ void ConfigClient::publish(const std::string& content) {
   http::read(m_stream, m_buffer, response);
   beast::error_code ec;
   m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
-  if (response.result_int()!=200) {
-    throw(FailedPublish(ERS_HERE,std::string(response.reason())));
+  if (response.result_int() != 200) {
+    throw(FailedPublish(ERS_HERE, std::string(response.reason())));
   }
 }
 
-void ConfigClient::retract(const std::string& name) {
-  std::string target="/retract";
-  http::request<http::string_body> req{http::verb::post, target, 11};
-  req.set(http::field::content_type,"application/x-www-form-urlencoded");
-  req.body()="partition="+m_partition+"&app="+name;
+void
+ConfigClient::retract(const std::string& name)
+{
+  std::string target = "/retract";
+  http::request<http::string_body> req{ http::verb::post, target, 11 };
+  req.set(http::field::content_type, "application/x-www-form-urlencoded");
+  req.body() = "partition=" + m_partition + "&app=" + name;
   req.prepare_payload();
   m_stream.connect(m_addr);
   http::write(m_stream, req);
@@ -70,13 +74,15 @@ void ConfigClient::retract(const std::string& name) {
   http::read(m_stream, m_buffer, response);
   beast::error_code ec;
   m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
-  if (response.result_int()!=200) {
-    throw(FailedRetract(ERS_HERE,name,std::string(response.reason())));
+  if (response.result_int() != 200) {
+    throw(FailedRetract(ERS_HERE, name, std::string(response.reason())));
   }
 }
 
-std::string ConfigClient::get(const std::string& target) {
-  http::request<http::string_body> req{http::verb::get, target, 11};
+std::string
+ConfigClient::get(const std::string& target)
+{
+  http::request<http::string_body> req{ http::verb::get, target, 11 };
   m_stream.connect(m_addr);
   http::write(m_stream, req);
 
@@ -93,23 +99,30 @@ std::string ConfigClient::get(const std::string& target) {
   return response.body();
 }
 
-std::string ConfigClient::getAppConfig(const std::string& appName) {
-  std::string target="/getapp/"+m_partition+"/"+appName;
+std::string
+ConfigClient::getAppConfig(const std::string& appName)
+{
+  std::string target = "/getapp/" + m_partition + "/" + appName;
   return get(target);
 }
 
-
-std::string ConfigClient::getSourceApp(const std::string& source) {
-  std::string target="/getsource/"+m_partition+"/"+source;
+std::string
+ConfigClient::getSourceApp(const std::string& source)
+{
+  std::string target = "/getsource/" + m_partition + "/" + source;
   return get(target);
 }
 
-std::string ConfigClient::getSourceConnection(const std::string& source) {
-  std::string target="/getsourceconn/"+m_partition+"/"+source;
+std::string
+ConfigClient::getSourceConnection(const std::string& source)
+{
+  std::string target = "/getsourceconn/" + m_partition + "/" + source;
   return get(target);
 }
 
-std::string ConfigClient::getConnectionConfig(const std::string& connection) {
-  std::string target="/getconnection/"+m_partition+"/"+connection;
+std::string
+ConfigClient::getConnectionConfig(const std::string& connection)
+{
+  std::string target = "/getconnection/" + m_partition + "/" + connection;
   return get(target);
 }
