@@ -1,7 +1,14 @@
-#ifndef CONFIGCLIENT_HPP
-#define CONFIGCLIENT_HPP
+/**
+ * @file ConfigClient.hpp
+ *
+ * This is part of the DUNE DAQ Application Framework, copyright 2020.
+ * Licensing/copyright details are in the COPYING file that you should have
+ * received with this code.
+ */
 
-#include <string>
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
+
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/basic_resolver.hpp>
@@ -9,11 +16,12 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/version.hpp>
 
+#include <string>
+
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace net = boost::asio;    // from <boost/asio.hpp>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 class ConfigClient
 {
 public:
@@ -38,6 +46,6 @@ private:
   beast::tcp_stream m_stream;
   beast::flat_buffer m_buffer;
 };
-} // iomanager
-} // dunedaq
-#endif
+} // namespace dunedaq::iomanager
+
+#endif // IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_

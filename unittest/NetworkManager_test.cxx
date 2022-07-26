@@ -168,7 +168,7 @@ BOOST_FIXTURE_TEST_CASE(StartPublisher, NetworkManagerTestFixture)
     NetworkManager::get().start_publisher("foo"), OperationFailed, [&](OperationFailed const&) { return true; });
 }
 
-// TODO: Eric Flumerfelt <eflumerf@github.com>, 16-June-2022: Reimplement this test for IOManager
+// TODO: Eric Flumerfelt <eflumerf@github.com>, June-16-2022: Reimplement this test for IOManager
 /*
 BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerTestFixture)
 {
@@ -227,7 +227,7 @@ BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerTestFixture)
 }
 */
 
-// TODO: Eric Flumerfelt <eflumerf@github.com>, 16-June-2022: Reimplement this test for IOManager
+// TODO: Eric Flumerfelt <eflumerf@github.com>, June-16-2022: Reimplement this test for IOManager
 /*
 BOOST_FIXTURE_TEST_CASE(OneListenerThreaded, NetworkManagerTestFixture)
 {
@@ -263,7 +263,7 @@ BOOST_FIXTURE_TEST_CASE(OneListenerThreaded, NetworkManagerTestFixture)
 }
 */
 
-// TODO: Eric Flumerfelt <eflumerf@github.com>, 16-June-2022: Reimplement this test for IOManager
+// TODO: Eric Flumerfelt <eflumerf@github.com>, June-16-2022: Reimplement this test for IOManager
 /*
 BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
 {

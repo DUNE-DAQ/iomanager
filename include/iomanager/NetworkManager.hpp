@@ -29,9 +29,7 @@
 #include <utility>
 #include <vector>
 
-namespace dunedaq {
-
-namespace iomanager {
+namespace dunedaq::iomanager {
 class NetworkManager
 {
 
@@ -91,7 +89,6 @@ private:
   mutable std::mutex m_sender_plugin_map_mutex;
   mutable std::mutex m_registration_mutex;
 };
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_

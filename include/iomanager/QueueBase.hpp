@@ -29,8 +29,7 @@
 #include <string>
 #include <vector>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 /**
  * @brief The QueueBase class allows to address generic behavior of any Queue implementation
@@ -74,7 +73,6 @@ private:
   QueueBase& operator=(QueueBase&&) = default;
 };
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUEBASE_HPP_

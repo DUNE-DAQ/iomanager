@@ -23,9 +23,7 @@
 #include <typeinfo>
 #include <utility>
 
-namespace dunedaq {
-
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 // Typeless
 class Sender : public utilities::NamedObject
@@ -35,15 +33,15 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Sender(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit Sender(ConnectionId const& conn_id, ConnectionRef const& conn_ref)
     : utilities::NamedObject(conn_ref.name)
     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {}
   virtual ~Sender() = default;
 
-  ConnectionId const conn_id() const { return m_conn_id; }
-  ConnectionRef const conn_ref() const { return m_conn_ref; }
+  ConnectionId conn_id() const { return m_conn_id; }
+  ConnectionRef conn_ref() const { return m_conn_ref; }
 
 protected:
   ConnectionId m_conn_id;
@@ -55,11 +53,11 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  explicit SenderConcept(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit SenderConcept(ConnectionId const& conn_id, ConnectionRef const& conn_ref)
     : Sender(conn_id, conn_ref)
   {}
-  virtual void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
-  virtual bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;
+  virtual void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0;     // NOLINT
+  virtual bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") = 0; // NOLINT
 };
 
 // QImpl
@@ -67,7 +65,7 @@ template<typename Datatype>
 class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
-  explicit QueueSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit QueueSenderModel(ConnectionId const& conn_id, ConnectionRef const& conn_ref)
     : SenderConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
@@ -78,10 +76,10 @@ public:
 
   QueueSenderModel(QueueSenderModel&& other)
     : SenderConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
-    , m_queue(other.m_queue)
+    , m_queue(std::move(other.m_queue))
   {}
 
-  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override // NOLINT
   {
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
@@ -97,7 +95,7 @@ public:
     }
   }
 
-  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override // NOLINT
   {
     if (topic != "") {
       TLOG() << "Topics are invalid for queues! Check config!";
@@ -122,7 +120,7 @@ class NetworkSenderModel : public SenderConcept<Datatype>
 public:
   using SenderConcept<Datatype>::send;
 
-  explicit NetworkSenderModel(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit NetworkSenderModel(ConnectionId const& conn_id, ConnectionRef const& conn_ref)
     : SenderConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
@@ -132,10 +130,10 @@ public:
 
   NetworkSenderModel(NetworkSenderModel&& other)
     : SenderConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
-    , m_network_sender_ptr(other.m_network_sender_ptr)
+    , m_network_sender_ptr(std::move(other.m_network_sender_ptr))
   {}
 
-  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  void send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override // NOLINT
   {
     try {
       write_network<Datatype>(data, timeout, topic);
@@ -144,7 +142,7 @@ public:
     }
   }
 
-  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override
+  bool try_send(Datatype&& data, Sender::timeout_t timeout, Topic_t topic = "") override // NOLINT
   {
     return try_write_network<Datatype>(data, timeout, topic);
   }
@@ -168,7 +166,7 @@ private:
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
   write_network(MessageType&, Sender::timeout_t const&, std::string const&)
   {
-    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
+    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
   }
 
   template<typename MessageType>
@@ -191,7 +189,7 @@ private:
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
   try_write_network(MessageType&, Sender::timeout_t const&, std::string const&)
   {
-    ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
+    ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name())); // NOLINT(runtime/rtti)
     return false;
   }
 
@@ -199,7 +197,6 @@ private:
   std::mutex m_send_mutex;
 };
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_

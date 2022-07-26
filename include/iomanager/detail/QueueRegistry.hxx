@@ -2,6 +2,7 @@
 #include "iomanager/StdDeQueue.hpp"
 
 #include <cxxabi.h>
+#include <memory>
 
 // Declarations
 namespace dunedaq::iomanager {
@@ -18,8 +19,8 @@ QueueRegistry::get_queue(const std::string& name)
     if (!queuePtr) {
       // TODO: John Freeman (jcfree@fnal.gov), Jun-23-2020. Add checks for demangling status. Timescale 2 weeks.
       int status = -999;
-      std::string realname_target = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
-      std::string realname_source = abi::__cxa_demangle(queue_it->second.m_type->name(), 0, 0, &status);
+      std::string realname_target = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+      std::string realname_source = abi::__cxa_demangle(queue_it->second.m_type->name(), nullptr, nullptr, &status);
 
       throw QueueTypeMismatch(ERS_HERE, name, realname_source, realname_target);
     }
@@ -36,7 +37,7 @@ QueueRegistry::get_queue(const std::string& name)
   } else {
     // TODO: John Freeman (jcfree@fnal.gov), Jun-23-2020. Add checks for demangling status. Timescale 2 weeks.
     int status = -999;
-    std::string realname_target = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+    std::string realname_target = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
     throw QueueNotFound(ERS_HERE, name, realname_target);
   }
 }

@@ -57,7 +57,7 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  void configure(ConnectionIds_t connections)
+  void configure(ConnectionIds_t const& connections)
   {
     m_connections = connections;
     std::map<std::string, QueueConfig> qCfg;
@@ -158,9 +158,9 @@ public:
           auto jsconf = nlohmann::json::parse(conf);
           std::string host = jsconf["host"];
           std::string port = jsconf["port"];
-          std::cout << "Replacing conn_id.uri <" << conn_id.uri << ">";
+          TLOG() << "Replacing conn_id.uri <" << conn_id.uri << ">"
+                 << " with <tcp://" << host << ":" << port << ">";
           conn_id.uri = "tcp://" + host + ":" + port;
-          std::cout << " with <" << conn_id.uri << ">" << std::endl;
           ConnectionIds_t nwCfg;
           nwCfg.push_back(conn_id);
           NetworkManager::get().configure(nwCfg);
@@ -228,7 +228,7 @@ public:
     receiver->remove_callback();
   }
 
-  const ConnectionId ref_to_id(ConnectionRef const& ref) const
+  ConnectionId ref_to_id(ConnectionRef const& ref) const
   {
     for (auto& conn : m_connections) {
       if (conn.uid == ref.uid)
@@ -265,35 +265,35 @@ private:
 } // namespace iomanager
 
 // Helper functions
-[[maybe_unused]] static std::shared_ptr<iomanager::IOManager>
+[[maybe_unused]] static std::shared_ptr<iomanager::IOManager> // NOLINT(build/namespaces)
 get_iomanager()
 {
   return iomanager::IOManager::get();
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::SenderConcept<Datatype>>
+static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
 get_iom_sender(iomanager::ConnectionRef const& conn_ref)
 {
   return iomanager::IOManager::get()->get_sender<Datatype>(conn_ref);
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::ReceiverConcept<Datatype>>
+static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
 get_iom_receiver(iomanager::ConnectionRef const& conn_ref)
 {
   return iomanager::IOManager::get()->get_receiver<Datatype>(conn_ref);
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::SenderConcept<Datatype>>
+static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
 get_iom_sender(std::string const& conn_uid)
 {
   return iomanager::IOManager::get()->get_sender<Datatype>(conn_uid);
 }
 
 template<typename Datatype>
-static std::shared_ptr<iomanager::ReceiverConcept<Datatype>>
+static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
 get_iom_receiver(std::string const& conn_uid)
 {
   return iomanager::IOManager::get()->get_receiver<Datatype>(conn_uid);

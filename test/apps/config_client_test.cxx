@@ -1,3 +1,11 @@
+/**
+ * @file config_client_test.cxx
+ *
+ * This is part of the DUNE DAQ Application Framework, copyright 2020.
+ * Licensing/copyright details are in the COPYING file that you should have
+ * received with this code.
+ */
+
 #include "iomanager/ConfigClient.hpp"
 #include "iomanager/ConfigClientIssues.hpp"
 #include "logging/Logging.hpp"
@@ -8,6 +16,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <string>
 
 using namespace dunedaq::iomanager;
 using nlohmann::json;
@@ -43,7 +52,7 @@ main(int argc, char* argv[])
   try {
     ConfigClient dummyclient(server, port);
   } catch (EnvNotFound& ex) {
-    putenv(const_cast<char*>("DUNEDAQ_PARTITION=cctest"));
+    putenv(const_cast<char*>("DUNEDAQ_PARTITION=cctest")); // NOLINT
   }
   ConfigClient client(server, port);
 
@@ -126,4 +135,4 @@ main(int argc, char* argv[])
   }
 
   return 0;
-}
+} // NOLINT

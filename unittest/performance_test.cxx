@@ -18,6 +18,7 @@
 #include <functional>
 #include <future>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace dunedaq::iomanager;
@@ -54,10 +55,10 @@ struct ConfigurationTestFixture
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
-  ConfigurationTestFixture(ConfigurationTestFixture const&) = default;
-  ConfigurationTestFixture(ConfigurationTestFixture&&) = default;
-  ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = default;
-  ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
+  ConfigurationTestFixture(ConfigurationTestFixture const&) = delete;
+  ConfigurationTestFixture(ConfigurationTestFixture&&) = delete;
+  ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = delete;
+  ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = delete;
 
   dunedaq::iomanager::ConnectionRef conn_ref_s;
   dunedaq::iomanager::ConnectionRef conn_ref_r;

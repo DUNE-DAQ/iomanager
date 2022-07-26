@@ -46,15 +46,15 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Receiver(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit Receiver(ConnectionId const& conn_id, ConnectionRef const& conn_ref)
     : utilities::NamedObject(conn_ref.name)
     , m_conn_id(conn_id)
     , m_conn_ref(conn_ref)
   {}
   virtual ~Receiver() = default;
 
-  ConnectionId const conn_id() const { return m_conn_id; }
-  ConnectionRef const conn_ref() const { return m_conn_ref; }
+  ConnectionId conn_id() const { return m_conn_id; }
+  ConnectionRef conn_ref() const { return m_conn_ref; }
 
 protected:
   ConnectionId m_conn_id;
@@ -66,7 +66,7 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
-  explicit ReceiverConcept(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit ReceiverConcept(ConnectionId const& conn_id, ConnectionRef const& conn_ref)
     : Receiver(conn_id, conn_ref)
   {}
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
@@ -80,7 +80,7 @@ template<typename Datatype>
 class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit QueueReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref)
+  explicit QueueReceiverModel(ConnectionId const& conn_id, ConnectionRef const& conn_ref)
     : ReceiverConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
@@ -96,7 +96,7 @@ public:
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
-    , m_queue(other.m_queue)
+    , m_queue(std::move(other.m_queue))
   {}
 
   ~QueueReceiverModel() { remove_callback(); }
@@ -149,7 +149,7 @@ public:
     m_callback = callback;
     m_with_callback = true;
     // start event loop (thread that calls when receive happens)
-    m_event_loop_runner.reset(new std::thread([&]() {
+    m_event_loop_runner = std::make_unique<std::thread>([&]() {
       Datatype dt;
       bool ret = true;
       while (m_with_callback.load() || ret) {
@@ -159,7 +159,7 @@ public:
           m_callback(dt);
         }
       }
-    }));
+    });
   }
 
   void remove_callback() override
@@ -186,7 +186,7 @@ template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit NetworkReceiverModel(ConnectionId conn_id, ConnectionRef conn_ref, bool ref_to_topic = false)
+  explicit NetworkReceiverModel(ConnectionId const& conn_id, ConnectionRef const& conn_ref, bool ref_to_topic = false)
     : ReceiverConcept<Datatype>(conn_id, conn_ref)
   {
     TLOG() << "NetworkReceiverModel created with DT! ID: " << (ref_to_topic ? conn_ref.uid : conn_id.uid)
@@ -219,8 +219,8 @@ public:
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
-    , m_network_receiver_ptr(other.m_network_receiver_ptr)
-    , m_network_subscriber_ptr(other.m_network_subscriber_ptr)
+    , m_network_receiver_ptr(std::move(other.m_network_receiver_ptr))
+    , m_network_subscriber_ptr(std::move(other.m_network_subscriber_ptr))
   {}
 
   Datatype receive(Receiver::timeout_t timeout) override
@@ -236,7 +236,7 @@ public:
   {
     return try_read_network<Datatype>(timeout);
   }
-  void add_callback(std::function<void(Datatype&)> callback) { add_callback_impl<Datatype>(callback); }
+  void add_callback(std::function<void(Datatype&)> callback) override { add_callback_impl<Datatype>(callback); }
 
   void remove_callback() override
   {
@@ -279,7 +279,7 @@ private:
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const&)
   {
-    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
+    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
     return MessageType();
   }
 
@@ -309,7 +309,7 @@ private:
                           std::optional<MessageType>>::type
   try_read_network(Receiver::timeout_t const&)
   {
-    ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()));
+    ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name())); // NOLINT(runtime/rtti)
     return std::nullopt;
   }
 
@@ -325,7 +325,7 @@ private:
     m_callback = callback;
     m_with_callback = true;
     // start event loop (thread that calls when receive happens)
-    m_event_loop_runner.reset(new std::thread([&]() {
+    m_event_loop_runner = std::make_unique<std::thread>([&]() {
       std::optional<Datatype> message;
       while (m_with_callback.load() || message) {
         try {
@@ -337,14 +337,14 @@ private:
           ;
         }
       }
-    }));
+    });
   }
 
   template<typename MessageType>
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
     std::function<void(MessageType&)>)
   {
-    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name());
+    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
   }
 
   std::atomic<bool> m_with_callback{ false };

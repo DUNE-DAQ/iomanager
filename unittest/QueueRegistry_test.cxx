@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE(Configure)
   QueueRegistry::get().configure(test_map);
 
   BOOST_REQUIRE_EXCEPTION(
-    QueueRegistry::get().configure(test_map), QueueRegistryConfigured, [&](QueueRegistryConfigured) { return true; });
+    QueueRegistry::get().configure(test_map), QueueRegistryConfigured, [&](QueueRegistryConfigured const&) { return true; });
 }
 
 BOOST_AUTO_TEST_CASE(StoQK)
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(StoQK)
   BOOST_REQUIRE_EQUAL(QueueConfig::stoqk("StdDeQueue"), QueueConfig::kStdDeQueue);
   BOOST_REQUIRE_EQUAL(QueueConfig::stoqk("FollySPSCQueue"), QueueConfig::kFollySPSCQueue);
   BOOST_REQUIRE_EQUAL(QueueConfig::stoqk("FollyMPMCQueue"), QueueConfig::kFollyMPMCQueue);
-  BOOST_REQUIRE_EXCEPTION(QueueConfig::stoqk("blahblahblah"), QueueKindUnknown, [&](QueueKindUnknown) { return true; });
+  BOOST_REQUIRE_EXCEPTION(QueueConfig::stoqk("blahblahblah"), QueueKindUnknown, [&](QueueKindUnknown const&) { return true; });
 }
 
 BOOST_AUTO_TEST_CASE(GatherStats)
@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(CreateQueue)
   BOOST_REQUIRE(queue_ptr_fmpmc != nullptr);
   BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().get_queue<int>("test_queue_unknown"),
                           QueueKindUnknown,
-                          [&](QueueKindUnknown) { return true; });
+                          [&](QueueKindUnknown const&) { return true; });
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -23,7 +23,7 @@ daq_add_library(QueueRegistry.cpp IOManager.cpp NetworkManager.cpp ConfigClient.
 daq_add_application(iomanager_test_io_manager test_io_manager_app.cxx TEST LINK_LIBRARIES iomanager)
 daq_add_application( queue_IO_check queue_IO_check.cxx TEST LINK_LIBRARIES iomanager )
 
-daq_add_application(configclient_test_app ccTest.cpp TEST LINK_LIBRARIES iomanager pthread)
+daq_add_application(config_client_test config_client_test.cxx TEST LINK_LIBRARIES iomanager pthread)
 
 daq_add_unit_test(IOManager_test LINK_LIBRARIES iomanager)
 daq_add_unit_test(performance_test LINK_LIBRARIES iomanager)

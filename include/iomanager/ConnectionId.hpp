@@ -14,8 +14,7 @@
 #include <sstream>
 #include <string>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 namespace connection {
 inline bool
 operator<(const ConnectionId& l, const ConnectionId& r)
@@ -38,7 +37,6 @@ operator<(const ConnectionRef& l, const ConnectionRef& r)
 // We are doing this here because we really, really want these structs to be in the iomanager namespace!
 using namespace connection; // NOLINT
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_CONNECTIONID_HPP_
