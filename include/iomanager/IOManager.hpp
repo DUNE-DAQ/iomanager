@@ -9,20 +9,20 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 
+#include "iomanager/ConfigClient.hpp"
 #include "iomanager/ConnectionId.hpp"
 #include "iomanager/NetworkManager.hpp"
 #include "iomanager/QueueRegistry.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
-#include "iomanager/ConfigClient.hpp"
 
 #include "nlohmann/json.hpp"
 
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <regex>
 #include <string>
-#include <cstdlib>
 
 namespace dunedaq {
 // Disable coverage collection LCOV_EXCL_START
@@ -59,7 +59,6 @@ public:
 
   void configure(ConnectionIds_t connections)
   {
-    std::cout << "configure(connections) called\n";
     m_connections = connections;
     std::map<std::string, QueueConfig> qCfg;
     ConnectionIds_t nwCfg;
@@ -76,19 +75,20 @@ public:
         // here if connection is a host or a source name. If
         // it's a source, don't add it to the nwmgr config yet
         // Update connection.uri ahen we want to connect
-        if (connection.uri.substr(0,4) == "src:") {
+        if (connection.uri.substr(0, 4) == "src:") {
           continue;
         }
 
         if (connection.service_type == ServiceType::kNetSender ||
-                 connection.service_type == ServiceType::kNetReceiver) {
+            connection.service_type == ServiceType::kNetReceiver) {
 
-        nwCfg.push_back(connection);
-      } else if (connection.service_type == ServiceType::kPublisher ||
-                 connection.service_type == ServiceType::kSubscriber) {
-        nwCfg.push_back(connection);
-      } else {
-        // throw ers issue?
+          nwCfg.push_back(connection);
+        } else if (connection.service_type == ServiceType::kPublisher ||
+                   connection.service_type == ServiceType::kSubscriber) {
+          nwCfg.push_back(connection);
+        } else {
+          // throw ers issue?
+        }
       }
     }
 
@@ -134,46 +134,40 @@ public:
       } else if (conn_id.service_type == ServiceType::kNetSender || conn_id.service_type == ServiceType::kPublisher) {
         TLOG() << "Creating NetworkSenderModel for service_name " << conn_id.uid;
 
-
         // Check here if connection is a host or a source name. If
         // it's a source. look up the host in the config server and
         // update conn_id.uri
-        if (conn_id.uri.substr(0,4) == "src:") {
-          std::string connectionServer="configdict.connections";
-          char* env=getenv("CONNECTION_SERVER");
+        if (conn_id.uri.substr(0, 4) == "src:") {
+          std::string connectionServer = "configdict.connections";
+          char* env = getenv("CONNECTION_SERVER");
           if (env) {
-            connectionServer=std::string(env);
+            connectionServer = std::string(env);
           }
-          std::string connectionPort="5000";
-          env=getenv("CONNECTION_PORT");
+          std::string connectionPort = "5000";
+          env = getenv("CONNECTION_PORT");
           if (env) {
-            connectionPort=std::string(env);
+            connectionPort = std::string(env);
           }
-          configclient::ConfigClient cc(connectionServer, connectionPort);
-          int gstart=4;
-          if (conn_id.uri.substr(gstart,2) == "//") {
-            gstart+=2;
+          ConfigClient cc(connectionServer, connectionPort);
+          int gstart = 4;
+          if (conn_id.uri.substr(gstart, 2) == "//") {
+            gstart += 2;
           }
-          std::string app=cc.getSourceApp(conn_id.uri.substr(gstart));
-          std::string conf=cc.getAppConfig(app);
-          auto jsconf=nlohmann::json::parse(conf);
-          std::string host=jsconf["host"];
-          std::string port=jsconf["port"];
+          std::string app = cc.getSourceApp(conn_id.uri.substr(gstart));
+          std::string conf = cc.getAppConfig(app);
+          auto jsconf = nlohmann::json::parse(conf);
+          std::string host = jsconf["host"];
+          std::string port = jsconf["port"];
           std::cout << "Replacing conn_id.uri <" << conn_id.uri << ">";
-          conn_id.uri="tcp://"+host+":"+port;
+          conn_id.uri = "tcp://" + host + ":" + port;
           std::cout << " with <" << conn_id.uri << ">" << std::endl;
-          dunedaq::networkmanager::nwmgr::Connections nwCfg;
-          dunedaq::networkmanager::nwmgr::Connection this_conn;
-          this_conn.name = conn_id.uid;
-          this_conn.address = conn_id.uri;
-          nwCfg.push_back(this_conn);
-          networkmanager::NetworkManager::get().configure(nwCfg);
+          ConnectionIds_t nwCfg;
+          nwCfg.push_back(conn_id);
+          NetworkManager::get().configure(nwCfg);
         }
 
-
         m_senders[conn_ref] =
-          std::make_shared<NetworkSenderModel<Datatype>>(
-            NetworkSenderModel<Datatype>(conn_id, conn_ref));
+          std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(conn_id, conn_ref));
       } else {
         throw ConnectionDirectionMismatch(ERS_HERE, conn_ref.name, "output", connection::str(conn_id.service_type));
       }
