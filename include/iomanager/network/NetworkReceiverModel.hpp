@@ -35,26 +35,18 @@ template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit NetworkReceiverModel(Endpoint const& endpoint, ConnectionType type_hint)
+  explicit NetworkReceiverModel(Endpoint const& endpoint)
     : ReceiverConcept<Datatype>(endpoint)
   {
     TLOG() << "NetworkReceiverModel created with DT! ID: " << to_string(endpoint)
            << " Addr: " << static_cast<void*>(this);
     // get network resources
-    if (type_hint == ConnectionType::kSendRecv) {
 
       try {
         m_network_receiver_ptr = NetworkManager::get().get_receiver(endpoint);
       } catch (ConnectionNotFound& ex) {
         throw ConnectionInstanceNotFound(ERS_HERE, to_string(endpoint), ex);
       }
-    } else {
-      try {
-          m_network_subscriber_ptr = NetworkManager::get().get_subscriber(endpoint);
-      } catch (ConnectionNotFound& ex) {
-        throw ConnectionInstanceNotFound(ERS_HERE, to_string(endpoint), ex);
-      }
-    }
   }
   ~NetworkReceiverModel() { remove_callback(); }
 
@@ -64,7 +56,6 @@ public:
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
     , m_network_receiver_ptr(std::move(other.m_network_receiver_ptr))
-    , m_network_subscriber_ptr(std::move(other.m_network_subscriber_ptr))
   {}
 
   Datatype receive(Receiver::timeout_t timeout) override
@@ -102,12 +93,6 @@ private:
   {
     std::lock_guard<std::mutex> lk(m_receive_mutex);
 
-    if (m_network_subscriber_ptr != nullptr) {
-      auto response = m_network_subscriber_ptr->receive(timeout);
-      if (response.data.size() > 0) {
-        return dunedaq::serialization::deserialize<MessageType>(response.data);
-      }
-    }
     if (m_network_receiver_ptr != nullptr) {
       auto response = m_network_receiver_ptr->receive(timeout);
       if (response.data.size() > 0) {
@@ -134,9 +119,6 @@ private:
     ipm::Receiver::Response res;
     std::lock_guard<std::mutex> lk(m_receive_mutex);
 
-    if (m_network_subscriber_ptr != nullptr) {
-      res = m_network_subscriber_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
-    }
     if (m_network_receiver_ptr != nullptr) {
       res = m_network_receiver_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
     }
@@ -195,7 +177,6 @@ private:
   std::function<void(Datatype&)> m_callback;
   std::unique_ptr<std::thread> m_event_loop_runner;
   std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
-  std::shared_ptr<ipm::Subscriber> m_network_subscriber_ptr{ nullptr };
   std::mutex m_callback_mutex;
   std::mutex m_receive_mutex;
 };

@@ -12,6 +12,7 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
 
 #include "iomanager/queue/Queue.hpp"
+#include "iomanager/SchemaUtils.hpp"
 
 #include "ers/Issue.hpp"
 #include "opmonlib/InfoCollector.hpp"
@@ -61,6 +62,8 @@ public:
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
+
+  bool has_queue(Endpoint const& endpoint);
 
 private:
   struct QueueEntry

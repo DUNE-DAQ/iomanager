@@ -18,7 +18,7 @@ set(IOMANAGER_DEPENDENCIES serialization::serialization Folly::folly utilities::
 daq_codegen(connection.jsonnet TEMPLATES Structs.hpp.j2 Nljs.hpp.j2)
 daq_codegen(connectioninfo.jsonnet queueinfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.hpp.j2 opmonlib/InfoNljs.hpp.j2 )
 
-daq_add_library(IOManager.cpp  LINK_LIBRARIES ${IOMANAGER_DEPENDENCIES}) # queue/QueueRegistry.cpp  network/NetworkManager.cpp network/ConfigClient.cpp
+daq_add_library(IOManager.cpp queue/QueueRegistry.cpp network/NetworkManager.cpp network/ConfigClient.cpp LINK_LIBRARIES ${IOMANAGER_DEPENDENCIES})
 
 #daq_add_application(iomanager_test_io_manager test_io_manager_app.cxx TEST LINK_LIBRARIES iomanager)
 #daq_add_application( queue_IO_check queue_IO_check.cxx TEST LINK_LIBRARIES iomanager )

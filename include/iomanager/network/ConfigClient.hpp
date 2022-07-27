@@ -9,6 +9,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
 
+#include "iomanager/SchemaUtils.hpp"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/basic_resolver.hpp>
@@ -27,6 +28,8 @@ class ConfigClient
 public:
   ConfigClient(const std::string& server, const std::string& port);
   ~ConfigClient();
+
+  std::vector<Connection> resolveEndpoint(Endpoint const& endpoint);
 
   void publishApp(const std::string& name, const std::string& config, const std::string& sources = "");
   void publishConnection(const std::string& config, const std::string& sources = "");

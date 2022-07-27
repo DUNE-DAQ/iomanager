@@ -27,13 +27,6 @@
 #include <string>
 
 namespace dunedaq {
-// Disable coverage collection LCOV_EXCL_START
-ERS_DECLARE_ISSUE(iomanager,
-                  ConnectionDirectionMismatch,
-                  "Connection reference with name " << name << " specified direction " << direction
-                                                    << ", but tried to obtain a " << handle_type,
-                  ((std::string)name)((std::string)direction)((std::string)handle_type))
-// Re-enable coverage collection LCOV_EXCL_STOP
 
 namespace iomanager {
 
@@ -99,8 +92,7 @@ public:
   }
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(Endpoint const& endpoint,
-                                                      ConnectionType const& type_hint = ConnectionType::kSendRecv)
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(Endpoint const& endpoint)
   {
     if (endpoint.direction == Direction::kInput) {
       throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), "input", "sender");
@@ -110,21 +102,20 @@ public:
     std::lock_guard<std::mutex> lk(dt_sender_mutex);
 
     if (!m_senders.count(endpoint)) {
-      if (type_hint == ConnectionType::kQueue) { // if queue
+      if (QueueRegistry::get().has_queue(endpoint)) { // if queue
         TLOG() << "Creating QueueSenderModel for endpoint " << to_string(endpoint);
         m_senders[endpoint] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(endpoint));
       } else {
         TLOG() << "Creating NetworkSenderModel for endpoint " << to_string(endpoint);
         m_senders[endpoint] =
-          std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(endpoint, type_hint));
+          std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(endpoint));
       }
     }
     return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[endpoint]);
   }
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(Endpoint const& endpoint,
-                                                          ConnectionType const& type_hint = ConnectionType::kSendRecv)
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(Endpoint const& endpoint)
   {
     if (endpoint.direction == Direction::kOutput) {
       throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), "output", "receiver");
@@ -134,13 +125,13 @@ public:
     std::lock_guard<std::mutex> lk(dt_receiver_mutex);
 
     if (!m_receivers.count(endpoint)) {
-      if (type_hint == ConnectionType::kQueue) { // if queue
+      if (QueueRegistry::get().has_queue(endpoint)) { // if queue
         TLOG() << "Creating QueueReceiverModel for endpoint " << to_string(endpoint);
         m_receivers[endpoint] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(endpoint));
       } else {
         TLOG() << "Creating NetworkReceiverModel for endpoint " << to_string(endpoint);
         m_receivers[endpoint] =
-          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(endpoint, type_hint));
+          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(endpoint));
       }
     }
     return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[endpoint]); // NOLINT

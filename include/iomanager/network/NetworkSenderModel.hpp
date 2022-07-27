@@ -31,14 +31,14 @@ class NetworkSenderModel : public SenderConcept<Datatype>
 public:
   using SenderConcept<Datatype>::send;
 
-  explicit NetworkSenderModel(Endpoint const& this_endpoint, ConnectionType const& type_hint)
+  explicit NetworkSenderModel(Endpoint const& this_endpoint)
     : SenderConcept<Datatype>(this_endpoint)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
-    m_network_sender_ptr = NetworkManager::get().get_sender(this_endpoint, type_hint);
+    m_network_sender_ptr = NetworkManager::get().get_sender(this_endpoint);
 
-    if (type_hint == ConnectionType::kPubSub) {
+    if (NetworkManager::get().is_pubsub_connection(this_endpoint)) {
       m_topic = this_endpoint.data_type;
     }
   }

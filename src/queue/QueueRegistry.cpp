@@ -28,13 +28,13 @@ QueueRegistry::get()
 }
 
 void
-QueueRegistry::configure(const std::map<std::string, QueueConfig>& config_map)
+QueueRegistry::configure(const std::vector<QueueConfig>& configs)
 {
   if (m_configured) {
     throw QueueRegistryConfigured(ERS_HERE);
   }
 
-  m_queue_config_map = config_map;
+  m_queue_configs = configs;
   m_configured = true;
 }
 
@@ -49,19 +49,6 @@ QueueRegistry::gather_stats(opmonlib::InfoCollector& ic, int level)
       ic.add(name, tmp_ci);
     }
   }
-}
-
-QueueConfig::queue_kind
-QueueConfig::stoqk(const std::string& name)
-{
-  if (name == "StdDeQueue" || name == "std_deque" || name == "StdDeque")
-    return queue_kind::kStdDeQueue;
-  else if (name.find("SPSC") != std::string::npos)
-    return queue_kind::kFollySPSCQueue;
-  else if (name.find("MPMC") != std::string::npos)
-    return queue_kind::kFollyMPMCQueue;
-  else
-    throw QueueKindUnknown(ERS_HERE, name);
 }
 
 } // namespace dunedaq::iomanager

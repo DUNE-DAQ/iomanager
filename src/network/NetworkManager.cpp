@@ -7,6 +7,7 @@
  */
 
 #include "iomanager/network/NetworkManager.hpp"
+#include "iomanager/SchemaUtils.hpp"
 
 #include "iomanager/connectioninfo/InfoNljs.hpp"
 
@@ -31,43 +32,6 @@ NetworkManager::get()
   return *s_instance;
 }
 
-std::string
-NetworkManager::GetUriForConnection()
-{
-
-  // Check here if connection is a host or a source name. If
-  // it's a source. look up the host in the config server and
-  // update conn_id.uri
-  if (conn_id.uri.substr(0, 4) == "src:") {
-    std::string connectionServer = "configdict.connections";
-    char* env = getenv("CONNECTION_SERVER");
-    if (env) {
-      connectionServer = std::string(env);
-    }
-    std::string connectionPort = "5000";
-    env = getenv("CONNECTION_PORT");
-    if (env) {
-      connectionPort = std::string(env);
-    }
-    ConfigClient cc(connectionServer, connectionPort);
-    int gstart = 4;
-    if (conn_id.uri.substr(gstart, 2) == "//") {
-      gstart += 2;
-    }
-    std::string app = cc.getSourceApp(conn_id.uri.substr(gstart));
-    std::string conf = cc.getAppConfig(app);
-    auto jsconf = nlohmann::json::parse(conf);
-    std::string host = jsconf["host"];
-    std::string port = jsconf["port"];
-    TLOG() << "Replacing conn_id.uri <" << conn_id.uri << ">"
-           << " with <tcp://" << host << ":" << port << ">";
-    conn_id.uri = "tcp://" + host + ":" + port;
-    Connections_t nwCfg;
-    nwCfg.push_back(conn_id);
-    NetworkManager::get().configure(nwCfg);
-  }
-}
-
 void
 NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 {
@@ -75,44 +39,47 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
   for (auto& sender : m_sender_plugins) {
     opmonlib::InfoCollector tmp_ic;
     sender.second->get_info(tmp_ic, level);
-    ci.add(sender.first, tmp_ic);
+    ci.add(to_string(sender.first), tmp_ic);
   }
 
   for (auto& receiver : m_receiver_plugins) {
     opmonlib::InfoCollector tmp_ic;
     receiver.second->get_info(tmp_ic, level);
-    ci.add(receiver.first, tmp_ic);
+    ci.add(to_string(receiver.first), tmp_ic);
   }
 }
 
 void
-NetworkManager::configure(const Endpoints_t& endpoints, const Connections_t& connections)
+NetworkManager::configure(const Connections_t& connections)
 {
-  if (!m_connection_map.empty()) {
+  if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
   }
 
   for (auto& connection : connections) {
-    TLOG_DEBUG(15) << "Adding connection " << connection.uid << " to connection map";
-    if (m_connection_map.count(connection.uid) || m_topic_map.count(connection.uid)) {
-      TLOG_DEBUG(15) << "Name collision for connection UID " << connection.uid
-                     << " connection_map.count: " << m_connection_map.count(connection.uid)
-                     << ", topic_map.count: " << m_topic_map.count(connection.uid);
+    auto name = connection_name(connection);
+    TLOG_DEBUG(15) << "Adding connection " << name << " to connection map";
+    if (m_preconfigured_connections.count(name)) {
+      TLOG_DEBUG(15) << "Name collision for connection " << name
+                     << " connection_map.count: " << m_preconfigured_connections.count(name);
       reset();
-      throw NameCollision(ERS_HERE, connection.uid);
+      throw NameCollision(ERS_HERE, connection.uri);
     }
-    m_connection_map[connection.uid] = connection;
-    if (!connection.topics.empty()) {
-      for (auto& topic : connection.topics) {
-        TLOG_DEBUG(15) << "Adding topic " << topic << " for connection name " << connection.uid << " to topics map";
-        if (m_connection_map.count(topic)) {
-          reset();
-          TLOG_DEBUG(15) << "Name collision with existing connection for topic " << topic << " on connection "
-                         << connection.uid;
-          throw NameCollision(ERS_HERE, topic);
-        }
-        m_topic_map[topic].push_back(connection.uid);
+    m_preconfigured_connections[name] = connection;
+
+    if (m_config_client == nullptr) {
+
+      std::string connectionServer = "configdict.connections";
+      char* env = getenv("CONNECTION_SERVER");
+      if (env) {
+        connectionServer = std::string(env);
       }
+      std::string connectionPort = "5000";
+      env = getenv("CONNECTION_PORT");
+      if (env) {
+        connectionPort = std::string(env);
+      }
+      m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort);
     }
   }
 }
@@ -120,7 +87,6 @@ NetworkManager::configure(const Endpoints_t& endpoints, const Connections_t& con
 void
 NetworkManager::reset()
 {
-  std::lock_guard<std::mutex> lk(m_registration_mutex);
   {
     std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
     m_sender_plugins.clear();
@@ -129,259 +95,161 @@ NetworkManager::reset()
     std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
     m_receiver_plugins.clear();
   }
-  m_topic_map.clear();
-  m_connection_map.clear();
-  m_connection_mutexes.clear();
-}
-
-void
-NetworkManager::start_publisher(std::string const& connection_name)
-{
-  TLOG_DEBUG(10) << "Getting connection lock for connection " << connection_name;
-  auto send_mutex = get_connection_lock(connection_name);
-
-  if (!m_connection_map.count(connection_name)) {
-    throw ConnectionNotFound(ERS_HERE, connection_name);
-  }
-  if (m_connection_map[connection_name].topics.empty()) {
-    throw OperationFailed(ERS_HERE, "Connection is not pub/sub type, cannot start sender early");
-  }
-
-  if (!is_connection_open(connection_name, Direction::kOutput)) {
-    create_sender(connection_name);
-  }
-}
-
-std::string
-NetworkManager::get_connection_string(std::string const& connection_name) const
-{
-  if (!m_connection_map.count(connection_name)) {
-    throw ConnectionNotFound(ERS_HERE, connection_name);
-  }
-
-  return m_connection_map.at(connection_name).uri;
-}
-
-std::vector<std::string>
-NetworkManager::get_connection_strings(std::string const& topic) const
-{
-  if (!m_topic_map.count(topic)) {
-    throw TopicNotFound(ERS_HERE, topic);
-  }
-
-  std::vector<std::string> output;
-  for (auto& connection : m_topic_map.at(topic)) {
-    output.push_back(m_connection_map.at(connection).uri);
-  }
-
-  return output;
-}
-
-bool
-NetworkManager::is_topic(std::string const& topic) const
-{
-  if (m_connection_map.count(topic)) {
-    return false;
-  }
-  if (!m_topic_map.count(topic)) {
-    return false;
-  }
-
-  return true;
-}
-
-bool
-NetworkManager::is_connection(std::string const& connection_name) const
-{
-  if (m_topic_map.count(connection_name)) {
-    return false;
-  }
-  if (!m_connection_map.count(connection_name)) {
-    return false;
-  }
-
-  return true;
-}
-
-bool
-NetworkManager::is_pubsub_connection(std::string const& connection_name) const
-{
-  if (is_connection(connection_name)) {
-    return !m_connection_map.at(connection_name).topics.empty();
-  }
-
-  return false;
-}
-
-bool
-NetworkManager::is_connection_open(std::string const& connection_name, Direction direction) const
-{
-  switch (direction) {
-    case Direction::kInput: {
-      std::lock_guard<std::mutex> recv_lk(m_receiver_plugin_map_mutex);
-      return m_receiver_plugins.count(connection_name);
-    }
-    case Direction::kOutput: {
-      std::lock_guard<std::mutex> send_lk(m_sender_plugin_map_mutex);
-      return m_sender_plugins.count(connection_name);
-    }
-    case Direction::kUnspecified: {
-      TLOG_DEBUG(8) << "Connection direction must be specified in is_connection_open!";
-    }
-  }
-
-  return false;
+  m_preconfigured_connections.clear();
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::get_receiver(std::string const& connection_or_topic)
+NetworkManager::get_receiver(Endpoint const& endpoint)
 {
-  TLOG_DEBUG(9) << "Getting receiver for connection or topic " << connection_or_topic;
-  if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
+  TLOG_DEBUG(9) << "Getting receiver for endpoint " << to_string(endpoint);
 
-    TLOG_DEBUG(9) << "Connection not found: " << connection_or_topic << "!";
-    throw ConnectionNotFound(ERS_HERE, connection_or_topic);
+  if (endpoint.direction != Direction::kInput) {
+    TLOG_DEBUG(9) << "Endpoint " << to_string(endpoint) << " is not an input!";
+    throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), str(endpoint.direction), "receiver");
   }
 
-  if (!is_connection_open(connection_or_topic, Direction::kInput)) {
-    TLOG_DEBUG(9) << "Creating receiver for connection or topic " << connection_or_topic;
-    create_receiver(connection_or_topic);
+  std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+  if (!m_receiver_plugins.count(endpoint) && m_receiver_plugins.at(endpoint) != nullptr) {
+    auto connections = get_preconfigured_connections(endpoint);
+    if (connections.size() == 0) {
+      connections = m_config_client->resolveEndpoint(endpoint);
+    }
+
+    if (connections.size() == 0) {
+      throw ConnectionNotFound(ERS_HERE, to_string(endpoint));
+    }
+
+    TLOG_DEBUG(9) << "Creating receiver for endpoint " << to_string(endpoint);
+    auto receiver = create_receiver(connections);
+
+    m_receiver_plugins[endpoint] = receiver;
   }
 
-  std::shared_ptr<ipm::Receiver> receiver_ptr;
-  {
-    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
-    receiver_ptr = m_receiver_plugins[connection_or_topic];
-  }
-
-  return receiver_ptr;
+  return m_receiver_plugins[endpoint];
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::get_sender(std::string const& connection_name)
+NetworkManager::get_sender(Endpoint const& endpoint)
 {
-  TLOG_DEBUG(10) << "Checking connection map for " << connection_name;
-  if (!m_connection_map.count(connection_name)) {
-    TLOG_DEBUG(10) << "Connection not found: " << connection_name << "!";
-    throw ConnectionNotFound(ERS_HERE, connection_name);
+  TLOG_DEBUG(10) << "Getting sender for endpoint " << to_string(endpoint);
+
+  if (endpoint.direction != Direction::kOutput) {
+    TLOG_DEBUG(10) << "Endpoint " << to_string(endpoint) << " is not an output!";
+    throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), str(endpoint.direction), "sender");
   }
 
-  TLOG_DEBUG(10) << "Checking sender plugins";
-  if (!is_connection_open(connection_name, Direction::kOutput)) {
-    create_sender(connection_name);
-  }
+  std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
 
-  TLOG_DEBUG(10) << "Sending message";
-  std::shared_ptr<ipm::Sender> sender_ptr;
-  {
-    std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
-    sender_ptr = m_sender_plugins[connection_name];
-  }
+  if (!m_sender_plugins.count(endpoint) && m_sender_plugins.at(endpoint) != nullptr) {
 
-  return sender_ptr;
+    auto preconfigured_conns = get_preconfigured_connections(endpoint);
+    Connection this_conn;
+    if (preconfigured_conns.size() > 0) {
+      if (preconfigured_conns.size() > 1) {
+        throw NameCollision(ERS_HERE, to_string(endpoint));
+      }
+      this_conn = preconfigured_conns[0];
+    } else {
+      auto resolved_conns = m_config_client->resolveEndpoint(endpoint);
+      if (resolved_conns.size() == 0) {
+        throw ConnectionNotFound(ERS_HERE, to_string(endpoint));
+      }
+      if (resolved_conns.size() > 1) {
+        throw NameCollision(ERS_HERE, to_string(endpoint));
+      }
+      this_conn = resolved_conns[0];
+    }
+
+    TLOG_DEBUG(10) << "Creating sender for endpoint " << to_string(endpoint);
+    auto sender = create_sender(this_conn);
+    m_sender_plugins[endpoint] = sender;
+  }
+  return m_sender_plugins[endpoint];
 }
 
-std::shared_ptr<ipm::Subscriber>
-NetworkManager::get_subscriber(std::string const& topic)
+std::string
+NetworkManager::GetUriForConnection(Connection conn)
 {
-  TLOG_DEBUG(9) << "START";
 
-  if (!m_topic_map.count(topic)) {
-    throw ConnectionNotFound(ERS_HERE, topic);
+  // Check here if connection is a host or a source name. If
+  // it's a source. look up the host in the config server and
+  // update conn.uri
+  if (conn.uri.substr(0, 4) == "src:") {
+    int gstart = 4;
+    if (conn.uri.substr(gstart, 2) == "//") {
+      gstart += 2;
+    }
+    std::string app = m_config_client->getSourceApp(conn.uri.substr(gstart));
+    std::string conf = m_config_client->getAppConfig(app);
+    auto jsconf = nlohmann::json::parse(conf);
+    std::string host = jsconf["host"];
+    std::string port = jsconf["port"];
+    TLOG() << "Replacing conn.uri <" << conn.uri << ">"
+           << " with <tcp://" << host << ":" << port << ">";
+    conn.uri = "tcp://" + host + ":" + port;
   }
 
-  if (!is_connection_open(topic, Direction::kInput)) {
-    TLOG_DEBUG(9) << "Creating receiver for topic " << topic;
-    create_receiver(topic);
-  }
-
-  std::shared_ptr<ipm::Subscriber> subscriber_ptr;
-  {
-    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
-    subscriber_ptr = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[topic]);
-  }
-  return subscriber_ptr;
+  return conn.uri;
 }
 
-void
-NetworkManager::create_receiver(std::string const& connection_or_topic)
+std::shared_ptr<ipm::Receiver>
+NetworkManager::create_receiver(std::vector<Connection> connections)
 {
   TLOG_DEBUG(12) << "START";
-  std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
-  if (m_receiver_plugins.count(connection_or_topic))
-    return;
-
-  auto plugin_type = ipm::get_recommended_plugin_name(
-    is_topic(connection_or_topic) || is_pubsub_connection(connection_or_topic) ? ipm::IpmPluginType::Subscriber
-                                                                               : ipm::IpmPluginType::Receiver);
-
-  TLOG_DEBUG(12) << "Creating plugin for connection or topic " << connection_or_topic << " of type " << plugin_type;
-  m_receiver_plugins[connection_or_topic] = dunedaq::ipm::make_ipm_receiver(plugin_type);
-  try {
-    nlohmann::json config_json;
-    if (is_topic(connection_or_topic)) {
-      config_json["connection_strings"] = get_connection_strings(connection_or_topic);
-    } else {
-      config_json["connection_string"] = get_connection_string(connection_or_topic);
-    }
-    m_receiver_plugins[connection_or_topic]->connect_for_receives(config_json);
-
-    if (is_topic(connection_or_topic)) {
-      TLOG_DEBUG(12) << "Subscribing to topic " << connection_or_topic << " after connect_for_receives";
-      auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[connection_or_topic]);
-      subscriber->subscribe(connection_or_topic);
-    }
-
-    if (is_pubsub_connection(connection_or_topic)) {
-      TLOG_DEBUG(12) << "Subscribing to topics on " << connection_or_topic << " after connect_for_receives";
-      auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[connection_or_topic]);
-      for (auto& topic : m_connection_map[connection_or_topic].topics) {
-        subscriber->subscribe(topic);
-      }
-    }
-
-  } catch (ers::Issue const&) {
-    m_receiver_plugins.erase(connection_or_topic);
-    throw;
+  if (connections.size() == 0) {
+    return nullptr;
   }
+
+  if (connections.size() > 1) {
+    if (connections[0].connection_type != ConnectionType::kPubSub) {
+      throw OperationFailed(ERS_HERE,
+                            "Trying to configure a kSendRecv receiver with multiple Connections is not allowed!");
+    }
+  }
+
+  auto plugin_type = ipm::get_recommended_plugin_name(connections.size() > 1 ? ipm::IpmPluginType::Subscriber
+                                                                             : ipm::IpmPluginType::Receiver);
+
+  TLOG_DEBUG(12) << "Creating plugin for connection(s) " << connection_name(connections[0]) << " of type "
+                 << plugin_type;
+  auto plugin = dunedaq::ipm::make_ipm_receiver(plugin_type);
+
+  nlohmann::json config_json;
+  if (connections.size() > 1) {
+    std::vector<std::string> connection_strings;
+    for (auto& conn : connections) {
+      connection_strings.push_back(conn.uri);
+    }
+    config_json["connection_strings"] = connection_strings;
+  } else {
+    config_json["connection_string"] = connections[0].uri;
+  }
+  plugin->connect_for_receives(config_json);
+
+  if (connections[0].connection_type == ConnectionType::kPubSub) {
+    TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].bind_endpoint.data_type
+                   << " after connect_for_receives";
+    auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(plugin);
+    subscriber->subscribe(connections[0].bind_endpoint.data_type);
+  }
+
   TLOG_DEBUG(12) << "END";
+  return plugin;
 }
 
-void
-NetworkManager::create_sender(std::string const& connection_name)
+std::shared_ptr<ipm::Sender>
+NetworkManager::create_sender(Connection connection)
 {
-  TLOG_DEBUG(11) << "Getting create mutex";
-  std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
-  TLOG_DEBUG(11) << "Checking plugin list";
-  if (m_sender_plugins.count(connection_name))
-    return;
-
-  auto plugin_type = ipm::get_recommended_plugin_name(
-    is_pubsub_connection(connection_name) ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
+  auto is_pubsub = connection.connection_type == ConnectionType::kPubSub;
+  auto plugin_type =
+    ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
   TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name << " of type " << plugin_type;
-  m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
+  auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name;
-  try {
-    m_sender_plugins[connection_name]->connect_for_sends(
-      { { "connection_string", m_connection_map[connection_name].uri } });
-  } catch (ers::Issue const&) {
-    m_sender_plugins.erase(connection_name);
-    throw;
-  }
-}
+  plugin->connect_for_sends({ { "connection_string", connection.uri } });
 
-std::unique_lock<std::mutex>
-NetworkManager::get_connection_lock(std::string const& connection_name) const
-{
-  static std::mutex connection_map_mutex;
-  std::unique_lock<std::mutex> lk(connection_map_mutex);
-  auto& mut = m_connection_mutexes[connection_name];
-  lk.unlock();
-
-  TLOG_DEBUG(13) << "Mutex for connection " << connection_name << " is at " << &mut;
-  std::unique_lock<std::mutex> conn_lk(mut);
-  return conn_lk;
+  return plugin;
 }
 
 } // namespace dunedaq::iomanager
