@@ -6,7 +6,7 @@
  * received with this code.
  */
 
-#include "iomanager/Queue.hpp"
+#include "iomanager/queue/Queue.hpp"
 
 #define BOOST_TEST_MODULE Queue_test // NOLINT
 

@@ -14,8 +14,8 @@
  * received with this code.
  */
 
-#include "iomanager/FollyQueue.hpp"
-#include "iomanager/StdDeQueue.hpp"
+#include "iomanager/queue/FollyQueue.hpp"
+#include "iomanager/queue/StdDeQueue.hpp"
 
 #include "logging/Logging.hpp"
 

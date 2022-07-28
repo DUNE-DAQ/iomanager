@@ -32,9 +32,10 @@ QueueRegistry::get_queue(const std::string& name)
   while (config_it != m_queue_configs.end()) {
     if (config_it->name == name)
       break;
+    ++config_it;
   }
   if (config_it != m_queue_configs.end()) {
-    QueueEntry entry = { &typeid(T), create_queue<T>(*config_it) };
+    QueueEntry entry = { *config_it, &typeid(T), create_queue<T>(*config_it) };
     m_queue_registry[name] = entry;
     return std::dynamic_pointer_cast<Queue<T>>(entry.m_instance);
 
@@ -43,6 +44,51 @@ QueueRegistry::get_queue(const std::string& name)
     int status = -999;
     std::string realname_target = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
     throw QueueNotFound(ERS_HERE, name, realname_target);
+  }
+}
+
+template<typename T>
+std::shared_ptr<Queue<T>>
+QueueRegistry::get_queue(const Endpoint& endpoint)
+{
+  auto queue_it = m_queue_registry.begin();
+  while (queue_it != m_queue_registry.end()) {
+    if (is_match(endpoint, queue_it->second.m_config)) {
+      break;
+    }
+    ++queue_it;
+  }
+  if (queue_it != m_queue_registry.end()) {
+    auto queuePtr = std::dynamic_pointer_cast<Queue<T>>(queue_it->second.m_instance);
+
+    if (!queuePtr) {
+      // TODO: John Freeman (jcfree@fnal.gov), Jun-23-2020. Add checks for demangling status. Timescale 2 weeks.
+      int status = -999;
+      std::string realname_target = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+      std::string realname_source = abi::__cxa_demangle(queue_it->second.m_type->name(), nullptr, nullptr, &status);
+
+      throw QueueTypeMismatch(ERS_HERE, to_string(endpoint), realname_source, realname_target);
+    }
+
+    return queuePtr;
+  }
+
+  auto config_it = this->m_queue_configs.begin();
+  while (config_it != m_queue_configs.end()) {
+    if (is_match(endpoint, *config_it))
+      break;
+    ++config_it;
+  }
+  if (config_it != m_queue_configs.end()) {
+    QueueEntry entry = { *config_it, &typeid(T), create_queue<T>(*config_it) };
+    m_queue_registry[config_it->name] = entry;
+    return std::dynamic_pointer_cast<Queue<T>>(entry.m_instance);
+
+  } else {
+    // TODO: John Freeman (jcfree@fnal.gov), Jun-23-2020. Add checks for demangling status. Timescale 2 weeks.
+    int status = -999;
+    std::string realname_target = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+    throw QueueNotFound(ERS_HERE, to_string(endpoint), realname_target);
   }
 }
 

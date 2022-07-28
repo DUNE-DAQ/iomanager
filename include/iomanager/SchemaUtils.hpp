@@ -14,20 +14,40 @@
 #include "iomanager/connection/Structs.hpp"
 
 #include <functional>
+#include <sstream>
 
 namespace dunedaq::iomanager {
 namespace connection {
 
 inline std::string
-to_string(Endpoint const& ep)
+to_string(Endpoint const& ep, bool include_direction = true)
 {
-  return ep.data_type + ":" + ep.app_name + ":" + ep.module_name + ":" + str(ep.direction);
+  if (include_direction) {
+
+    return ep.data_type + ":" + ep.app_name + ":" + ep.module_name + ":" + str(ep.direction);
+  }
+  return ep.data_type + ":" + ep.app_name + ":" + ep.module_name;
 }
 
 inline std::string
 connection_name(Connection const& c)
 {
-  return to_string(c.bind_endpoint) + "_Connection";
+  return to_string(c.bind_endpoint, false) + "_Connection";
+}
+
+inline std::string
+connection_names(std::vector<Connection> const& cs)
+{
+  if (cs.size() == 0)
+    return "";
+
+  std::ostringstream oss;
+  oss << connection_name(cs[0]);
+
+  for (size_t ii = 1; ii < cs.size(); ++ii) {
+    oss << ", " << connection_name(cs[ii]);
+  }
+  return oss.str();
 }
 
 inline QueueType
@@ -38,7 +58,14 @@ string_to_queue_type(std::string type_name)
     return parsed;
   }
 
-  return parse_QueueType("k" + type_name);
+  // StdDeQueue -> kStdDeQueue
+  parsed = parse_QueueType("k" + type_name);
+  if (parsed != QueueType::kUnknown) {
+    return parsed;
+  }
+
+  // FollySPSC -> kFollySPSCQueue (same for MPMC)
+  return parse_QueueType("k" + type_name + "Queue");
 }
 
 inline bool
@@ -55,6 +82,52 @@ operator==(const Endpoint& lhs, const Endpoint& rhs)
          lhs.source_id.id == rhs.source_id.id;
 }
 
+inline bool
+is_match(const Endpoint& search, const Endpoint& check, bool check_direction = true)
+{
+  if (search == check)
+    return true;
+
+  if (search.data_type != check.data_type)
+    return false;
+
+  if (search.app_name != "*" && search.app_name != check.app_name) {
+    return false;
+  }
+  if (search.module_name != "*" && search.module_name != check.module_name) {
+    return false;
+  }
+  if (check_direction && search.direction != Direction::kUnspecified && search.direction != check.direction) {
+    return false;
+  }
+
+  return true;
+}
+
+inline bool
+is_match(const Endpoint& search, const Connection& check)
+{
+  if (is_match(search, check.bind_endpoint, false)) {
+    return true;
+  }
+  for (auto& ep : check.connected_endpoints) {
+    if (is_match(search, ep)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+inline bool
+is_match(const Endpoint& search, const QueueConfig& check)
+{
+  for (auto& ep : check.endpoints) {
+    if (is_match(search, ep, false)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 } // namespace connection
 

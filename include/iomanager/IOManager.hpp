@@ -185,20 +185,6 @@ get_iom_receiver(iomanager::Endpoint const& endpoint)
   return iomanager::IOManager::get()->get_receiver<Datatype>(endpoint);
 }
 
-template<typename Datatype>
-static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_sender(std::string const& conn_uid)
-{
-  return iomanager::IOManager::get()->get_sender<Datatype>(conn_uid);
-}
-
-template<typename Datatype>
-static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_receiver(std::string const& conn_uid)
-{
-  return iomanager::IOManager::get()->get_receiver<Datatype>(conn_uid);
-}
-
 } // namespace dunedaq
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_

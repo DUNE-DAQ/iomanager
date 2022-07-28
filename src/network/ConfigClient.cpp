@@ -38,6 +38,13 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
 
 ConfigClient::~ConfigClient() {}
 
+std::vector<Connection>
+ConfigClient::resolveEndpoint(Endpoint const& endpoint)
+{
+  std::vector<Connection> output;
+  return output;
+}
+
 void
 ConfigClient::publishApp(const std::string& name, const std::string& config, const std::string& sources)
 {

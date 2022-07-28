@@ -63,7 +63,7 @@ public:
     try {
       return read_network<Datatype>(timeout);
     } catch (ipm::ReceiveTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, this->endpoint().uid, "receive", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "receive", timeout.count(), ex);
     }
   }
 
@@ -100,7 +100,7 @@ private:
       }
     }
 
-    throw TimeoutExpired(ERS_HERE, this->conn_id().uid, "network receive", timeout.count());
+    throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "network receive", timeout.count());
     return MessageType();
   }
 

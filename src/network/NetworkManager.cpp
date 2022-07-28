@@ -69,7 +69,7 @@ NetworkManager::configure(const Connections_t& connections)
 
     if (m_config_client == nullptr) {
 
-      std::string connectionServer = "configdict.connections";
+      std::string connectionServer = "localhost";
       char* env = getenv("CONNECTION_SERVER");
       if (env) {
         connectionServer = std::string(env);
@@ -109,7 +109,7 @@ NetworkManager::get_receiver(Endpoint const& endpoint)
   }
 
   std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
-  if (!m_receiver_plugins.count(endpoint) && m_receiver_plugins.at(endpoint) != nullptr) {
+  if (!m_receiver_plugins.count(endpoint) || m_receiver_plugins.at(endpoint) == nullptr) {
     auto connections = get_preconfigured_connections(endpoint);
     if (connections.size() == 0) {
       connections = m_config_client->resolveEndpoint(endpoint);
@@ -140,7 +140,7 @@ NetworkManager::get_sender(Endpoint const& endpoint)
 
   std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
 
-  if (!m_sender_plugins.count(endpoint) && m_sender_plugins.at(endpoint) != nullptr) {
+  if (!m_sender_plugins.count(endpoint) || m_sender_plugins.at(endpoint) == nullptr) {
 
     auto preconfigured_conns = get_preconfigured_connections(endpoint);
     Connection this_conn;
@@ -165,6 +165,22 @@ NetworkManager::get_sender(Endpoint const& endpoint)
     m_sender_plugins[endpoint] = sender;
   }
   return m_sender_plugins[endpoint];
+}
+
+bool
+NetworkManager::is_pubsub_connection(Endpoint const& endpoint) const
+{
+  auto connections = get_preconfigured_connections(endpoint);
+  if (connections.size() == 0) {
+    connections = m_config_client->resolveEndpoint(endpoint);
+  }
+  if (connections.size() == 0) {
+    throw ConnectionNotFound(ERS_HERE, to_string(endpoint));
+  }
+  bool is_pubsub = connections[0].connection_type == ConnectionType::kPubSub;
+
+  //TLOG() << "Returning " << std::boolalpha << is_pubsub << " for endpoint " << to_string(endpoint);
+  return is_pubsub;
 }
 
 std::string
@@ -192,6 +208,19 @@ NetworkManager::GetUriForConnection(Connection conn)
   return conn.uri;
 }
 
+std::vector<Connection>
+NetworkManager::get_preconfigured_connections(Endpoint const& endpoint) const
+{
+  std::vector<Connection> matching_connections;
+  for (auto& conn : m_preconfigured_connections) {
+    if (is_match(endpoint, conn.second)) {
+      matching_connections.push_back(conn.second);
+    }
+  }
+
+  return matching_connections;
+}
+
 std::shared_ptr<ipm::Receiver>
 NetworkManager::create_receiver(std::vector<Connection> connections)
 {
@@ -200,22 +229,21 @@ NetworkManager::create_receiver(std::vector<Connection> connections)
     return nullptr;
   }
 
-  if (connections.size() > 1) {
-    if (connections[0].connection_type != ConnectionType::kPubSub) {
-      throw OperationFailed(ERS_HERE,
-                            "Trying to configure a kSendRecv receiver with multiple Connections is not allowed!");
-    }
+  bool is_pubsub = connections[0].connection_type == ConnectionType::kPubSub;
+  if (connections.size() > 1 && !is_pubsub) {
+    throw OperationFailed(ERS_HERE,
+                          "Trying to configure a kSendRecv receiver with multiple Connections is not allowed!");
   }
 
-  auto plugin_type = ipm::get_recommended_plugin_name(connections.size() > 1 ? ipm::IpmPluginType::Subscriber
-                                                                             : ipm::IpmPluginType::Receiver);
+  auto plugin_type =
+    ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Subscriber : ipm::IpmPluginType::Receiver);
 
-  TLOG_DEBUG(12) << "Creating plugin for connection(s) " << connection_name(connections[0]) << " of type "
-                 << plugin_type;
+  TLOG_DEBUG(12) << "Creating plugin of type "
+                 << plugin_type << " for connection(s) " << connection_names(connections);
   auto plugin = dunedaq::ipm::make_ipm_receiver(plugin_type);
 
   nlohmann::json config_json;
-  if (connections.size() > 1) {
+  if (is_pubsub) {
     std::vector<std::string> connection_strings;
     for (auto& conn : connections) {
       connection_strings.push_back(conn.uri);
@@ -244,9 +272,9 @@ NetworkManager::create_sender(Connection connection)
   auto plugin_type =
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
-  TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name << " of type " << plugin_type;
+  TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name(connection) << " of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
-  TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name;
+  TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name(connection);
   plugin->connect_for_sends({ { "connection_string", connection.uri } });
 
   return plugin;

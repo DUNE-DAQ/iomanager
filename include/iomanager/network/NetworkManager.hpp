@@ -49,6 +49,9 @@ public:
 
   bool is_pubsub_connection(Endpoint const& endpoint) const;
 
+  std::string GetUriForConnection(Connection conn);
+  std::vector<Connection> get_preconfigured_connections(Endpoint const& endpoint) const;
+
 private:
   static std::unique_ptr<NetworkManager> s_instance;
 
@@ -59,8 +62,6 @@ private:
   NetworkManager& operator=(NetworkManager const&) = delete;
   NetworkManager& operator=(NetworkManager&&) = delete;
 
-  std::string GetUriForConnection(Connection conn);
-  std::vector<Connection> get_preconfigured_connections(Endpoint const& endpoint) const;
 
   std::shared_ptr<ipm::Receiver> create_receiver(std::vector<Connection> connections);
   std::shared_ptr<ipm::Sender> create_sender(Connection connection);

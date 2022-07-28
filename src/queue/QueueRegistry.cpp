@@ -51,4 +51,16 @@ QueueRegistry::gather_stats(opmonlib::InfoCollector& ic, int level)
   }
 }
 
+bool
+QueueRegistry::has_queue(const Endpoint& endpoint)
+{
+  for (auto& config : m_queue_configs) {
+    if (is_match(endpoint, config)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 } // namespace dunedaq::iomanager

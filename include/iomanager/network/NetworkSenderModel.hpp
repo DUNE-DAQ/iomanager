@@ -39,13 +39,15 @@ public:
     m_network_sender_ptr = NetworkManager::get().get_sender(this_endpoint);
 
     if (NetworkManager::get().is_pubsub_connection(this_endpoint)) {
+      TLOG() << "Setting topic to " << this_endpoint.data_type;
       m_topic = this_endpoint.data_type;
     }
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)
-    : SenderConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
+    : SenderConcept<Datatype>(other.m_endpoint)
     , m_network_sender_ptr(std::move(other.m_network_sender_ptr))
+    , m_topic(std::move(other.m_topic))
   {}
 
   void send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
@@ -64,45 +66,51 @@ public:
 
 private:
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
-  write_network(MessageType& message, Sender::timeout_t const& timeout)
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type write_network(
+    MessageType& message,
+    Sender::timeout_t const& timeout)
   {
     if (m_network_sender_ptr == nullptr)
       throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint()));
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-    // TLOG() << "Serialized message for network sending: " << serialized.size() << ", this=" << (void*)this;
+    //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic << ", this="
+    //  << (void*)this;
     std::lock_guard<std::mutex> lk(m_send_mutex);
 
     m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic);
   }
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
-  write_network(MessageType&, Sender::timeout_t const&, std::string const&)
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type write_network(
+    MessageType&,
+    Sender::timeout_t const&)
   {
     throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
   }
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
-  try_write_network(MessageType& message, Sender::timeout_t const& timeout)
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, bool>::type try_write_network(
+    MessageType& message,
+    Sender::timeout_t const& timeout)
   {
     if (m_network_sender_ptr == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE,to_string(this->endpoint())));
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint())));
       return false;
     }
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-    // TLOG() << "Serialized message for network sending: " << serialized.size() << ", this=" << (void*)this;
+    // TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic <<
+    // ", this=" << (void*)this;
     std::lock_guard<std::mutex> lk(m_send_mutex);
 
     return m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic, true);
   }
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, bool>::type
-  try_write_network(MessageType&, Sender::timeout_t const&, std::string const&)
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, bool>::type try_write_network(
+    MessageType&,
+    Sender::timeout_t const&)
   {
     ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name())); // NOLINT(runtime/rtti)
     return false;

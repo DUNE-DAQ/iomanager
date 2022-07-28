@@ -52,6 +52,15 @@ public:
   std::shared_ptr<Queue<T>> get_queue(const std::string& name);
 
   /**
+   * @brief Get a handle to a Queue
+   * @tparam T Type of the data stored in the Queue
+   * @param name Name of the Queue
+   * @return std::shared_ptr to generic queue pointer
+   */
+  template<typename T>
+  std::shared_ptr<Queue<T>> get_queue(const Endpoint& endpoint);
+
+  /**
    * @brief Configure the QueueRegistry
    * @param configs Queue configurations
    */
@@ -68,6 +77,7 @@ public:
 private:
   struct QueueEntry
   {
+    QueueConfig m_config;
     const std::type_info* m_type;
     std::shared_ptr<QueueBase> m_instance;
   };

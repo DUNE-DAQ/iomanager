@@ -51,7 +51,7 @@ public:
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
-    : ReceiverConcept<Datatype>(other.m_conn_id, other.m_conn_ref)
+    : ReceiverConcept<Datatype>(other.m_endpoint)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))

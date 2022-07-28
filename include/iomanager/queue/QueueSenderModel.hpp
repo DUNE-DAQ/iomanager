@@ -44,19 +44,19 @@ public:
   void send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
   {
     if (m_queue == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid);
+      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint()));
 
     try {
       m_queue->push(std::move(data), timeout);
     } catch (QueueTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, this->conn_id().uid, "push", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "push", timeout.count(), ex);
     }
   }
 
   bool try_send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
   {
     if (m_queue == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->conn_id().uid));
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint())));
       return false;
     }
 
