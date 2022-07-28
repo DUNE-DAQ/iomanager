@@ -13,6 +13,7 @@
 
 #include "iomanager/queue/Queue.hpp"
 #include "iomanager/SchemaUtils.hpp"
+#include "iomanager/CommonIssues.hpp"
 
 #include "ers/Issue.hpp"
 #include "opmonlib/InfoCollector.hpp"
@@ -102,42 +103,6 @@ private:
 
 } // namespace iomanager
 
-// Disable coverage collection LCOV_EXCL_START
-/**
- * @brief QueueTypeMismatch ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,         // namespace
-                  QueueTypeMismatch, // issue class name
-                  "Requested queue \"" << queue_name << "\" of type '" << target_type << "' already declared as type '"
-                                       << source_type << "'", // message
-                  ((std::string)queue_name)((std::string)source_type)((std::string)target_type))
-
-/**
- * @brief QueueKindUnknown ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,        // namespace
-                  QueueKindUnknown, // issue class name
-                  "Queue kind \"" << queue_kind << "\" is unknown ",
-                  ((std::string)queue_kind))
-
-/**
- * @brief QueueNotFound ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,     // namespace
-                  QueueNotFound, // issue class name
-                  "Requested queue \"" << queue_name << "\" of type '" << target_type
-                                       << "' could not be found.", // message
-                  ((std::string)queue_name)((std::string)target_type))
-
-/**
- * @brief QueueRegistryConfigured ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,               // namespace
-                  QueueRegistryConfigured, // issue class name
-                  "QueueRegistry already configured",
-                  ERS_EMPTY)
-
-// Re-enable coverage collection LCOV_EXCL_STOP
 } // namespace dunedaq
 
 #include "detail/QueueRegistry.hxx"

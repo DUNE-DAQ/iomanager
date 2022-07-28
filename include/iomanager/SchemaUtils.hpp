@@ -22,6 +22,10 @@ namespace connection {
 inline std::string
 to_string(Endpoint const& ep, bool include_direction = true)
 {
+  if (ep.nickname != "") {
+    return ep.app_name + ":" + ep.module_name + ":" + ep.nickname;
+  }
+
   if (include_direction) {
 
     return ep.data_type + ":" + ep.app_name + ":" + ep.module_name + ":" + str(ep.direction);

@@ -71,6 +71,9 @@ public:
           config.endpoints.push_back(ep);
         }
         config.queue_type = string_to_queue_type(sm[1]);
+        if (config.queue_type == QueueType::kUnknown) {
+          throw QueueTypeUnknown(ERS_HERE, sm[1]);
+        }
         config.capacity = stoi(sm[2]);
         qCfg.push_back(config);
       } else {

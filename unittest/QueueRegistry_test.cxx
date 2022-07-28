@@ -70,8 +70,8 @@ BOOST_AUTO_TEST_CASE(CreateQueue)
   auto queue_ptr_fmpmc = QueueRegistry::get().get_queue<int>("test_queue_fmpmc");
   BOOST_REQUIRE(queue_ptr_fmpmc != nullptr);
   BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().get_queue<int>("test_queue_unknown"),
-                          QueueKindUnknown,
-                          [&](QueueKindUnknown const&) { return true; });
+                          QueueTypeUnknown,
+                          [&](QueueTypeUnknown const&) { return true; });
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -109,7 +109,7 @@ QueueRegistry::create_queue(const QueueConfig& config)
       break;
 
     default:
-      throw QueueKindUnknown(ERS_HERE, str(config.queue_type));
+      throw QueueTypeUnknown(ERS_HERE, str(config.queue_type));
   }
 
   return queue;

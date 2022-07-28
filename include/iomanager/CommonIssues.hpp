@@ -33,6 +33,13 @@ ERS_DECLARE_ISSUE(iomanager,
                   "Object of type " << type << " is not serializable but configured for network transfer!",
                   ((std::string)type))
 
+/**
+ * @brief QueueTypeUnknown ERS Issue
+ */
+ERS_DECLARE_ISSUE(iomanager,        // namespace
+                  QueueTypeUnknown, // issue class name
+                  "Queue type \"" << queue_type << "\" is unknown ",
+                  ((std::string)queue_type))
 ERS_DECLARE_ISSUE(iomanager, ConnectionNotFound, "Connection named " << name << " not found", ((std::string)name))
 ERS_DECLARE_ISSUE(iomanager, TopicNotFound, "Topic named " << name << " not found", ((std::string)name))
 ERS_DECLARE_ISSUE(iomanager,
@@ -55,6 +62,33 @@ ERS_DECLARE_ISSUE(iomanager,
                   "Connection reference with name " << name << " specified direction " << direction
                                                     << ", but tried to obtain a " << handle_type,
                   ((std::string)name)((std::string)direction)((std::string)handle_type))
+
+/**
+ * @brief QueueTypeMismatch ERS Issue
+ */
+ERS_DECLARE_ISSUE(iomanager,         // namespace
+                  QueueTypeMismatch, // issue class name
+                  "Requested queue \"" << queue_name << "\" of type '" << target_type << "' already declared as type '"
+                                       << source_type << "'", // message
+                  ((std::string)queue_name)((std::string)source_type)((std::string)target_type))
+
+/**
+ * @brief QueueNotFound ERS Issue
+ */
+ERS_DECLARE_ISSUE(iomanager,     // namespace
+                  QueueNotFound, // issue class name
+                  "Requested queue \"" << queue_name << "\" of type '" << target_type
+                                       << "' could not be found.", // message
+                  ((std::string)queue_name)((std::string)target_type))
+
+/**
+ * @brief QueueRegistryConfigured ERS Issue
+ */
+ERS_DECLARE_ISSUE(iomanager,               // namespace
+                  QueueRegistryConfigured, // issue class name
+                  "QueueRegistry already configured",
+                  ERS_EMPTY)
+
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq

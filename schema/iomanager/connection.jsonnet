@@ -29,7 +29,8 @@ local c = {
         s.field("app_name", self.label, doc="Name of this app"),
         s.field("module_name", self.label, doc="Name of this module"),
         s.field("source_id", self.sourceid, doc="SourceID associated with Endpoint"),
-        s.field("direction", self.direction, doc="Direction of data flow (input/output)")
+        s.field("direction", self.direction, doc="Direction of data flow (input/output)"),
+        s.field("nickname", self.label, "", doc="Name associated with an endpoint by a DAQModule")
     ], doc="A DAQ Module's endpoint for a connection"),
 
     endpoints: s.sequence("Endpoints_t", self.Endpoint, doc="List of Endpoints"),
