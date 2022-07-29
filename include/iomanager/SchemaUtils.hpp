@@ -109,7 +109,7 @@ is_match(const Endpoint& search, const Endpoint& check, bool check_direction = t
     return false;
   }
 
-  if (search.source_id.id != -1 && search.source_id.id != check.source_id.id) {
+  if (search.source_id.id != static_cast<uint32_t>(-1) && search.source_id.id != check.source_id.id) {
     return false;
   }
 

@@ -12,6 +12,7 @@
 #include "iomanager/CommonIssues.hpp"
 #include "iomanager/SchemaUtils.hpp"
 
+#include "utilities/NamedObject.hpp"
 #include "logging/Logging.hpp"
 
 namespace dunedaq::iomanager {
