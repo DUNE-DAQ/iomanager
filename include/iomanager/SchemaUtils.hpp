@@ -105,6 +105,14 @@ is_match(const Endpoint& search, const Endpoint& check, bool check_direction = t
     return false;
   }
 
+  if (search.source_id.subsystem != Subsystem::kUnknown && search.source_id.subsystem != check.source_id.subsystem) {
+    return false;
+  }
+
+  if (search.source_id.id != -1 && search.source_id.id != check.source_id.id) {
+    return false;
+  }
+
   return true;
 }
 

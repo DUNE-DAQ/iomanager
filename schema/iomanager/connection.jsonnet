@@ -17,17 +17,17 @@ local c = {
     qtype: s.enum("QueueType", ["kUnknown", "kStdDeQueue", "kFollySPSCQueue", "kFollyMPMCQueue"], doc="The kinds (types/classes) of queues"),
     capacity: s.number("Capacity_t", dtype="u8", doc="Capacity of a queue"),
 
-    subsystem: s.enum("Subsystem", ["kUNDEFINED", "kDRO", "kHSI", "kTRG", "kTRB" ], doc="Subsystem types. Should be synchronized with daqdataformats/SourceID"),
+    subsystem: s.enum("Subsystem", ["kUnknown", "kDetectorReadout", "kHwSignalsInterface", "kTrigger", "kTRBuilder" ], doc="Subsystem types. Should be synchronized with daqdataformats/SourceID"),
     id_num: s.number("ID_t", "u4", doc="An identifier (as part of a SourceID)"),
     sourceid: s.record("SourceID_t", [
         s.field("subsystem", self.subsystem, doc="Subsystem of SourceID"),
-        s.field("id", self.id_num, doc="Identifier within Subsystem")
+        s.field("id", self.id_num, -1, doc="Identifier within Subsystem")
     ], doc="SourceID representation"),
 
     Endpoint: s.record("Endpoint", [
         s.field("data_type", self.datatype, doc="Name of the expected data type"),
-        s.field("app_name", self.label, doc="Name of this app"),
-        s.field("module_name", self.label, doc="Name of this module"),
+        s.field("app_name", self.label, "*", doc="Name of this app"),
+        s.field("module_name", self.label, "*", doc="Name of this module"),
         s.field("source_id", self.sourceid, doc="SourceID associated with Endpoint"),
         s.field("direction", self.direction, doc="Direction of data flow (input/output)"),
         s.field("nickname", self.label, "", doc="Name associated with an endpoint by a DAQModule")
