@@ -8,6 +8,8 @@
 
 #include "iomanager/network/ConfigClient.hpp"
 #include "iomanager/network/ConfigClientIssues.hpp"
+#include "iomanager/connection/Structs.hpp"
+
 #include "logging/Logging.hpp"
 
 #include "boost/program_options.hpp"
@@ -56,83 +58,36 @@ main(int argc, char* argv[])
   }
   ConfigClient client(server, port);
 
-  std::string myConf;
-  if (file != "") {
-    std::ifstream infile(file);
-    if (infile.is_open()) {
-      for (std::string ln; infile >> ln;) {
-        myConf += ln;
-      }
-    } else {
-      std::cerr << "Failed to open " << file << std::endl;
-      return 0;
-    }
-  } else {
-    myConf = "{\"host\": \"192.168.1.102\", \"port\": 9999}";
-  }
-  std::string res = "xp1, xp2";
-  std::cout << "Publishing my conf as " << name << std::endl;
-  client.publishApp(name, myConf, res);
+  std::cout << "Publishing my endpoint\n";
+  Endpoint myEp;
+  myEp.data_type="test";
+  myEp.app_name="config_client_test";
+  myEp.module_name="cc_test";
+  myEp.direction=Direction::kOutput;
+  client.publishEndpoint(myEp,"tcp:127.0.0.1:9999");
 
-  std::cout << "Looking up source " << source << std::endl;
-  std::string app;
-  try {
-    app = client.getSourceApp(source);
-    std::cout << "Source belongs to app " << app << std::endl;
-  } catch (FailedLookup& ex) {
-    std::cout << "Lookup of " << source << " failed. " << ex << std::endl;
-  }
+  std::cout << "Publishing my connection\n";
+  Connection myCon;
+  myCon.bind_endpoint.data_type="test";
+  myCon.bind_endpoint.app_name="config_client_test2";
+  myCon.bind_endpoint.module_name="cc_test";
+  myCon.bind_endpoint.direction=Direction::kOutput;
+  myCon.uri="tcp://192.168.1.100:1234";
+  myCon.connection_type=ConnectionType::kSendRecv;
+  client.publishConnection(myCon);
 
-  if (app != "") {
-    std::cout << "Looking up config for app " << app << std::endl;
-    try {
-      std::string conf = client.getAppConfig(app);
-      //      std::cout << "conf=" << conf << std::endl;
-      auto jsconf = json::parse(conf);
-      for (auto& el : jsconf.items()) {
-        std::cout << el.key() << " = " << el.value() << std::endl;
-      }
-    } catch (FailedLookup& ex) {
-      std::cout << "Lookup of config for " << app << " failed" << std::endl;
-      std::cout << "caught exception: " << ex << std::endl;
-    }
-  }
+  std::cout << "Looking up my endpoint\n";
+  auto xx=client.resolveEndpoint(myEp);
 
-  if (app != name) {
-    std::cout << "Looking up config for app " << name << std::endl;
-    try {
-      std::string conf = client.getAppConfig(name);
-      auto jsconf = json::parse(conf);
-      for (auto& el : jsconf.items()) {
-        std::cout << el.key() << " = " << el.value() << std::endl;
-      }
-    } catch (FailedLookup& ex) {
-      std::cout << "Lookup of config for " << name << " failed" << std::endl;
-      std::cout << "caught exception: " << ex << std::endl;
-    }
-  }
+  std::cout << "Looking up my connection\n";
+  std::string uri=client.resolveConnection(myCon);
+  std::cout << "resolved to <" << uri << ">\n";
 
-  std::cout << "Retracting configuration for " << name << std::endl;
-  try {
-    client.retract(name);
-  } catch (FailedRetract& ex) {
-    std::cout << "Failed to retract configuration. Caught exception " << ex << std::endl;
-  }
+  std::cout << "Retracting endpoint\n";
+  client.retract(myEp);
 
-  std::cout << "Retracting configuration for " << name << " again" << std::endl;
-  try {
-    client.retract(name);
-  } catch (FailedRetract& ex) {
-    std::cout << "OK, that failed as expected, caught exception: " << ex << std::endl;
-  }
-
-  std::cout << "Looking up config for app " << name << std::endl;
-  try {
-    std::string conf = client.getAppConfig(name);
-    std::cout << "Woops, that shouldn't have worked, conf=" << conf << std::endl;
-  } catch (FailedLookup& ex) {
-    std::cout << "OK, lookup of config for " << name << " failed" << std::endl;
-  }
+  std::cout << "Retracting connection\n";
+  client.retract(myCon);
 
   return 0;
 } // NOLINT

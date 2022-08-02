@@ -11,6 +11,8 @@
 
 #include "iomanager/SchemaUtils.hpp"
 
+#include "nlohmann/json.hpp"
+
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/basic_resolver.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -30,18 +32,20 @@ public:
   ~ConfigClient();
 
   ConnectionResponse resolveEndpoint(ConnectionRequest const& request);
+  std::string resolveConnection(const Connection& connection);
 
-  void publishApp(const std::string& name, const std::string& config, const std::string& sources = "");
-  void publishConnection(const std::string& config, const std::string& sources = "");
-  void retract(const std::string& name);
-  std::string getAppConfig(const std::string& appName);
-  std::string getSourceApp(const std::string& source);
-  std::string getSourceConnection(const std::string& source);
-  std::string getConnectionConfig(const std::string& connection);
+  void publishEndpoint(const Endpoint& endpoint, const std::string& uri,
+                       const std::string& connection_type="");
+  void publishConnection(const Connection& connection);
+  void retract(const Endpoint& endpoint);
+  void retract(const Connection& connection);
 
 private:
-  std::string get(const std::string& target);
+  std::string get(const std::string& target, const std::string& params);
   void publish(const std::string& content);
+  void retract(const std::string& content);
+
+  nlohmann::json jsonify(const Connection& connection);
 
   std::string m_partition;
   net::io_context m_ioContext;

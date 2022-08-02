@@ -181,14 +181,12 @@ NetworkManager::GetUriForConnection(Connection conn)
     if (conn.uri.substr(gstart, 2) == "//") {
       gstart += 2;
     }
-    std::string app = m_config_client->getSourceApp(conn.uri.substr(gstart));
-    std::string conf = m_config_client->getAppConfig(app);
+
+    std::string conf = m_config_client->resolveConnection(conn);
     auto jsconf = nlohmann::json::parse(conf);
-    std::string host = jsconf["host"];
-    std::string port = jsconf["port"];
     TLOG() << "Replacing conn.uri <" << conn.uri << ">"
-           << " with <tcp://" << host << ":" << port << ">";
-    conn.uri = "tcp://" + host + ":" + port;
+           << " with <" << jsconf["uri"] << ">";
+    conn.uri = jsconf["uri"];
   }
 
   return conn.uri;

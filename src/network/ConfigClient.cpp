@@ -19,6 +19,7 @@
 
 using tcp = net::ip::tcp;     // from <boost/asio/ip/tcp.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
+using nlohmann::json;
 
 using namespace dunedaq::iomanager;
 
@@ -41,19 +42,63 @@ ConfigClient::~ConfigClient() {}
 ConnectionResponse
 ConfigClient::resolveEndpoint(ConnectionRequest const&)
 {
+  json query;
+  query["data_type"]=endpoint.data_type;
+  query["app_name"]=endpoint.app_name;
+  query["module_name"]=endpoint.module_name;
+  if (endpoint.source_id.subsystem != Subsystem::kUnknown) {
+    std::ostringstream source_id;
+    source_id << str(endpoint.source_id.subsystem) << "_" << endpoint.source_id.id;
+    query["source_id"]=source_id.str();
+  }
+
+  std::string target = "/getendpoint/" + m_partition;
+  std::string params = "endpoint=" + query.dump();
+  json result=json::parse(get(target, params));
+  std::cout << "result: " << result.dump() << std::endl;
   ConnectionResponse output;
+  for (auto uri: result["uris"]) {
+    output.uris.emplace_back(uri.dump());
+  }
+  output.connection_type=result["connection_type"].dump();
   return output;
 }
 
-void
-ConfigClient::publishApp(const std::string& name, const std::string& config, const std::string& sources)
-{
-  publish("&app=" + name + "&conf=" + config + "&sources=" + sources);
+std::string
+ConfigClient::resolveConnection(const Connection& connection){
+  json query=jsonify(connection);
+  std::string target = "/getconnection/" + m_partition;
+  std::string params="endpoint=" + query["bind_endpoint"].dump();
+  json result=json::parse(get(target,params));
+  return result["uri"].dump();
 }
+
 void
-ConfigClient::publishConnection(const std::string& config, const std::string& sources)
+ConfigClient::publishEndpoint(const Endpoint& endpoint, const std::string& uri, const std::string& connection_type)
 {
-  publish("&connection=" + config + "&sources=" + sources);
+  json content;
+  content["data_type"]=endpoint.data_type;
+  content["app_name"]=endpoint.app_name;
+  content["module_name"]=endpoint.module_name;
+  if (endpoint.source_id.subsystem != Subsystem::kUnknown) {
+    std::ostringstream source_id;
+    source_id << str(endpoint.source_id.subsystem) << "_" << endpoint.source_id.id;
+    content["source_id"]=source_id.str();
+  }
+  if (connection_type=="") {
+    publish("&endpoint=" + content.dump() + "&uri=" + uri);
+  }
+  else {
+    publish("&endpoint=" + content.dump() + "&uri=" + uri +
+            "&connection_type=" + connection_type);
+  }
+}
+
+void
+ConfigClient::publishConnection(const Connection& connection)
+{
+  json content=jsonify(connection);
+  publish("&connection="+content.dump());
 }
 void
 ConfigClient::publish(const std::string& content)
@@ -77,13 +122,32 @@ ConfigClient::publish(const std::string& content)
   }
 }
 
+void ConfigClient::retract(const Endpoint& endpoint) {
+  json content;
+  content["data_type"]=endpoint.data_type;
+  content["app_name"]=endpoint.app_name;
+  content["module_name"]=endpoint.module_name;
+  if (endpoint.source_id.subsystem != Subsystem::kUnknown) {
+    std::ostringstream source_id;
+    source_id << str(endpoint.source_id.subsystem) << "_" << endpoint.source_id.id;
+    content["source_id"]=source_id.str();
+  }
+  retract("&endpoint=" + content.dump());
+}
+
+void ConfigClient::retract(const Connection& connection){
+  json content=jsonify(connection);
+  retract("&connection=" + content.dump());
+}
+
+
 void
-ConfigClient::retract(const std::string& name)
+ConfigClient::retract(const std::string& content)
 {
   std::string target = "/retract";
   http::request<http::string_body> req{ http::verb::post, target, 11 };
   req.set(http::field::content_type, "application/x-www-form-urlencoded");
-  req.body() = "partition=" + m_partition + "&app=" + name;
+  req.body() = "partition=" + m_partition + content;
   req.prepare_payload();
   m_stream.connect(m_addr);
   http::write(m_stream, req);
@@ -92,14 +156,18 @@ ConfigClient::retract(const std::string& name)
   beast::error_code ec;
   m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
   if (response.result_int() != 200) {
-    throw(FailedRetract(ERS_HERE, name, std::string(response.reason())));
+    throw(FailedRetract(ERS_HERE, content, std::string(response.reason())));
   }
 }
 
 std::string
-ConfigClient::get(const std::string& target)
+ConfigClient::get(const std::string& target, const std::string& params)
 {
-  http::request<http::string_body> req{ http::verb::get, target, 11 };
+  std::cout << "Getting <" << target << ">\n";
+  http::request<http::string_body> req{ http::verb::post, target, 11 };
+  req.set(http::field::content_type, "application/x-www-form-urlencoded");
+  req.body()=params;
+  req.prepare_payload();
   m_stream.connect(m_addr);
   http::write(m_stream, req);
 
@@ -116,30 +184,19 @@ ConfigClient::get(const std::string& target)
   return response.body();
 }
 
-std::string
-ConfigClient::getAppConfig(const std::string& appName)
-{
-  std::string target = "/getapp/" + m_partition + "/" + appName;
-  return get(target);
-}
+json 
+ConfigClient::jsonify(const Connection& connection) {
+  json content;
+  content["bind_endpoint"]["data_type"]=connection.bind_endpoint.data_type;
+  content["bind_endpoint"]["app_name"]=connection.bind_endpoint.app_name;
+  content["bind_endpoint"]["module_name"]=connection.bind_endpoint.module_name;
+  content["bind_endpoint"]["direction"]=str(connection.bind_endpoint.direction);
+  std::ostringstream source_id;
+  source_id << str(connection.bind_endpoint.source_id.subsystem)
+            << "_" << connection.bind_endpoint.source_id.id;
+  content["bind_endpoint"]["source_id"]=source_id.str();
+  content["connection_type"]=str(connection.connection_type);
+  content["uri"]=connection.uri;
 
-std::string
-ConfigClient::getSourceApp(const std::string& source)
-{
-  std::string target = "/getsource/" + m_partition + "/" + source;
-  return get(target);
-}
-
-std::string
-ConfigClient::getSourceConnection(const std::string& source)
-{
-  std::string target = "/getsourceconn/" + m_partition + "/" + source;
-  return get(target);
-}
-
-std::string
-ConfigClient::getConnectionConfig(const std::string& connection)
-{
-  std::string target = "/getconnection/" + m_partition + "/" + connection;
-  return get(target);
+  return content;
 }
