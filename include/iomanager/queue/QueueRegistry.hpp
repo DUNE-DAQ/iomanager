@@ -11,9 +11,9 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
 
-#include "iomanager/queue/Queue.hpp"
-#include "iomanager/SchemaUtils.hpp"
 #include "iomanager/CommonIssues.hpp"
+#include "iomanager/SchemaUtils.hpp"
+#include "iomanager/queue/Queue.hpp"
 
 #include "ers/Issue.hpp"
 #include "opmonlib/InfoCollector.hpp"
@@ -59,7 +59,7 @@ public:
    * @return std::shared_ptr to generic queue pointer
    */
   template<typename T>
-  std::shared_ptr<Queue<T>> get_queue(const Endpoint& endpoint);
+  std::shared_ptr<Queue<T>> get_queue(const ConnectionRequest& request);
 
   /**
    * @brief Configure the QueueRegistry
@@ -73,7 +73,7 @@ public:
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
 
-  bool has_queue(Endpoint const& endpoint);
+  bool has_queue(ConnectionRequest const& request);
 
 private:
   struct QueueEntry

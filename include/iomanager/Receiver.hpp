@@ -12,8 +12,8 @@
 #include "iomanager/CommonIssues.hpp"
 #include "iomanager/SchemaUtils.hpp"
 
-#include "utilities/NamedObject.hpp"
 #include "logging/Logging.hpp"
+#include "utilities/NamedObject.hpp"
 
 namespace dunedaq {
 
@@ -27,16 +27,16 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Receiver(Endpoint const& this_endpoint)
-    : utilities::NamedObject(to_string(this_endpoint))
-    , m_endpoint(this_endpoint)
+  explicit Receiver(ConnectionRequest const& this_req)
+    : utilities::NamedObject(to_string(this_req))
+    , m_request(this_req)
   {}
   virtual ~Receiver() = default;
 
-  Endpoint endpoint() const { return m_endpoint; }
+  ConnectionRequest request() const { return m_request; }
 
 protected:
-  Endpoint m_endpoint;
+  ConnectionRequest m_request;
 };
 
 // Interface
@@ -44,8 +44,8 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
-  explicit ReceiverConcept(Endpoint const& this_endpoint)
-    : Receiver(this_endpoint)
+  explicit ReceiverConcept(ConnectionRequest const& this_req)
+    : Receiver(this_req)
   {}
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
   virtual std::optional<Datatype> try_receive(Receiver::timeout_t timeout) = 0;

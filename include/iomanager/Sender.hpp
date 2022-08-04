@@ -12,8 +12,8 @@
 #include "iomanager/CommonIssues.hpp"
 #include "iomanager/SchemaUtils.hpp"
 
-#include "utilities/NamedObject.hpp"
 #include "logging/Logging.hpp"
+#include "utilities/NamedObject.hpp"
 
 namespace dunedaq::iomanager {
 
@@ -25,16 +25,16 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Sender(Endpoint const& this_endpoint)
-    : utilities::NamedObject(to_string(this_endpoint))
-    , m_endpoint(this_endpoint)
+  explicit Sender(ConnectionRequest const& this_req)
+    : utilities::NamedObject(to_string(this_req))
+    , m_request(this_req)
   {}
   virtual ~Sender() = default;
 
-  Endpoint endpoint() const { return m_endpoint; }
+  ConnectionRequest request() const { return m_request; }
 
 protected:
-  Endpoint m_endpoint;
+  ConnectionRequest m_request;
 };
 
 // Interface
@@ -42,8 +42,8 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  explicit SenderConcept(Endpoint const& this_endpoint)
-    : Sender(this_endpoint)
+  explicit SenderConcept(ConnectionRequest const& this_req)
+    : Sender(this_req)
   {}
   virtual void send(Datatype&& data, Sender::timeout_t timeout) = 0;     // NOLINT
   virtual bool try_send(Datatype&& data, Sender::timeout_t timeout) = 0; // NOLINT

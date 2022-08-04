@@ -38,10 +38,10 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
 
 ConfigClient::~ConfigClient() {}
 
-std::vector<Connection>
-ConfigClient::resolveEndpoint(Endpoint const& endpoint)
+ConnectionResponse
+ConfigClient::resolveEndpoint(ConnectionRequest const&)
 {
-  std::vector<Connection> output;
+  ConnectionResponse output;
   return output;
 }
 

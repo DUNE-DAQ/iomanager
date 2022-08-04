@@ -31,21 +31,21 @@ class NetworkSenderModel : public SenderConcept<Datatype>
 public:
   using SenderConcept<Datatype>::send;
 
-  explicit NetworkSenderModel(Endpoint const& this_endpoint)
-    : SenderConcept<Datatype>(this_endpoint)
+  explicit NetworkSenderModel(ConnectionRequest const& this_request)
+    : SenderConcept<Datatype>(this_request)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
-    m_network_sender_ptr = NetworkManager::get().get_sender(this_endpoint);
+    m_network_sender_ptr = NetworkManager::get().get_sender(this_request);
 
-    if (NetworkManager::get().is_pubsub_connection(this_endpoint)) {
-      TLOG() << "Setting topic to " << this_endpoint.data_type;
-      m_topic = this_endpoint.data_type;
+    if (NetworkManager::get().is_pubsub_connection(this_request)) {
+      TLOG() << "Setting topic to " << this_request.data_type;
+      m_topic = this_request.data_type;
     }
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)
-    : SenderConcept<Datatype>(other.m_endpoint)
+    : SenderConcept<Datatype>(other.m_request)
     , m_network_sender_ptr(std::move(other.m_network_sender_ptr))
     , m_topic(std::move(other.m_topic))
   {}
@@ -55,7 +55,7 @@ public:
     try {
       write_network<Datatype>(data, timeout);
     } catch (ipm::SendTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "send", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, to_string(this->request()), "send", timeout.count(), ex);
     }
   }
 
@@ -71,7 +71,7 @@ private:
     Sender::timeout_t const& timeout)
   {
     if (m_network_sender_ptr == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint()));
+      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->request()));
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic << ", this="
@@ -95,7 +95,7 @@ private:
     Sender::timeout_t const& timeout)
   {
     if (m_network_sender_ptr == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint())));
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->request())));
       return false;
     }
 

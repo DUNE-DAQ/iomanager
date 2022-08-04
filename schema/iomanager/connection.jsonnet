@@ -26,11 +26,11 @@ local c = {
 
     Endpoint: s.record("Endpoint", [
         s.field("data_type", self.datatype, doc="Name of the expected data type"),
-        s.field("app_name", self.label, "*", doc="Name of this app"),
-        s.field("module_name", self.label, "*", doc="Name of this module"),
+        s.field("app_name", self.label, doc="Name of this app"),
+        s.field("module_name", self.label, doc="Name of this module"),
         s.field("source_id", self.sourceid, doc="SourceID associated with Endpoint"),
         s.field("direction", self.direction, doc="Direction of data flow (input/output)"),
-        s.field("nickname", self.label, "", doc="Name associated with an endpoint by a DAQModule")
+        s.field("nickname", self.label,  doc="Name associated with an endpoint by a DAQModule")
     ], doc="A DAQ Module's endpoint for a connection"),
 
     endpoints: s.sequence("Endpoints_t", self.Endpoint, doc="List of Endpoints"),
@@ -58,7 +58,10 @@ local c = {
     ], doc="Message sent to connection registry service to register a connection"),
 
     ConnectionRequest: s.record("ConnectionRequest", [
-        s.field("search", self.Endpoint, doc="Endpoint to find matching connection for")
+        s.field("data_type", self.datatype, doc="Name of the expected data type"),
+        s.field("app_name", self.label, doc="Name of local or remote app"),
+        s.field("module_name", self.label, doc="Name of local or remote module"),
+        s.field("source_id", self.sourceid, doc="SourceID associated with local or remote Endpoint")
     ], doc="Message sent to connection registry service to query for a connection"),
 
     ConnectionResponse: s.record("ConnectionResponse", [

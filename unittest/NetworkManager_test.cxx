@@ -67,6 +67,19 @@ struct NetworkManagerTestFixture
     testConn.uri = "inproc://abr";
     testConfig.push_back(testConn);
     NetworkManager::get().configure(testConfig);
+
+    req_sendrecv = { bind_endpoint_sendrecv.data_type,
+                     bind_endpoint_sendrecv.app_name,
+                     bind_endpoint_sendrecv.module_name,
+                     bind_endpoint_sendrecv.source_id };
+    req_pubsub = { bind_endpoint_pubsub.data_type,
+                   bind_endpoint_pubsub.app_name,
+                   bind_endpoint_pubsub.module_name,
+                   bind_endpoint_pubsub.source_id };
+    req_different_pubsub = { bind_endpoint_different_pubsub.data_type,
+                             bind_endpoint_different_pubsub.app_name,
+                             bind_endpoint_different_pubsub.module_name,
+                             bind_endpoint_different_pubsub.source_id };
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
 
@@ -76,6 +89,7 @@ struct NetworkManagerTestFixture
   NetworkManagerTestFixture& operator=(NetworkManagerTestFixture&&) = default;
 
   Endpoint bind_endpoint_sendrecv, bind_endpoint_pubsub, bind_endpoint_different_pubsub;
+  ConnectionRequest req_sendrecv, req_pubsub, req_different_pubsub;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
@@ -96,36 +110,37 @@ BOOST_AUTO_TEST_CASE(Singleton)
 
 BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
 {
-  auto conns = NetworkManager::get().get_preconfigured_connections(bind_endpoint_sendrecv);
-  BOOST_REQUIRE_EQUAL(conns.size(), 1);
-  BOOST_REQUIRE_EQUAL(conns[0].uri, "inproc://foo");
+  auto conn_res = NetworkManager::get().get_preconfigured_connections(req_sendrecv);
+  BOOST_REQUIRE_EQUAL(conn_res.uris.size(), 1);
+  BOOST_REQUIRE_EQUAL(conn_res.uris[0], "inproc://foo");
 
-  auto search = bind_endpoint_pubsub;
+  auto search = req_pubsub;
   search.module_name = "*";
-  conns = NetworkManager::get().get_preconfigured_connections(search);
-  BOOST_REQUIRE_EQUAL(conns.size(), 2);
-  BOOST_REQUIRE(conns[0].uri == "inproc://bar" || conns[1].uri == "inproc://bar");
-  BOOST_REQUIRE(conns[0].uri == "inproc://rab" || conns[1].uri == "inproc://rab");
+  conn_res = NetworkManager::get().get_preconfigured_connections(search);
+  BOOST_REQUIRE_EQUAL(conn_res.uris.size(), 2);
+  BOOST_REQUIRE(conn_res.uris[0] == "inproc://bar" || conn_res.uris[1] == "inproc://bar");
+  BOOST_REQUIRE(conn_res.uris[0] == "inproc://rab" || conn_res.uris[1] == "inproc://rab");
 
-  Endpoint bind_endpoint_notfound;
-  bind_endpoint_notfound.data_type = "blahblah";
-  bind_endpoint_notfound.app_name = "NetworkManager_test";
-  bind_endpoint_notfound.module_name = "Config";
-  bind_endpoint_notfound.direction = Direction::kInput;
+  ConnectionRequest req_notfound;
+  req_notfound.data_type = "blahblah";
+  req_notfound.app_name = "NetworkManager_test";
+  req_notfound.module_name = "Config";
 
-  conns = NetworkManager::get().get_preconfigured_connections(bind_endpoint_notfound);
-  BOOST_REQUIRE_EQUAL(conns.size(), 0);
+  conn_res = NetworkManager::get().get_preconfigured_connections(req_notfound);
+  BOOST_REQUIRE_EQUAL(conn_res.uris.size(), 0);
 
-  BOOST_REQUIRE(!NetworkManager::get().is_pubsub_connection(bind_endpoint_sendrecv));
-  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(bind_endpoint_pubsub));
-  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(bind_endpoint_different_pubsub));
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().is_pubsub_connection(bind_endpoint_notfound),
+  BOOST_REQUIRE(!NetworkManager::get().is_pubsub_connection(req_sendrecv));
+  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(req_pubsub));
+  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(req_different_pubsub));
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().is_pubsub_connection(req_notfound),
                           ConnectionNotFound,
                           [](ConnectionNotFound const&) { return true; });
 
   Connections_t testConfig;
   Connection testConn;
-  testConn.bind_endpoint = bind_endpoint_notfound;
+  testConn.bind_endpoint = Endpoint{
+    req_notfound.data_type, req_notfound.app_name, req_notfound.module_name, req_notfound.source_id, Direction::kInput
+  };
   testConn.uri = "inproc://rab";
   testConn.connection_type = ConnectionType::kSendRecv;
   testConfig.push_back(testConn);
@@ -135,10 +150,10 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
   NetworkManager::get().reset();
 
   NetworkManager::get().configure(testConfig);
-  conns = NetworkManager::get().get_preconfigured_connections(bind_endpoint_notfound);
-  BOOST_REQUIRE_EQUAL(conns.size(), 1);
-  conns = NetworkManager::get().get_preconfigured_connections(bind_endpoint_sendrecv);
-  BOOST_REQUIRE_EQUAL(conns.size(), 0);
+  conn_res = NetworkManager::get().get_preconfigured_connections(req_notfound);
+  BOOST_REQUIRE_EQUAL(conn_res.uris.size(), 1);
+  conn_res = NetworkManager::get().get_preconfigured_connections(req_sendrecv);
+  BOOST_REQUIRE_EQUAL(conn_res.uris.size(), 0);
 }
 
 BOOST_FIXTURE_TEST_CASE(NameCollisionInConfiguration, NetworkManagerTestFixture)

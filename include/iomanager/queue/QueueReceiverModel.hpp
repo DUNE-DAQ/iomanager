@@ -39,19 +39,19 @@ template<typename Datatype>
 class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit QueueReceiverModel( Endpoint const& endpoint)
-    : ReceiverConcept<Datatype>( endpoint)
+  explicit QueueReceiverModel(ConnectionRequest const& request)
+    : ReceiverConcept<Datatype>(request)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
     // get queue ref from queueregistry based on conn_id
     // std::string sink_name = conn_id to sink_name;
     // m_source = std::make_unique<appfwk::DAQSource<Datatype>>(sink_name);
-    m_queue = QueueRegistry::get().get_queue<Datatype>(endpoint);
+    m_queue = QueueRegistry::get().get_queue<Datatype>(request);
     TLOG() << "QueueReceiverModel m_queue=" << static_cast<void*>(m_queue.get());
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
-    : ReceiverConcept<Datatype>(other.m_endpoint)
+    : ReceiverConcept<Datatype>(other.m_request)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
@@ -64,17 +64,17 @@ public:
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
-      throw ReceiveCallbackConflict(ERS_HERE, to_string(this->endpoint()));
+      throw ReceiveCallbackConflict(ERS_HERE, to_string(this->request()));
     }
     if (m_queue == nullptr) {
-      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint()));
+      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->request()));
     }
     // TLOG() << "Hand off data...";
     Datatype dt;
     try {
       m_queue->pop(dt, timeout);
     } catch (QueueTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "pop", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, to_string(this->request()), "pop", timeout.count(), ex);
     }
     return dt;
     // if (m_queue->write(
@@ -84,11 +84,11 @@ public:
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
-      ers::error(ReceiveCallbackConflict(ERS_HERE, to_string(this->endpoint())));
+      ers::error(ReceiveCallbackConflict(ERS_HERE, to_string(this->request())));
       return std::nullopt;
     }
     if (m_queue == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint())));
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->request())));
       return std::nullopt;
     }
     // TLOG() << "Hand off data...";
@@ -139,7 +139,6 @@ private:
   std::unique_ptr<std::thread> m_event_loop_runner;
   std::shared_ptr<Queue<Datatype>> m_queue;
 };
-
 
 } // namespace iomanager
 } // namespace dunedaq

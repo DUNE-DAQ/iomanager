@@ -27,36 +27,36 @@ template<typename Datatype>
 class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
-  explicit QueueSenderModel(Endpoint const& endpoint)
-    : SenderConcept<Datatype>(endpoint)
+  explicit QueueSenderModel(ConnectionRequest const& request)
+    : SenderConcept<Datatype>(request)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
-    m_queue = QueueRegistry::get().get_queue<Datatype>(endpoint);
+    m_queue = QueueRegistry::get().get_queue<Datatype>(request);
     TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
     // get queue ref from queueregistry based on conn_id
   }
 
   QueueSenderModel(QueueSenderModel&& other)
-    : SenderConcept<Datatype>(other.m_endpoint)
+    : SenderConcept<Datatype>(other.m_request)
     , m_queue(std::move(other.m_queue))
   {}
 
   void send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
   {
     if (m_queue == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint()));
+      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->request()));
 
     try {
       m_queue->push(std::move(data), timeout);
     } catch (QueueTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "push", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, to_string(this->request()), "push", timeout.count(), ex);
     }
   }
 
   bool try_send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
   {
     if (m_queue == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->endpoint())));
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->request())));
       return false;
     }
 

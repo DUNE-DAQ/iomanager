@@ -54,7 +54,7 @@ struct ConfigurationTestFixture
     queues.emplace_back(QueueConfig{ "test_queue", { queue_ep }, QueueType::kFollySPSCQueue, 50 });
 
     dunedaq::iomanager::Connections_t connections;
-    connections.emplace_back(Connection{ conn_ep_r, {conn_ep_s}, "inproc://foo", ConnectionType::kSendRecv });
+    connections.emplace_back(Connection{ conn_ep_r, { conn_ep_s }, "inproc://foo", ConnectionType::kSendRecv });
     IOManager::get()->configure(queues, connections);
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }

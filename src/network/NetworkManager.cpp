@@ -99,87 +99,73 @@ NetworkManager::reset()
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::get_receiver(Endpoint const& endpoint)
+NetworkManager::get_receiver(ConnectionRequest const& request)
 {
-  TLOG_DEBUG(9) << "Getting receiver for endpoint " << to_string(endpoint);
-
-  if (endpoint.direction != Direction::kInput) {
-    TLOG_DEBUG(9) << "Endpoint " << to_string(endpoint) << " is not an input!";
-    throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), str(endpoint.direction), "receiver");
-  }
+  TLOG_DEBUG(9) << "Getting receiver for request " << to_string(request);
 
   std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
-  if (!m_receiver_plugins.count(endpoint) || m_receiver_plugins.at(endpoint) == nullptr) {
-    auto connections = get_preconfigured_connections(endpoint);
-    if (connections.size() == 0) {
-      connections = m_config_client->resolveEndpoint(endpoint);
+  if (!m_receiver_plugins.count(request) || m_receiver_plugins.at(request) == nullptr) {
+    auto response = get_preconfigured_connections(request);
+    if (response.uris.size() == 0) {
+      response = m_config_client->resolveEndpoint(request);
     }
 
-    if (connections.size() == 0) {
-      throw ConnectionNotFound(ERS_HERE, to_string(endpoint));
+    if (response.uris.size() == 0) {
+      throw ConnectionNotFound(ERS_HERE, to_string(request));
     }
 
-    TLOG_DEBUG(9) << "Creating receiver for endpoint " << to_string(endpoint);
-    auto receiver = create_receiver(connections);
+    TLOG_DEBUG(9) << "Creating receiver for request " << to_string(request);
+    auto receiver = create_receiver(response, request.data_type);
 
-    m_receiver_plugins[endpoint] = receiver;
+    m_receiver_plugins[request] = receiver;
   }
 
-  return m_receiver_plugins[endpoint];
+  return m_receiver_plugins[request];
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::get_sender(Endpoint const& endpoint)
+NetworkManager::get_sender(ConnectionRequest const& request)
 {
-  TLOG_DEBUG(10) << "Getting sender for endpoint " << to_string(endpoint);
-
-  if (endpoint.direction != Direction::kOutput) {
-    TLOG_DEBUG(10) << "Endpoint " << to_string(endpoint) << " is not an output!";
-    throw ConnectionDirectionMismatch(ERS_HERE, to_string(endpoint), str(endpoint.direction), "sender");
-  }
+  TLOG_DEBUG(10) << "Getting sender for request " << to_string(request);
 
   std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
 
-  if (!m_sender_plugins.count(endpoint) || m_sender_plugins.at(endpoint) == nullptr) {
+  if (!m_sender_plugins.count(request) || m_sender_plugins.at(request) == nullptr) {
 
-    auto preconfigured_conns = get_preconfigured_connections(endpoint);
-    Connection this_conn;
-    if (preconfigured_conns.size() > 0) {
-      if (preconfigured_conns.size() > 1) {
-        throw NameCollision(ERS_HERE, to_string(endpoint));
+    auto response = get_preconfigured_connections(request);
+    if (response.uris.size() > 1) {
+      throw NameCollision(ERS_HERE, to_string(request));
+    }
+    if (response.uris.size() == 0) {
+      response = m_config_client->resolveEndpoint(request);
+      if (response.uris.size() == 0) {
+        throw ConnectionNotFound(ERS_HERE, to_string(request));
       }
-      this_conn = preconfigured_conns[0];
-    } else {
-      auto resolved_conns = m_config_client->resolveEndpoint(endpoint);
-      if (resolved_conns.size() == 0) {
-        throw ConnectionNotFound(ERS_HERE, to_string(endpoint));
+      if (response.uris.size() > 1) {
+        throw NameCollision(ERS_HERE, to_string(request));
       }
-      if (resolved_conns.size() > 1) {
-        throw NameCollision(ERS_HERE, to_string(endpoint));
-      }
-      this_conn = resolved_conns[0];
     }
 
-    TLOG_DEBUG(10) << "Creating sender for endpoint " << to_string(endpoint);
-    auto sender = create_sender(this_conn);
-    m_sender_plugins[endpoint] = sender;
+    TLOG_DEBUG(10) << "Creating sender for request " << to_string(request);
+    auto sender = create_sender(response);
+    m_sender_plugins[request] = sender;
   }
-  return m_sender_plugins[endpoint];
+  return m_sender_plugins[request];
 }
 
 bool
-NetworkManager::is_pubsub_connection(Endpoint const& endpoint) const
+NetworkManager::is_pubsub_connection(ConnectionRequest const& request) const
 {
-  auto connections = get_preconfigured_connections(endpoint);
-  if (connections.size() == 0) {
-    connections = m_config_client->resolveEndpoint(endpoint);
+  auto connections = get_preconfigured_connections(request);
+  if (connections.uris.size() == 0) {
+    connections = m_config_client->resolveEndpoint(request);
   }
-  if (connections.size() == 0) {
-    throw ConnectionNotFound(ERS_HERE, to_string(endpoint));
+  if (connections.uris.size() == 0) {
+    throw ConnectionNotFound(ERS_HERE, to_string(request));
   }
-  bool is_pubsub = connections[0].connection_type == ConnectionType::kPubSub;
+  bool is_pubsub = connections.connection_type == ConnectionType::kPubSub;
 
-  //TLOG() << "Returning " << std::boolalpha << is_pubsub << " for endpoint " << to_string(endpoint);
+  // TLOG() << "Returning " << std::boolalpha << is_pubsub << " for request " << to_string(request);
   return is_pubsub;
 }
 
@@ -208,13 +194,14 @@ NetworkManager::GetUriForConnection(Connection conn)
   return conn.uri;
 }
 
-std::vector<Connection>
-NetworkManager::get_preconfigured_connections(Endpoint const& endpoint) const
+ConnectionResponse
+NetworkManager::get_preconfigured_connections(ConnectionRequest const& request) const
 {
-  std::vector<Connection> matching_connections;
+  ConnectionResponse matching_connections;
   for (auto& conn : m_preconfigured_connections) {
-    if (is_match(endpoint, conn.second)) {
-      matching_connections.push_back(conn.second);
+    if (is_match(request, conn.second)) {
+      matching_connections.connection_type = conn.second.connection_type;
+      matching_connections.uris.push_back(conn.second.uri);
     }
   }
 
@@ -222,15 +209,15 @@ NetworkManager::get_preconfigured_connections(Endpoint const& endpoint) const
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::create_receiver(std::vector<Connection> connections)
+NetworkManager::create_receiver(ConnectionResponse response, std::string const& data_type)
 {
   TLOG_DEBUG(12) << "START";
-  if (connections.size() == 0) {
+  if (response.uris.size() == 0) {
     return nullptr;
   }
 
-  bool is_pubsub = connections[0].connection_type == ConnectionType::kPubSub;
-  if (connections.size() > 1 && !is_pubsub) {
+  bool is_pubsub = response.connection_type == ConnectionType::kPubSub;
+  if (response.uris.size() > 1 && !is_pubsub) {
     throw OperationFailed(ERS_HERE,
                           "Trying to configure a kSendRecv receiver with multiple Connections is not allowed!");
   }
@@ -238,27 +225,21 @@ NetworkManager::create_receiver(std::vector<Connection> connections)
   auto plugin_type =
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Subscriber : ipm::IpmPluginType::Receiver);
 
-  TLOG_DEBUG(12) << "Creating plugin of type "
-                 << plugin_type << " for connection(s) " << connection_names(connections);
+  TLOG_DEBUG(12) << "Creating plugin of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_receiver(plugin_type);
 
   nlohmann::json config_json;
   if (is_pubsub) {
-    std::vector<std::string> connection_strings;
-    for (auto& conn : connections) {
-      connection_strings.push_back(conn.uri);
-    }
-    config_json["connection_strings"] = connection_strings;
+    config_json["connection_strings"] = response.uris;
   } else {
-    config_json["connection_string"] = connections[0].uri;
+    config_json["connection_string"] = response.uris[0];
   }
   plugin->connect_for_receives(config_json);
 
-  if (connections[0].connection_type == ConnectionType::kPubSub) {
-    TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].bind_endpoint.data_type
-                   << " after connect_for_receives";
+  if (is_pubsub) {
+    TLOG_DEBUG(12) << "Subscribing to topic " << data_type << " after connect_for_receives";
     auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(plugin);
-    subscriber->subscribe(connections[0].bind_endpoint.data_type);
+    subscriber->subscribe(data_type);
   }
 
   TLOG_DEBUG(12) << "END";
@@ -266,16 +247,16 @@ NetworkManager::create_receiver(std::vector<Connection> connections)
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::create_sender(Connection connection)
+NetworkManager::create_sender(ConnectionResponse connection)
 {
   auto is_pubsub = connection.connection_type == ConnectionType::kPubSub;
   auto plugin_type =
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
-  TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name(connection) << " of type " << plugin_type;
+  TLOG_DEBUG(11) << "Creating sender plugin of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
-  TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name(connection);
-  plugin->connect_for_sends({ { "connection_string", connection.uri } });
+  TLOG_DEBUG(11) << "Connecting sender plugin";
+  plugin->connect_for_sends({ { "connection_string", connection.uris[0] } });
 
   return plugin;
 }

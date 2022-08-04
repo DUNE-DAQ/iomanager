@@ -82,16 +82,16 @@ BOOST_AUTO_TEST_CASE(QueueOperations)
 
   BOOST_REQUIRE_EQUAL(queue_ptr->get_capacity(), 1);
   BOOST_REQUIRE_EQUAL(queue_ptr->get_num_elements(), 0);
-  
+
   BOOST_REQUIRE(queue_ptr->can_push());
   BOOST_REQUIRE(!queue_ptr->can_pop());
-  
+
   queue_ptr->push(15, std::chrono::milliseconds(1));
-  
+
   BOOST_REQUIRE(!queue_ptr->can_push());
   BOOST_REQUIRE(queue_ptr->can_pop());
   BOOST_REQUIRE_EQUAL(queue_ptr->get_num_elements(), 1);
-  
+
   int pop_value = 0;
   queue_ptr->pop(pop_value, std::chrono::milliseconds(1));
   BOOST_REQUIRE_EQUAL(pop_value, 15);
@@ -116,15 +116,15 @@ BOOST_AUTO_TEST_CASE(QueueOperations)
 
   BOOST_REQUIRE(queue_ptr->can_push());
   BOOST_REQUIRE(!queue_ptr->can_pop());
-  
+
   auto ret = queue_ptr->try_pop(pop_value, std::chrono::milliseconds(1));
   BOOST_REQUIRE(ret == false);
   ret = queue_ptr->try_push(18, std::chrono::milliseconds(1));
-  
+
   BOOST_REQUIRE(ret);
   BOOST_REQUIRE(!queue_ptr->can_push());
   BOOST_REQUIRE(queue_ptr->can_pop());
-  
+
   ret = queue_ptr->try_push(19, std::chrono::milliseconds(1));
   BOOST_REQUIRE(ret == false);
   ret = queue_ptr->try_pop(pop_value, std::chrono::milliseconds(1));
@@ -132,8 +132,6 @@ BOOST_AUTO_TEST_CASE(QueueOperations)
   BOOST_REQUIRE(ret);
   BOOST_REQUIRE(queue_ptr->can_push());
   BOOST_REQUIRE(!queue_ptr->can_pop());
-
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

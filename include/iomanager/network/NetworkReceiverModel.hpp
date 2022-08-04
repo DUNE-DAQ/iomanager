@@ -35,23 +35,23 @@ template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit NetworkReceiverModel(Endpoint const& endpoint)
-    : ReceiverConcept<Datatype>(endpoint)
+  explicit NetworkReceiverModel(ConnectionRequest const& request)
+    : ReceiverConcept<Datatype>(request)
   {
-    TLOG() << "NetworkReceiverModel created with DT! ID: " << to_string(endpoint)
+    TLOG() << "NetworkReceiverModel created with DT! ID: " << to_string(request)
            << " Addr: " << static_cast<void*>(this);
     // get network resources
 
-      try {
-        m_network_receiver_ptr = NetworkManager::get().get_receiver(endpoint);
-      } catch (ConnectionNotFound& ex) {
-        throw ConnectionInstanceNotFound(ERS_HERE, to_string(endpoint), ex);
-      }
+    try {
+      m_network_receiver_ptr = NetworkManager::get().get_receiver(request);
+    } catch (ConnectionNotFound& ex) {
+      throw ConnectionInstanceNotFound(ERS_HERE, to_string(request), ex);
+    }
   }
   ~NetworkReceiverModel() { remove_callback(); }
 
   NetworkReceiverModel(NetworkReceiverModel&& other)
-    : ReceiverConcept<Datatype>(other.m_endpoint)
+    : ReceiverConcept<Datatype>(other.m_request)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
@@ -63,7 +63,7 @@ public:
     try {
       return read_network<Datatype>(timeout);
     } catch (ipm::ReceiveTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "receive", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, to_string(this->request()), "receive", timeout.count(), ex);
     }
   }
 
@@ -100,7 +100,7 @@ private:
       }
     }
 
-    throw TimeoutExpired(ERS_HERE, to_string(this->endpoint()), "network receive", timeout.count());
+    throw TimeoutExpired(ERS_HERE, to_string(this->request()), "network receive", timeout.count());
     return MessageType();
   }
 

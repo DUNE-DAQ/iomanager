@@ -34,6 +34,13 @@ to_string(Endpoint const& ep, bool include_direction = true)
 }
 
 inline std::string
+to_string(ConnectionRequest const& cr)
+{
+
+  return cr.data_type + ":" + cr.app_name + ":" + cr.module_name;
+}
+
+inline std::string
 connection_name(Connection const& c)
 {
   return to_string(c.bind_endpoint, false) + "_Connection";
@@ -79,6 +86,12 @@ operator<(const Endpoint& lhs, const Endpoint& rhs)
 }
 
 inline bool
+operator<(const ConnectionRequest& lhs, const ConnectionRequest& rhs)
+{
+  return to_string(lhs) < to_string(rhs);
+}
+
+inline bool
 operator==(const Endpoint& lhs, const Endpoint& rhs)
 {
   return lhs.data_type == rhs.data_type && lhs.app_name == rhs.app_name && lhs.module_name == rhs.module_name &&
@@ -87,7 +100,29 @@ operator==(const Endpoint& lhs, const Endpoint& rhs)
 }
 
 inline bool
-is_match(const Endpoint& search, const Endpoint& check, bool check_direction = true)
+operator==(const ConnectionRequest& lhs, const ConnectionRequest& rhs)
+{
+  return lhs.data_type == rhs.data_type && lhs.app_name == rhs.app_name && lhs.module_name == rhs.module_name &&
+         lhs.source_id.subsystem == rhs.source_id.subsystem && lhs.source_id.id == rhs.source_id.id;
+}
+inline bool
+operator==(const ConnectionRequest& lhs, const Endpoint& rhs)
+{
+  return lhs.data_type == rhs.data_type && lhs.app_name == rhs.app_name && lhs.module_name == rhs.module_name &&
+         lhs.source_id.subsystem == rhs.source_id.subsystem && lhs.source_id.id == rhs.source_id.id;
+}
+
+struct IOManagerConnectionRequest : public ConnectionRequest
+{
+  IOManagerConnectionRequest(Endpoint const& e)
+    : ConnectionRequest{e.data_type, e.app_name, e.module_name,e.source_id}
+    , dir(e.direction)
+  {}
+  Direction dir{ Direction::kUnspecified };
+};
+
+inline bool
+is_match(const ConnectionRequest& search, const Endpoint& check)
 {
   if (search == check)
     return true;
@@ -99,9 +134,6 @@ is_match(const Endpoint& search, const Endpoint& check, bool check_direction = t
     return false;
   }
   if (search.module_name != "*" && search.module_name != check.module_name) {
-    return false;
-  }
-  if (check_direction && search.direction != Direction::kUnspecified && search.direction != check.direction) {
     return false;
   }
 
@@ -117,9 +149,9 @@ is_match(const Endpoint& search, const Endpoint& check, bool check_direction = t
 }
 
 inline bool
-is_match(const Endpoint& search, const Connection& check)
+is_match(const ConnectionRequest& search, const Connection& check)
 {
-  if (is_match(search, check.bind_endpoint, false)) {
+  if (is_match(search, check.bind_endpoint)) {
     return true;
   }
   for (auto& ep : check.connected_endpoints) {
@@ -131,10 +163,10 @@ is_match(const Endpoint& search, const Connection& check)
 }
 
 inline bool
-is_match(const Endpoint& search, const QueueConfig& check)
+is_match(const ConnectionRequest& search, const QueueConfig& check)
 {
   for (auto& ep : check.endpoints) {
-    if (is_match(search, ep, false)) {
+    if (is_match(search, ep)) {
       return true;
     }
   }
@@ -154,6 +186,14 @@ struct hash<dunedaq::iomanager::connection::Endpoint>
   std::size_t operator()(const dunedaq::iomanager::connection::Endpoint& endpoint) const
   {
     return std::hash<std::string>()(dunedaq::iomanager::connection::to_string(endpoint));
+  }
+};
+template<>
+struct hash<dunedaq::iomanager::connection::ConnectionRequest>
+{
+  std::size_t operator()(const dunedaq::iomanager::connection::ConnectionRequest& request) const
+  {
+    return std::hash<std::string>()(dunedaq::iomanager::connection::to_string(request));
   }
 };
 }

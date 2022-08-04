@@ -29,7 +29,7 @@ public:
   ConfigClient(const std::string& server, const std::string& port);
   ~ConfigClient();
 
-  std::vector<Connection> resolveEndpoint(Endpoint const& endpoint);
+  ConnectionResponse resolveEndpoint(ConnectionRequest const& request);
 
   void publishApp(const std::string& name, const std::string& config, const std::string& sources = "");
   void publishConnection(const std::string& config, const std::string& sources = "");
