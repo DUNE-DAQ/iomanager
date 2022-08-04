@@ -114,7 +114,7 @@ operator==(const ConnectionRequest& lhs, const Endpoint& rhs)
 
 struct IOManagerConnectionRequest : public ConnectionRequest
 {
-  IOManagerConnectionRequest(Endpoint const& e)
+  IOManagerConnectionRequest(Endpoint const& e) // NOLINT, we want to allow implicit conversions here
     : ConnectionRequest{e.data_type, e.app_name, e.module_name,e.source_id}
     , dir(e.direction)
   {}
