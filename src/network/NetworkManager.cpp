@@ -39,13 +39,13 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
   for (auto& sender : m_sender_plugins) {
     opmonlib::InfoCollector tmp_ic;
     sender.second->get_info(tmp_ic, level);
-    ci.add(to_string(sender.first), tmp_ic);
+    ci.add(sender.first.uid, tmp_ic);
   }
 
   for (auto& receiver : m_receiver_plugins) {
     opmonlib::InfoCollector tmp_ic;
     receiver.second->get_info(tmp_ic, level);
-    ci.add(to_string(receiver.first), tmp_ic);
+    ci.add(receiver.first.uid, tmp_ic);
   }
 }
 
@@ -57,30 +57,30 @@ NetworkManager::configure(const Connections_t& connections)
   }
 
   for (auto& connection : connections) {
-    auto name = connection_name(connection);
+    auto name = connection.id.uid;
     TLOG_DEBUG(15) << "Adding connection " << name << " to connection map";
     if (m_preconfigured_connections.count(name)) {
       TLOG_DEBUG(15) << "Name collision for connection " << name
                      << " connection_map.count: " << m_preconfigured_connections.count(name);
       reset();
-      throw NameCollision(ERS_HERE, connection.uri);
+      throw NameCollision(ERS_HERE, connection.id.uid);
     }
     m_preconfigured_connections[name] = connection;
+  }
 
-    if (m_config_client == nullptr) {
+  if (m_config_client == nullptr) {
 
-      std::string connectionServer = "localhost";
-      char* env = getenv("CONNECTION_SERVER");
-      if (env) {
-        connectionServer = std::string(env);
-      }
-      std::string connectionPort = "5000";
-      env = getenv("CONNECTION_PORT");
-      if (env) {
-        connectionPort = std::string(env);
-      }
-      m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort);
+    std::string connectionServer = "localhost";
+    char* env = getenv("CONNECTION_SERVER");
+    if (env) {
+      connectionServer = std::string(env);
     }
+    std::string connectionPort = "5000";
+    env = getenv("CONNECTION_PORT");
+    if (env) {
+      connectionPort = std::string(env);
+    }
+    m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort);
   }
 }
 
@@ -99,73 +99,73 @@ NetworkManager::reset()
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::get_receiver(ConnectionRequest const& request)
+NetworkManager::get_receiver(ConnectionId const& conn_id)
 {
-  TLOG_DEBUG(9) << "Getting receiver for request " << to_string(request);
+  TLOG_DEBUG(9) << "Getting receiver for connection " << conn_id.uid;
 
   std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
-  if (!m_receiver_plugins.count(request) || m_receiver_plugins.at(request) == nullptr) {
-    auto response = get_preconfigured_connections(request);
-    if (response.uris.size() == 0) {
-      response = m_config_client->resolveEndpoint(request);
+  if (!m_receiver_plugins.count(conn_id) || m_receiver_plugins.at(conn_id) == nullptr) {
+    auto response = get_preconfigured_connections(conn_id);
+    if (response.connections.size() == 0) {
+      response = m_config_client->resolveConnection(conn_id);
     }
 
-    if (response.uris.size() == 0) {
-      throw ConnectionNotFound(ERS_HERE, to_string(request));
+    if (response.connections.size() == 0) {
+      throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
     }
 
-    TLOG_DEBUG(9) << "Creating receiver for request " << to_string(request);
-    auto receiver = create_receiver(response, request.data_type);
+    TLOG_DEBUG(9) << "Creating receiver for connection " << conn_id.uid;
+    auto receiver = create_receiver(response.connections);
 
-    m_receiver_plugins[request] = receiver;
+    m_receiver_plugins[conn_id] = receiver;
   }
 
-  return m_receiver_plugins[request];
+  return m_receiver_plugins[conn_id];
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::get_sender(ConnectionRequest const& request)
+NetworkManager::get_sender(ConnectionId const& conn_id)
 {
-  TLOG_DEBUG(10) << "Getting sender for request " << to_string(request);
+  TLOG_DEBUG(10) << "Getting sender for connection " << conn_id.uid;
 
   std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
 
-  if (!m_sender_plugins.count(request) || m_sender_plugins.at(request) == nullptr) {
+  if (!m_sender_plugins.count(conn_id) || m_sender_plugins.at(conn_id) == nullptr) {
 
-    auto response = get_preconfigured_connections(request);
-    if (response.uris.size() > 1) {
-      throw NameCollision(ERS_HERE, to_string(request));
+    auto response = get_preconfigured_connections(conn_id);
+    if (response.connections.size() > 1) {
+      throw NameCollision(ERS_HERE, conn_id.uid);
     }
-    if (response.uris.size() == 0) {
-      response = m_config_client->resolveEndpoint(request);
-      if (response.uris.size() == 0) {
-        throw ConnectionNotFound(ERS_HERE, to_string(request));
+    if (response.connections.size() == 0) {
+      response = m_config_client->resolveConnection(conn_id);
+      if (response.connections.size() == 0) {
+        throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
       }
-      if (response.uris.size() > 1) {
-        throw NameCollision(ERS_HERE, to_string(request));
+      if (response.connections.size() > 1) {
+        throw NameCollision(ERS_HERE, conn_id.uid);
       }
     }
 
-    TLOG_DEBUG(10) << "Creating sender for request " << to_string(request);
-    auto sender = create_sender(response);
-    m_sender_plugins[request] = sender;
+    TLOG_DEBUG(10) << "Creating sender for connection " << conn_id.uid;
+    auto sender = create_sender(response.connections[0]);
+    m_sender_plugins[conn_id] = sender;
   }
-  return m_sender_plugins[request];
+  return m_sender_plugins[conn_id];
 }
 
 bool
-NetworkManager::is_pubsub_connection(ConnectionRequest const& request) const
+NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 {
-  auto connections = get_preconfigured_connections(request);
-  if (connections.uris.size() == 0) {
-    connections = m_config_client->resolveEndpoint(request);
+  auto response = get_preconfigured_connections(conn_id);
+  if (response.connections.size() == 0) {
+    response = m_config_client->resolveConnection(conn_id);
   }
-  if (connections.uris.size() == 0) {
-    throw ConnectionNotFound(ERS_HERE, to_string(request));
+  if (response.connections.size() == 0) {
+    throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
   }
-  bool is_pubsub = connections.connection_type == ConnectionType::kPubSub;
+  bool is_pubsub = response.connections[0].connection_type == ConnectionType::kPubSub;
 
-  // TLOG() << "Returning " << std::boolalpha << is_pubsub << " for request " << to_string(request);
+  // TLOG() << "Returning " << std::boolalpha << is_pubsub << " for request " << request;
   return is_pubsub;
 }
 
@@ -195,13 +195,12 @@ NetworkManager::GetUriForConnection(Connection conn)
 }
 
 ConnectionResponse
-NetworkManager::get_preconfigured_connections(ConnectionRequest const& request) const
+NetworkManager::get_preconfigured_connections(ConnectionId const& conn_id) const
 {
   ConnectionResponse matching_connections;
   for (auto& conn : m_preconfigured_connections) {
-    if (is_match(request, conn.second)) {
-      matching_connections.connection_type = conn.second.connection_type;
-      matching_connections.uris.push_back(conn.second.uri);
+    if (is_match(conn_id, conn.second.id)) {
+      matching_connections.connections.push_back(conn.second);
     }
   }
 
@@ -209,15 +208,15 @@ NetworkManager::get_preconfigured_connections(ConnectionRequest const& request) 
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::create_receiver(ConnectionResponse response, std::string const& data_type)
+NetworkManager::create_receiver(Connections_t connections)
 {
   TLOG_DEBUG(12) << "START";
-  if (response.uris.size() == 0) {
+  if (connections.size() == 0) {
     return nullptr;
   }
 
-  bool is_pubsub = response.connection_type == ConnectionType::kPubSub;
-  if (response.uris.size() > 1 && !is_pubsub) {
+  bool is_pubsub = connections[0].connection_type == ConnectionType::kPubSub;
+  if (connections.size() > 1 && !is_pubsub) {
     throw OperationFailed(ERS_HERE,
                           "Trying to configure a kSendRecv receiver with multiple Connections is not allowed!");
   }
@@ -230,16 +229,19 @@ NetworkManager::create_receiver(ConnectionResponse response, std::string const& 
 
   nlohmann::json config_json;
   if (is_pubsub) {
-    config_json["connection_strings"] = response.uris;
+    std::vector<std::string> uris;
+    for (auto& conn : connections)
+      uris.push_back(conn.uri);
+    config_json["connection_strings"] = uris;
   } else {
-    config_json["connection_string"] = response.uris[0];
+    config_json["connection_string"] = connections[0].uri;
   }
   plugin->connect_for_receives(config_json);
 
   if (is_pubsub) {
-    TLOG_DEBUG(12) << "Subscribing to topic " << data_type << " after connect_for_receives";
+    TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].id.data_type << " after connect_for_receives";
     auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(plugin);
-    subscriber->subscribe(data_type);
+    subscriber->subscribe(connections[0].id.data_type);
   }
 
   TLOG_DEBUG(12) << "END";
@@ -247,7 +249,7 @@ NetworkManager::create_receiver(ConnectionResponse response, std::string const& 
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::create_sender(ConnectionResponse connection)
+NetworkManager::create_sender(Connection connection)
 {
   auto is_pubsub = connection.connection_type == ConnectionType::kPubSub;
   auto plugin_type =
@@ -256,7 +258,7 @@ NetworkManager::create_sender(ConnectionResponse connection)
   TLOG_DEBUG(11) << "Creating sender plugin of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin";
-  plugin->connect_for_sends({ { "connection_string", connection.uris[0] } });
+  plugin->connect_for_sends({ { "connection_string", connection.uri } });
 
   return plugin;
 }

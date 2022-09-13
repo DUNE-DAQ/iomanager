@@ -39,7 +39,7 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
 ConfigClient::~ConfigClient() {}
 
 ConnectionResponse
-ConfigClient::resolveEndpoint(ConnectionRequest const&)
+ConfigClient::resolveConnection(ConnectionRequest const&)
 {
   ConnectionResponse output;
   return output;

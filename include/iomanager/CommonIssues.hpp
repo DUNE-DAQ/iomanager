@@ -40,7 +40,7 @@ ERS_DECLARE_ISSUE(iomanager,        // namespace
                   QueueTypeUnknown, // issue class name
                   "Queue type \"" << queue_type << "\" is unknown ",
                   ((std::string)queue_type))
-ERS_DECLARE_ISSUE(iomanager, ConnectionNotFound, "Connection named " << name << " not found", ((std::string)name))
+ERS_DECLARE_ISSUE(iomanager, ConnectionNotFound, "Connection named " << cuid << " of type " << data_type << " not found", ((std::string)cuid)((std::string)data_type))
 ERS_DECLARE_ISSUE(iomanager, TopicNotFound, "Topic named " << name << " not found", ((std::string)name))
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionTopicNotFound,
@@ -57,6 +57,11 @@ ERS_DECLARE_ISSUE(iomanager,
                   "Connection named " << name << " is not open for " << direction,
                   ((std::string)name)((std::string)direction))
 ERS_DECLARE_ISSUE(iomanager, AlreadyConfigured, "The NetworkManager has already been configured", )
+ERS_DECLARE_ISSUE(iomanager,
+                  DatatypeMismatch,
+                  "Declared datatype in ConnectionId for connection " << cuid << " is " << cid_dt
+                                                                      << " but datatype_to_string reports " << datatype,
+                  ((std::string)cuid)((std::string)cid_dt)((std::string)datatype))
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionDirectionMismatch,
                   "Connection reference with name " << name << " specified direction " << direction

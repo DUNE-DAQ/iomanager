@@ -53,15 +53,6 @@ public:
   std::shared_ptr<Queue<T>> get_queue(const std::string& name);
 
   /**
-   * @brief Get a handle to a Queue
-   * @tparam T Type of the data stored in the Queue
-   * @param name Name of the Queue
-   * @return std::shared_ptr to generic queue pointer
-   */
-  template<typename T>
-  std::shared_ptr<Queue<T>> get_queue(const ConnectionRequest& request);
-
-  /**
    * @brief Configure the QueueRegistry
    * @param configs Queue configurations
    */
@@ -73,7 +64,7 @@ public:
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
 
-  bool has_queue(ConnectionRequest const& request);
+  bool has_queue(std::string const& uid, std::string const& data_type);
 
 private:
   struct QueueEntry

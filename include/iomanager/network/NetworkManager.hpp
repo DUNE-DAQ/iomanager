@@ -44,13 +44,13 @@ public:
   void configure(const Connections_t& connections);
   void reset();
 
-  std::shared_ptr<ipm::Receiver> get_receiver(ConnectionRequest const& request);
-  std::shared_ptr<ipm::Sender> get_sender(ConnectionRequest const& request);
+  std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
+  std::shared_ptr<ipm::Sender> get_sender(ConnectionId const& conn_id);
 
-  bool is_pubsub_connection(ConnectionRequest const& request) const;
+  bool is_pubsub_connection(ConnectionId const& conn_id) const;
 
   std::string GetUriForConnection(Connection conn);
-  ConnectionResponse get_preconfigured_connections(ConnectionRequest const& request) const;
+  ConnectionResponse get_preconfigured_connections(ConnectionId const& conn_id) const;
 
 private:
   static std::unique_ptr<NetworkManager> s_instance;
@@ -62,12 +62,12 @@ private:
   NetworkManager& operator=(NetworkManager const&) = delete;
   NetworkManager& operator=(NetworkManager&&) = delete;
 
-  std::shared_ptr<ipm::Receiver> create_receiver(ConnectionResponse connections, std::string const& data_type);
-  std::shared_ptr<ipm::Sender> create_sender(ConnectionResponse connection);
+  std::shared_ptr<ipm::Receiver> create_receiver(Connections_t connections);
+  std::shared_ptr<ipm::Sender> create_sender(Connection connection);
 
   std::unordered_map<std::string, Connection> m_preconfigured_connections;
-  std::unordered_map<ConnectionRequest, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
-  std::unordered_map<ConnectionRequest, std::shared_ptr<ipm::Sender>> m_sender_plugins;
+  std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
+  std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
 
   std::unique_ptr<ConfigClient> m_config_client;
 

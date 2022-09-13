@@ -27,16 +27,24 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Receiver(ConnectionRequest const& this_req)
-    : utilities::NamedObject(to_string(this_req))
-    , m_request(this_req)
-  {}
+  explicit Receiver(ConnectionId const& this_conn)
+    : utilities::NamedObject(this_conn.uid)
+    , m_conn(this_conn)
+  {
+  }
+
+  Receiver(std::string const& conn_uid, std::string const& data_type)
+    : utilities::NamedObject(conn_uid)
+  {
+    m_conn.uid = conn_uid;
+    m_conn.data_type = data_type;
+  }
   virtual ~Receiver() = default;
 
-  ConnectionRequest request() const { return m_request; }
+  ConnectionId id() const { return m_conn; }
 
 protected:
-  ConnectionRequest m_request;
+  ConnectionId m_conn;
 };
 
 // Interface
@@ -44,9 +52,10 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
-  explicit ReceiverConcept(ConnectionRequest const& this_req)
-    : Receiver(this_req)
-  {}
+  explicit ReceiverConcept(std::string const& conn_uid)
+    : Receiver(conn_uid, datatype_to_string<Datatype>())
+  {
+  }
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
   virtual std::optional<Datatype> try_receive(Receiver::timeout_t timeout) = 0;
   virtual void add_callback(std::function<void(Datatype&)> callback) = 0;

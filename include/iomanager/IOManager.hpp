@@ -58,27 +58,9 @@ public:
   {
     Queues_t qCfg = queues;
     Connections_t nwCfg;
-    std::regex queue_uri_regex("queue://(\\w+):(\\d+)");
 
     for (auto& connection : connections) {
-      if (connection.connection_type == ConnectionType::kQueue) {
-        std::smatch sm;
-        std::regex_match(connection.uri, sm, queue_uri_regex);
-        QueueConfig config;
-        config.name = to_string(connection.bind_endpoint) + "_Queue";
-        config.endpoints.push_back(connection.bind_endpoint);
-        for (auto& ep : connection.connected_endpoints) {
-          config.endpoints.push_back(ep);
-        }
-        config.queue_type = string_to_queue_type(sm[1]);
-        if (config.queue_type == QueueType::kUnknown) {
-          throw QueueTypeUnknown(ERS_HERE, sm[1]);
-        }
-        config.capacity = stoi(sm[2]);
-        qCfg.push_back(config);
-      } else {
-        nwCfg.push_back(connection);
-      }
+      nwCfg.push_back(connection);
     }
 
     QueueRegistry::get().configure(qCfg);
@@ -95,71 +77,96 @@ public:
   }
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(IOManagerConnectionRequest const& request)
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId const& id)
   {
-    if (request.dir == Direction::kInput)
-    {
-      throw ConnectionDirectionMismatch(ERS_HERE, to_string(request), "input", "sender");  
+    if (id.data_type != datatype_to_string<Datatype>()) {
+      throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
+    return get_sender<Datatype>(id.uid);
+  }
 
+  template<typename Datatype>
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& uid)
+  {
     static std::mutex dt_sender_mutex;
     std::lock_guard<std::mutex> lk(dt_sender_mutex);
 
-    if (!m_senders.count(request)) {
-      if (QueueRegistry::get().has_queue(request)) { // if queue
-        TLOG() << "Creating QueueSenderModel for request " << to_string(request);
-        m_senders[request] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(request));
+    auto data_type = datatype_to_string<Datatype>();
+    auto key = uid + "@@" + data_type;
+    if (!m_senders.count(key)) {
+      if (QueueRegistry::get().has_queue(uid, data_type)) { // if queue
+        TLOG() << "Creating QueueSenderModel for uid " << uid << ", datatype " << data_type;
+        m_senders[key] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(uid));
       } else {
-        TLOG() << "Creating NetworkSenderModel for request " << to_string(request);
-        m_senders[request] = std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(request));
+        TLOG() << "Creating NetworkSenderModel for uid " << uid << ", datatype " << data_type;
+        m_senders[key] = std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(uid));
       }
     }
-    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[request]);
+    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[key]);
   }
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(IOManagerConnectionRequest const& request)
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionId const& id)
   {
-    if (request.dir == Direction::kOutput)
-    {
-      throw ConnectionDirectionMismatch(ERS_HERE, to_string(request), "output", "receiver");
+    if (id.data_type != datatype_to_string<Datatype>()) {
+      throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
-    
+    return get_receiver<Datatype>(id.uid);
+  }
+
+  template<typename Datatype>
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& uid)
+  {
     static std::mutex dt_receiver_mutex;
     std::lock_guard<std::mutex> lk(dt_receiver_mutex);
 
-    if (!m_receivers.count(request)) {
-      if (QueueRegistry::get().has_queue(request)) { // if queue
-        TLOG() << "Creating QueueReceiverModel for request " << to_string(request);
-        m_receivers[request] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(request));
+    auto data_type = datatype_to_string<Datatype>();
+    auto key = uid + "@@" + data_type;
+    if (!m_receivers.count(key)) {
+      if (QueueRegistry::get().has_queue(uid, data_type)) { // if queue
+        TLOG() << "Creating QueueReceiverModel for uid " << uid << ", datatype " << data_type;
+        m_receivers[key] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(uid));
       } else {
-        TLOG() << "Creating NetworkReceiverModel for request " << to_string(request);
-        m_receivers[request] =
-          std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(request));
+        TLOG() << "Creating NetworkReceiverModel for uid " << uid << ", datatype " << data_type;
+        m_receivers[key] = std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(uid));
       }
     }
-    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[request]); // NOLINT
+    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[key]); // NOLINT
   }
 
   template<typename Datatype>
-  void add_callback(IOManagerConnectionRequest const& request, std::function<void(Datatype&)> callback)
+  void add_callback(ConnectionId const& id, std::function<void(Datatype&)> callback)
   {
-    auto receiver = get_receiver<Datatype>(request);
+    auto receiver = get_receiver<Datatype>(id);
     receiver->add_callback(callback);
   }
 
   template<typename Datatype>
-  void remove_callback(IOManagerConnectionRequest const& request)
+  void add_callback(std::string const& uid, std::function<void(Datatype&)> callback)
   {
-    auto receiver = get_receiver<Datatype>(request);
+    auto receiver = get_receiver<Datatype>(uid);
+    receiver->add_callback(callback);
+  }
+
+  template<typename Datatype>
+  void remove_callback(ConnectionId const& id)
+  {
+    auto receiver = get_receiver<Datatype>(id);
+    receiver->remove_callback();
+  }
+
+  template<typename Datatype>
+  void remove_callback(std::string const& uid)
+  {
+    auto receiver = get_receiver<Datatype>(uid);
     receiver->remove_callback();
   }
 
 private:
   IOManager() {}
 
-  using SenderMap = std::map<ConnectionRequest, std::shared_ptr<Sender>>;
-  using ReceiverMap = std::map<ConnectionRequest, std::shared_ptr<Receiver>>;
+  using SenderMap = std::map<std::string, std::shared_ptr<Sender>>;
+  using ReceiverMap = std::map<std::string, std::shared_ptr<Receiver>>;
   SenderMap m_senders;
   ReceiverMap m_receivers;
 
@@ -177,16 +184,30 @@ get_iomanager()
 
 template<typename Datatype>
 static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_sender(iomanager::IOManagerConnectionRequest const& request)
+get_iom_sender(iomanager::ConnectionId const& id)
 {
-  return iomanager::IOManager::get()->get_sender<Datatype>(request);
+  return iomanager::IOManager::get()->get_sender<Datatype>(id);
 }
 
 template<typename Datatype>
 static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_receiver(iomanager::IOManagerConnectionRequest const& request)
+get_iom_receiver(iomanager::ConnectionId const& id)
 {
-  return iomanager::IOManager::get()->get_receiver<Datatype>(request);
+  return iomanager::IOManager::get()->get_receiver<Datatype>(id);
+}
+
+template<typename Datatype>
+static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
+get_iom_sender(std::string const& uid)
+{
+  return iomanager::IOManager::get()->get_sender<Datatype>(uid);
+}
+
+template<typename Datatype>
+static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
+get_iom_receiver(std::string const& uid)
+{
+  return iomanager::IOManager::get()->get_receiver<Datatype>(uid);
 }
 
 } // namespace dunedaq
