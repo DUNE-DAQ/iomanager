@@ -40,27 +40,27 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
 ConfigClient::~ConfigClient() {}
 
 ConnectionResponse
-ConfigClient::resolveEndpoint(ConnectionRequest const&)
+ConfigClient::resolveEndpoint(ConnectionRequest const& request)
 {
   json query;
-  query["data_type"]=endpoint.data_type;
-  query["app_name"]=endpoint.app_name;
-  query["module_name"]=endpoint.module_name;
-  if (endpoint.source_id.subsystem != Subsystem::kUnknown) {
+  query["data_type"]=request.data_type;
+  query["app_name"]=request.app_name;
+  query["module_name"]=request.module_name;
+  if (request.source_id.subsystem != Subsystem::kUnknown) {
     std::ostringstream source_id;
-    source_id << str(endpoint.source_id.subsystem) << "_" << endpoint.source_id.id;
+    source_id << str(request.source_id.subsystem) << "_" << request.source_id.id;
     query["source_id"]=source_id.str();
   }
 
   std::string target = "/getendpoint/" + m_partition;
   std::string params = "endpoint=" + query.dump();
   json result=json::parse(get(target, params));
-  std::cout << "result: " << result.dump() << std::endl;
+
   ConnectionResponse output;
   for (auto uri: result["uris"]) {
     output.uris.emplace_back(uri.dump());
   }
-  output.connection_type=result["connection_type"].dump();
+  output.connection_type=parse_ConnectionType(result["connection_type"]);
   return output;
 }
 
@@ -163,7 +163,7 @@ ConfigClient::retract(const std::string& content)
 std::string
 ConfigClient::get(const std::string& target, const std::string& params)
 {
-  std::cout << "Getting <" << target << ">\n";
+  TLOG_DEBUG(25) << "Getting <" << target << ">";
   http::request<http::string_body> req{ http::verb::post, target, 11 };
   req.set(http::field::content_type, "application/x-www-form-urlencoded");
   req.body()=params;
