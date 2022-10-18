@@ -19,25 +19,15 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <chrono>
 
 using namespace dunedaq::iomanager;
 using nlohmann::json;
-
-void printResponse(ConnectionResponse response) {
-  std::cout << "Endpoint resolved to uris {";
-  auto uiter=response.uris.begin();
-  while (uiter != response.uris.end()) {
-    std::cout << *uiter;
-    uiter++;
-    if (uiter!=response.uris.end()) std::cout << ",";
-  }
-  std::cout << "}, connection type: " << str(response.connection_type) << std::endl;
-}
+using namespace std::chrono;
 
 int
 main(int argc, char* argv[])
 {
-
   dunedaq::logging::Logging::setup();
 
   std::string name("ccTest");
@@ -45,14 +35,19 @@ main(int argc, char* argv[])
   std::string port("5000");
   std::string file;
   int connectionCount=10;
+  bool useMulti=false;
+  bool verbose=false;
   namespace po = boost::program_options;
   po::options_description desc("Simple test program for ConfigClient class");
   desc.add_options()(
     //"file,f", po::value<std::string>(&file), "file to publish as our configuration")(
-    "name,n", po::value<std::string>(&name), "name to publish our config under")(
+    "name,n", po::value<std::string>(&name), "name of partition to publish our config under")(
     "count,c", po::value<int>(&connectionCount), "number of connections to publish")(
     "port,p", po::value<std::string>(&port), "port to connect to on configuration server")(
-    "server,s", po::value<std::string>(&server), "Configuration server to connect to");
+    "server,s", po::value<std::string>(&server), "Configuration server to connect to")(
+    ",m", po::bool_switch(&useMulti), "publish using vectors of ids and uris")(
+    "verbose,v", po::bool_switch(&verbose), "print more verbose output");
+  
   try {
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -63,77 +58,81 @@ main(int argc, char* argv[])
     return 0;
   }
 
+  std::string part="DUNEDAQ_PARTITION="+name;
   try {
     ConfigClient dummyclient(server, port);
   } catch (EnvNotFound& ex) {
-    putenv(const_cast<char*>("DUNEDAQ_PARTITION=cctest")); // NOLINT
+    putenv(const_cast<char*>(part.c_str())); // NOLINT
   }
   ConfigClient client(server, port);
 
-  std::cout << "Publishing my endpoint\n";
-  Endpoint myEp;
-  myEp.data_type="test";
-  myEp.app_name=name;
-  myEp.module_name="cc_test";
-  myEp.direction=Direction::kOutput;
-  client.publishEndpoint(myEp,"tcp:127.0.0.1:9999");
-
-  std::cout << "Publishing my connections\n";
-  std::vector<Connection> connections;
+  std::vector<std::string> connections;
+  std::vector<std::string> uris;
   std::ostringstream numStr;
   for (int con=0;con<connectionCount; con++) {
     numStr.str("");
-    numStr << con;
-    Connection myCon;
-    myCon.bind_endpoint.data_type=con%2? "try":"test";
-    myCon.bind_endpoint.app_name=name+numStr.str();
-    myCon.bind_endpoint.module_name="cc_test";
-    myCon.bind_endpoint.source_id={Subsystem::kDetectorReadout,con};
-    myCon.bind_endpoint.direction=Direction::kOutput;
+    numStr << std::setfill('0') << std::setw(3) << con;
+    std::string connId="DRO-"+numStr.str()+"-tp_to_trigger";
     numStr.str("");
     numStr << 1234+con;
-    myCon.uri="tcp://192.168.1.100:"+numStr.str();
-    myCon.connection_type=ConnectionType::kSendRecv;
-    client.publishConnection(myCon);
-    connections.push_back(myCon);
+    std::string uri="tcp://192.168.1.100:"+numStr.str();
+    connections.push_back(connId);
+    uris.push_back(uri);
   }
+
+  std::cout << "Publishing my connections\n";
+  auto start=system_clock::now();
+  if (useMulti) {
+    client.publish(connections,uris);
+  }
+  else {
+    for (int con=0;con<connectionCount; con++) {
+      client.publish(connections[con],uris[con]);
+    }
+  }
+  auto endPublish=system_clock::now();
   std::cout << "Looking up connection[1]\n";
-  std::string uri=client.resolveConnection(connections[1]);
-  std::cout << "resolved to <" << uri << ">\n";
-
-  ConnectionRequest myQuery;
-  ConnectionResponse response;
-  myQuery.app_name="*";
-  myQuery.module_name="*";
-  for (std::string dt: {"test","try"}) {
-    myQuery.data_type=dt;
-    std::cout << "Looking up endPoints with data type " << myQuery.data_type << std::endl;
-    response=client.resolveEndpoint(myQuery);
-    printResponse(response);
+  std::vector<std::string> result=client.resolveConnection(connections[1]);
+  if (result.size()==1) {
+    std::cout << "resolved to [" << result[0] << "]\n";
   }
-
-  for (int con=0;con<2; con++) {
-    numStr.str("");
-    numStr << con;
-    myQuery.app_name=name+numStr.str();
-    std::cout << "Looking up endPoints with data type " << myQuery.data_type
-              << " and app_name " << myQuery.app_name <<std::endl;
-    //myQuery.module_name="cc_test";
-    try {
-      response=client.resolveEndpoint(myQuery);
-      printResponse(response);
-    }
-    catch (FailedLookup& exc) {
-      std::cout << "Not found" << std::endl;
-    }
+  else {
+    std::cout << "Unexpected number of uris (" << result.size() << ")in response\n";
   }
-
-  std::cout << "Retracting endpoint\n";
-  client.retract(myEp);
+  for (std::string dt: {"2","DRO-.*-","DRO-00[1-4]-tp_to_trigger","tp_to_trigger"}) {
+    std::cout << "Looking up connections matching '" << dt << "'";
+    result=client.resolveConnection(dt);
+    std::cout << ".  Resolved to " << result.size() << " uris:";
+    if (verbose) {
+      std::cout << " [";
+      for (unsigned int i=0;i<result.size();i++) {
+        std::cout << result[i];
+        if (i<result.size()-1) std::cout << ",";
+      }
+      std::cout << "]";
+    }
+    std::cout << std::endl;
+  }
+  auto endLookups=std::chrono::system_clock::now();
 
   std::cout << "Retracting connections\n";
-  for (Connection myCon: connections) {
-    client.retract(myCon);
+  if (useMulti) {
+    client.retract(connections);
   }
+  else {
+    for (auto con: connections) {
+      client.retract(con);
+    }
+  }
+
+  auto endRetract=system_clock::now();
+  double retractTime=duration_cast<microseconds>(endRetract-endLookups).count();
+  double publishTime=duration_cast<microseconds>(endPublish-start).count();
+  double lookupTime=duration_cast<microseconds>(endLookups-endPublish).count();
+  std::cout << "Timing: publish " << publishTime/1e6
+            << ", lookup " << lookupTime/1e6
+            << ", retract " << retractTime/1e6
+            << " seconds" << std::endl;
+
   return 0;
 } // NOLINT
