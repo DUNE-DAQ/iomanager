@@ -35,6 +35,7 @@ main(int argc, char* argv[])
   std::string port("5000");
   std::string file;
   int connectionCount=10;
+  int pause=0;
   bool useMulti=false;
   bool verbose=false;
   namespace po = boost::program_options;
@@ -45,6 +46,7 @@ main(int argc, char* argv[])
     "count,c", po::value<int>(&connectionCount), "number of connections to publish")(
     "port,p", po::value<std::string>(&port), "port to connect to on configuration server")(
     "server,s", po::value<std::string>(&server), "Configuration server to connect to")(
+    "pause,P", po::value<int>(&pause), "Pause (in seconds) between publish an lookups")(
     ",m", po::bool_switch(&useMulti), "publish using vectors of ids and uris")(
     "verbose,v", po::bool_switch(&verbose), "print more verbose output");
   
@@ -91,7 +93,21 @@ main(int argc, char* argv[])
     }
   }
   auto endPublish=system_clock::now();
-  std::cout << "Looking up connection[1]\n";
+
+  if (pause>0) {
+    std::cout << "  Pausing to allow initial entries to time out";
+    std::cout.flush();
+    for (int s=0;s<pause;s++) {
+      std::this_thread::sleep_for(1s);
+      std::cout << ".";
+      std::cout.flush();
+    }
+    std::cout << std::endl;
+  }
+
+  auto startLookups=system_clock::now();
+  std::cout << "Looking up connections[1]: ";
+  std::cout.flush();
   std::vector<std::string> result=client.resolveConnection(connections[1]);
   if (result.size()==1) {
     std::cout << "resolved to [" << result[0] << "]\n";
@@ -117,7 +133,7 @@ main(int argc, char* argv[])
 
   std::cout << "Retracting connections\n";
   if (useMulti) {
-    client.retract(connections);
+    client.retract();
   }
   else {
     for (auto con: connections) {
@@ -128,7 +144,7 @@ main(int argc, char* argv[])
   auto endRetract=system_clock::now();
   double retractTime=duration_cast<microseconds>(endRetract-endLookups).count();
   double publishTime=duration_cast<microseconds>(endPublish-start).count();
-  double lookupTime=duration_cast<microseconds>(endLookups-endPublish).count();
+  double lookupTime=duration_cast<microseconds>(endLookups-startLookups).count();
   std::cout << "Timing: publish " << publishTime/1e6
             << ", lookup " << lookupTime/1e6
             << ", retract " << retractTime/1e6

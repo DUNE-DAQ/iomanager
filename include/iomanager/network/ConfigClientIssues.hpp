@@ -24,6 +24,10 @@ ERS_DECLARE_ISSUE(iomanager,
                   FailedLookup,
                   "Failed to lookup " << target << " " << result,
                   ((std::string)target)((std::string)result))
+ERS_DECLARE_ISSUE(iomanager,
+                  PublishException,
+                  "Caught exception <" << exc << "> while trying to publishn",
+                  ((std::string)exc))
 } // namespace dunedaq
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTISSUES_HPP_
