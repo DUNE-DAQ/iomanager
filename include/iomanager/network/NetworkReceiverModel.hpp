@@ -9,7 +9,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
 
-#include "iomanager/CommonIssues.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/Receiver.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 

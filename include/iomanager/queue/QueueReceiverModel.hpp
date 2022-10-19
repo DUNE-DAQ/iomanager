@@ -9,8 +9,8 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QRECEIVER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QRECEIVER_HPP_
 
-#include "iomanager/CommonIssues.hpp"
 #include "iomanager/Receiver.hpp"
+#include "iomanager/queue/QueueIssues.hpp"
 #include "iomanager/queue/QueueRegistry.hpp"
 
 #include "logging/Logging.hpp"
@@ -24,14 +24,6 @@
 #include <utility>
 
 namespace dunedaq {
-
-// Disable coverage collection LCOV_EXCL_START
-ERS_DECLARE_ISSUE(iomanager,
-                  ReceiveCallbackConflict,
-                  "QueueReceiverModel for uid " << conn_uid << " is equipped with callback! Ignoring receive call.",
-                  ((std::string)conn_uid))
-// Re-enable coverage collection LCOV_EXCL_STOP
-
 namespace iomanager {
 
 // QImpl
@@ -56,7 +48,8 @@ public:
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
     , m_queue(std::move(other.m_queue))
-  {}
+  {
+  }
 
   ~QueueReceiverModel() { remove_callback(); }
 

@@ -9,8 +9,8 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QSENDER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QSENDER_HPP_
 
-#include "iomanager/CommonIssues.hpp"
 #include "iomanager/Sender.hpp"
+#include "iomanager/queue/QueueIssues.hpp"
 #include "iomanager/queue/QueueRegistry.hpp"
 
 #include "logging/Logging.hpp"
@@ -39,7 +39,8 @@ public:
   QueueSenderModel(QueueSenderModel&& other)
     : SenderConcept<Datatype>(other.m_conn.uid)
     , m_queue(std::move(other.m_queue))
-  {}
+  {
+  }
 
   void send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
   {

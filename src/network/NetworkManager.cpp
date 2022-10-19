@@ -170,7 +170,7 @@ NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 }
 
 std::string
-NetworkManager::GetUriForConnection(Connection conn)
+NetworkManager::get_uri_for_connection(Connection conn)
 {
 
   // Check here if connection is a host or a source name. If

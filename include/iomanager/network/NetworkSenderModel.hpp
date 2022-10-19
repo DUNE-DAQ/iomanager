@@ -9,7 +9,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
 
-#include "iomanager/CommonIssues.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/Sender.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 

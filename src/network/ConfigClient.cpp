@@ -7,7 +7,7 @@
  */
 
 #include "iomanager/network/ConfigClient.hpp"
-#include "iomanager/network/ConfigClientIssues.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 
 #include "logging/Logging.hpp"
 

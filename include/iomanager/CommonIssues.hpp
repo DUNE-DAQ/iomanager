@@ -15,6 +15,7 @@
 
 namespace dunedaq {
 // Disable coverage collection LCOV_EXCL_START
+
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionInstanceNotFound,
                   "Connection Instance not found for name " << name,
@@ -29,70 +30,10 @@ ERS_DECLARE_ISSUE(iomanager,      // namespace
 ERS_DECLARE_ISSUE(iomanager, OperationFailed, message, ((std::string)message))
 
 ERS_DECLARE_ISSUE(iomanager,
-                  NetworkMessageNotSerializable,
-                  "Object of type " << type << " is not serializable but configured for network transfer!",
-                  ((std::string)type))
-
-/**
- * @brief QueueTypeUnknown ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,        // namespace
-                  QueueTypeUnknown, // issue class name
-                  "Queue type \"" << queue_type << "\" is unknown ",
-                  ((std::string)queue_type))
-ERS_DECLARE_ISSUE(iomanager, ConnectionNotFound, "Connection named " << cuid << " of type " << data_type << " not found", ((std::string)cuid)((std::string)data_type))
-ERS_DECLARE_ISSUE(iomanager, TopicNotFound, "Topic named " << name << " not found", ((std::string)name))
-ERS_DECLARE_ISSUE(iomanager,
-                  ConnectionTopicNotFound,
-                  "Topic named " << name << " not found for connection " << connection,
-                  ((std::string)name)((std::string)connection))
-ERS_DECLARE_ISSUE(iomanager, NameCollision, "Multiple instances of name " << name << " exist", ((std::string)name))
-
-ERS_DECLARE_ISSUE(iomanager,
-                  ConnectionAlreadyOpen,
-                  "Connection named " << name << " has already been opened for " << direction,
-                  ((std::string)name)((std::string)direction))
-ERS_DECLARE_ISSUE(iomanager,
-                  ConnectionNotOpen,
-                  "Connection named " << name << " is not open for " << direction,
-                  ((std::string)name)((std::string)direction))
-ERS_DECLARE_ISSUE(iomanager, AlreadyConfigured, "The NetworkManager has already been configured", )
-ERS_DECLARE_ISSUE(iomanager,
                   DatatypeMismatch,
                   "Declared datatype in ConnectionId for connection " << cuid << " is " << cid_dt
                                                                       << " but datatype_to_string reports " << datatype,
                   ((std::string)cuid)((std::string)cid_dt)((std::string)datatype))
-ERS_DECLARE_ISSUE(iomanager,
-                  ConnectionDirectionMismatch,
-                  "Connection reference with name " << name << " specified direction " << direction
-                                                    << ", but tried to obtain a " << handle_type,
-                  ((std::string)name)((std::string)direction)((std::string)handle_type))
-
-/**
- * @brief QueueTypeMismatch ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,         // namespace
-                  QueueTypeMismatch, // issue class name
-                  "Requested queue \"" << queue_name << "\" of type '" << target_type << "' already declared as type '"
-                                       << source_type << "'", // message
-                  ((std::string)queue_name)((std::string)source_type)((std::string)target_type))
-
-/**
- * @brief QueueNotFound ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,     // namespace
-                  QueueNotFound, // issue class name
-                  "Requested queue \"" << queue_name << "\" of type '" << target_type
-                                       << "' could not be found.", // message
-                  ((std::string)queue_name)((std::string)target_type))
-
-/**
- * @brief QueueRegistryConfigured ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,               // namespace
-                  QueueRegistryConfigured, // issue class name
-                  "QueueRegistry already configured",
-                  ERS_EMPTY)
 
 // Re-enable coverage collection LCOV_EXCL_STOP
 

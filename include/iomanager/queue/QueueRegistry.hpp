@@ -11,9 +11,9 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
 
-#include "iomanager/CommonIssues.hpp"
 #include "iomanager/SchemaUtils.hpp"
 #include "iomanager/queue/Queue.hpp"
+#include "iomanager/queue/QueueIssues.hpp"
 
 #include "ers/Issue.hpp"
 #include "opmonlib/InfoCollector.hpp"

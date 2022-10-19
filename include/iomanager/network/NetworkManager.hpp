@@ -10,7 +10,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
 
-#include "iomanager/CommonIssues.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/connection/Structs.hpp"
 #include "iomanager/network/ConfigClient.hpp"
 
@@ -49,7 +49,7 @@ public:
 
   bool is_pubsub_connection(ConnectionId const& conn_id) const;
 
-  std::string GetUriForConnection(Connection conn);
+  std::string get_uri_for_connection(Connection conn);
   ConnectionResponse get_preconfigured_connections(ConnectionId const& conn_id) const;
 
 private:
