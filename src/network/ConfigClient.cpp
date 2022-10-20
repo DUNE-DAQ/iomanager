@@ -81,10 +81,10 @@ ConfigClient::resolveConnection(const ConnectionRequest& query)
     TLOG_DEBUG(25) << "get " << target << " response: " << response;
 
     if (response.result_int() != 200) {
-      throw(FailedLookup(ERS_HERE, target, std::string(response.reason())));
+      throw(FailedLookup(ERS_HERE, query.uid_regex, target, std::string(response.reason())));
     }
   } catch (std::exception const& ex) {
-    ers::error(FailedLookup(ERS_HERE, target, ex.what()));
+    ers::error(FailedLookup(ERS_HERE, query.uid_regex, target, ex.what()));
     return ConnectionResponse();
   }
   json result = json::parse(response.body());

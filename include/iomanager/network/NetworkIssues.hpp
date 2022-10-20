@@ -39,8 +39,8 @@ ERS_DECLARE_ISSUE(iomanager,
 
     ERS_DECLARE_ISSUE(iomanager,
                   FailedLookup,
-                  "Failed to lookup " << target << " " << result,
-                  ((std::string)target)((std::string)result))
+                  "Failed to lookup " << cuid << " at " << target << " " << result,
+                  ((std::string)cuid)((std::string)target)((std::string)result))
 
     ERS_DECLARE_ISSUE(iomanager,
                       PublishException,
