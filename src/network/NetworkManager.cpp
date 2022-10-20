@@ -50,7 +50,7 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 }
 
 void
-NetworkManager::configure(const Connections_t& connections)
+NetworkManager::configure(const Connections_t& connections, bool use_config_client)
 {
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
@@ -68,7 +68,7 @@ NetworkManager::configure(const Connections_t& connections)
     m_preconfigured_connections[name] = connection;
   }
 
-  if (m_config_client == nullptr) {
+  if (use_config_client && m_config_client == nullptr) {
 
     std::string connectionServer = "localhost";
     char* env = getenv("CONNECTION_SERVER");
@@ -105,14 +105,8 @@ NetworkManager::get_receiver(ConnectionId const& conn_id)
 
   std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
   if (!m_receiver_plugins.count(conn_id) || m_receiver_plugins.at(conn_id) == nullptr) {
-    auto response = get_preconfigured_connections(conn_id);
-    if (response.connections.size() == 0) {
-      response = m_config_client->resolveConnection(conn_id);
-    }
 
-    if (response.connections.size() == 0) {
-      throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
-    }
+    auto response = get_connections(conn_id);
 
     TLOG_DEBUG(9) << "Creating receiver for connection " << conn_id.uid;
     auto receiver = create_receiver(response.connections);
@@ -131,20 +125,7 @@ NetworkManager::get_sender(ConnectionId const& conn_id)
   std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
 
   if (!m_sender_plugins.count(conn_id) || m_sender_plugins.at(conn_id) == nullptr) {
-
-    auto response = get_preconfigured_connections(conn_id);
-    if (response.connections.size() > 1) {
-      throw NameCollision(ERS_HERE, conn_id.uid);
-    }
-    if (response.connections.size() == 0) {
-      response = m_config_client->resolveConnection(conn_id);
-      if (response.connections.size() == 0) {
-        throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
-      }
-      if (response.connections.size() > 1) {
-        throw NameCollision(ERS_HERE, conn_id.uid);
-      }
-    }
+    auto response = get_connections(conn_id, true);
 
     TLOG_DEBUG(10) << "Creating sender for connection " << conn_id.uid;
     auto sender = create_sender(response.connections[0]);
@@ -156,47 +137,34 @@ NetworkManager::get_sender(ConnectionId const& conn_id)
 bool
 NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 {
-  auto response = get_preconfigured_connections(conn_id);
-  if (response.connections.size() == 0) {
-    response = m_config_client->resolveConnection(conn_id);
-  }
-  if (response.connections.size() == 0) {
-    throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
-  }
+  auto response = get_connections(conn_id);
   bool is_pubsub = response.connections[0].connection_type == ConnectionType::kPubSub;
 
   // TLOG() << "Returning " << std::boolalpha << is_pubsub << " for request " << request;
   return is_pubsub;
 }
 
-std::string
-NetworkManager::get_uri_for_connection(Connection conn)
+ConnectionResponse
+NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_single) const
 {
-
-  // Check here if connection is a host or a source name. If
-  // it's a source. look up the host in the config server and
-  // update conn.uri
-  if (conn.uri.substr(0, 4) == "src:") {
-    int gstart = 4;
-    if (conn.uri.substr(gstart, 2) == "//") {
-      gstart += 2;
+  auto response = get_preconfigured_connections(conn_id);
+  if (restrict_single && response.connections.size() > 1) {
+    throw NameCollision(ERS_HERE, conn_id.uid);
+  }
+  if (response.connections.size() == 0 && m_config_client != nullptr) {
+    try {
+      response = m_config_client->resolveConnection(conn_id);
+    } catch (FailedLookup const& lf) {
+      throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type, lf);
     }
-
-    auto conf = m_config_client->resolveConnection(conn.id);
-    if (conf.connections.size() > 0) {
-      throw OperationFailed(ERS_HERE,
-                            "Multiple matches for a single UID indicates a serious problem!");
-    } else if (conf.connections.size() == 0) {
-      ers::error(ConnectionNotFound(ERS_HERE, conn.id.uid, conn.id.data_type));
-    } else {
-
-      TLOG() << "Replacing conn.uri <" << conn.uri << ">"
-             << " with <" << conf.connections[0].uri << ">";
-      conn.uri = conf.connections[0].uri;
+    if (restrict_single && response.connections.size() > 1) {
+      throw NameCollision(ERS_HERE, conn_id.uid);
     }
+  } else if (response.connections.size() == 0) {
+    throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
   }
 
-  return conn.uri;
+  return response;
 }
 
 ConnectionResponse

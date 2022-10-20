@@ -41,7 +41,7 @@ public:
   static NetworkManager& get();
 
   void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
-  void configure(const Connections_t& connections);
+  void configure(const Connections_t& connections, bool use_config_client = true);
   void reset();
 
   std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
@@ -49,7 +49,7 @@ public:
 
   bool is_pubsub_connection(ConnectionId const& conn_id) const;
 
-  std::string get_uri_for_connection(Connection conn);
+  ConnectionResponse get_connections(ConnectionId const& conn_id, bool restrict_single = false) const;
   ConnectionResponse get_preconfigured_connections(ConnectionId const& conn_id) const;
 
 private:

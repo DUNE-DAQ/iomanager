@@ -59,7 +59,7 @@ struct NetworkManagerTestFixture
     testConn.id = pubSubConnId3;
     testConn.uri = "inproc://abr";
     testConfig.push_back(testConn);
-    NetworkManager::get().configure(testConfig);
+    NetworkManager::get().configure(testConfig, false); // Not using ConfigClient
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
 
@@ -144,7 +144,7 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
 
   NetworkManager::get().reset();
 
-  NetworkManager::get().configure(testConfig);
+  NetworkManager::get().configure(testConfig, false);
   conn_res = NetworkManager::get().get_preconfigured_connections(id_notfound);
   BOOST_REQUIRE_EQUAL(conn_res.connections.size(), 1);
   conn_res = NetworkManager::get().get_preconfigured_connections(sendRecvConnId);
