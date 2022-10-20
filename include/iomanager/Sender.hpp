@@ -25,16 +25,23 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Sender(ConnectionRequest const& this_req)
-    : utilities::NamedObject(to_string(this_req))
-    , m_request(this_req)
-  {}
+  explicit Sender(ConnectionId const& this_conn)
+    : utilities::NamedObject(this_conn.uid)
+    , m_conn(this_conn)
+  {
+  }
+  explicit Sender(std::string const& conn_uid, std::string const& data_type)
+    : utilities::NamedObject(conn_uid)
+  {
+    m_conn.uid = conn_uid;
+    m_conn.data_type = data_type;
+  }
   virtual ~Sender() = default;
 
-  ConnectionRequest request() const { return m_request; }
+  ConnectionId id() const { return m_conn; }
 
 protected:
-  ConnectionRequest m_request;
+  ConnectionId m_conn;
 };
 
 // Interface
@@ -42,8 +49,8 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  explicit SenderConcept(ConnectionRequest const& this_req)
-    : Sender(this_req)
+  explicit SenderConcept(std::string const& conn_uid)
+    : Sender(conn_uid, datatype_to_string<Datatype>())
   {}
   virtual void send(Datatype&& data, Sender::timeout_t timeout) = 0;     // NOLINT
   virtual bool try_send(Datatype&& data, Sender::timeout_t timeout) = 0; // NOLINT

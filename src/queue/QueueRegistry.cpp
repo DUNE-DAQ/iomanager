@@ -52,10 +52,10 @@ QueueRegistry::gather_stats(opmonlib::InfoCollector& ic, int level)
 }
 
 bool
-QueueRegistry::has_queue(const ConnectionRequest& request)
+QueueRegistry::has_queue(const std::string& uid, const std::string& data_type)
 {
   for (auto& config : m_queue_configs) {
-    if (is_match(request, config)) {
+    if (config.id.uid == uid && config.id.data_type == data_type) {
       return true;
     }
   }

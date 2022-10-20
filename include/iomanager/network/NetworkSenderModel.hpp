@@ -9,7 +9,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
 
-#include "iomanager/CommonIssues.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/Sender.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 
@@ -31,21 +31,22 @@ class NetworkSenderModel : public SenderConcept<Datatype>
 public:
   using SenderConcept<Datatype>::send;
 
-  explicit NetworkSenderModel(ConnectionRequest const& this_request)
-    : SenderConcept<Datatype>(this_request)
+  explicit NetworkSenderModel(std::string const& conn_uid)
+    : SenderConcept<Datatype>(conn_uid)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     // get network resources
-    m_network_sender_ptr = NetworkManager::get().get_sender(this_request);
+    ConnectionId id{ conn_uid, datatype_to_string<Datatype>() };
+    m_network_sender_ptr = NetworkManager::get().get_sender(id);
 
-    if (NetworkManager::get().is_pubsub_connection(this_request)) {
-      TLOG() << "Setting topic to " << this_request.data_type;
-      m_topic = this_request.data_type;
+    if (NetworkManager::get().is_pubsub_connection(id)) {
+      TLOG() << "Setting topic to " << id.data_type;
+      m_topic = id.data_type;
     }
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)
-    : SenderConcept<Datatype>(other.m_request)
+    : SenderConcept<Datatype>(other.m_conn.uid)
     , m_network_sender_ptr(std::move(other.m_network_sender_ptr))
     , m_topic(std::move(other.m_topic))
   {}
@@ -55,7 +56,7 @@ public:
     try {
       write_network<Datatype>(data, timeout);
     } catch (ipm::SendTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, to_string(this->request()), "send", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, this->id().uid, "send", timeout.count(), ex);
     }
   }
 
@@ -71,7 +72,7 @@ private:
     Sender::timeout_t const& timeout)
   {
     if (m_network_sender_ptr == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->request()));
+      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic << ", this="
@@ -95,7 +96,7 @@ private:
     Sender::timeout_t const& timeout)
   {
     if (m_network_sender_ptr == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->request())));
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
       return false;
     }
 

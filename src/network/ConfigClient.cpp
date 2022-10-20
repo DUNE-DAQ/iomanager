@@ -7,7 +7,7 @@
  */
 
 #include "iomanager/network/ConfigClient.hpp"
-#include "iomanager/network/ConfigClientIssues.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 
 #include "logging/Logging.hpp"
 
@@ -50,8 +50,9 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
   });
 }
 
-ConfigClient::~ConfigClient() {
-  m_active=false;
+ConfigClient::~ConfigClient()
+{
+  m_active = false;
   retract();
   if (m_thread.joinable()) {
     m_thread.join();

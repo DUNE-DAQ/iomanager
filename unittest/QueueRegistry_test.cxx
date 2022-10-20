@@ -24,21 +24,21 @@ BOOST_AUTO_TEST_CASE(Configure)
 {
   std::vector<QueueConfig> queue_registry_config;
   QueueConfig qc;
-  qc.name = "test_queue_unknown";
+  qc.id.uid = "test_queue_unknown";
   qc.queue_type = QueueType::kUnknown;
   qc.capacity = 10;
   queue_registry_config.push_back(qc);
   qc.queue_type = QueueType::kStdDeQueue;
   qc.capacity = 10;
-  qc.name = "test_queue_stddeque";
+  qc.id.uid = "test_queue_stddeque";
   queue_registry_config.push_back(qc);
   qc.queue_type = QueueType::kFollySPSCQueue;
   qc.capacity = 10;
-  qc.name = "test_queue_fspsc";
+  qc.id.uid = "test_queue_fspsc";
   queue_registry_config.push_back(qc);
   qc.queue_type = QueueType::kFollyMPMCQueue;
   qc.capacity = 10;
-  qc.name = "test_queue_fmpmc";
+  qc.id.uid = "test_queue_fmpmc";
   queue_registry_config.push_back(qc);
 
   QueueRegistry::get().configure(queue_registry_config);

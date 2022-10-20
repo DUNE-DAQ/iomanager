@@ -9,8 +9,8 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QRECEIVER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QRECEIVER_HPP_
 
-#include "iomanager/CommonIssues.hpp"
 #include "iomanager/Receiver.hpp"
+#include "iomanager/queue/QueueIssues.hpp"
 #include "iomanager/queue/QueueRegistry.hpp"
 
 #include "logging/Logging.hpp"
@@ -24,14 +24,6 @@
 #include <utility>
 
 namespace dunedaq {
-
-// Disable coverage collection LCOV_EXCL_START
-ERS_DECLARE_ISSUE(iomanager,
-                  ReceiveCallbackConflict,
-                  "QueueReceiverModel for uid " << conn_uid << " is equipped with callback! Ignoring receive call.",
-                  ((std::string)conn_uid))
-// Re-enable coverage collection LCOV_EXCL_STOP
-
 namespace iomanager {
 
 // QImpl
@@ -39,7 +31,7 @@ template<typename Datatype>
 class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit QueueReceiverModel(ConnectionRequest const& request)
+  explicit QueueReceiverModel(std::string const& request)
     : ReceiverConcept<Datatype>(request)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
@@ -51,12 +43,13 @@ public:
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)
-    : ReceiverConcept<Datatype>(other.m_request)
+    : ReceiverConcept<Datatype>(other.m_conn.uid)
     , m_with_callback(other.m_with_callback.load())
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
     , m_queue(std::move(other.m_queue))
-  {}
+  {
+  }
 
   ~QueueReceiverModel() { remove_callback(); }
 
@@ -64,17 +57,17 @@ public:
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
-      throw ReceiveCallbackConflict(ERS_HERE, to_string(this->request()));
+      throw ReceiveCallbackConflict(ERS_HERE, this->id().uid);
     }
     if (m_queue == nullptr) {
-      throw ConnectionInstanceNotFound(ERS_HERE, to_string(this->request()));
+      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
     }
     // TLOG() << "Hand off data...";
     Datatype dt;
     try {
       m_queue->pop(dt, timeout);
     } catch (QueueTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, to_string(this->request()), "pop", timeout.count(), ex);
+      throw TimeoutExpired(ERS_HERE, this->id().uid, "pop", timeout.count(), ex);
     }
     return dt;
     // if (m_queue->write(
@@ -84,11 +77,11 @@ public:
   {
     if (m_with_callback) {
       TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
-      ers::error(ReceiveCallbackConflict(ERS_HERE, to_string(this->request())));
+      ers::error(ReceiveCallbackConflict(ERS_HERE, this->id().uid));
       return std::nullopt;
     }
     if (m_queue == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, to_string(this->request())));
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
       return std::nullopt;
     }
     // TLOG() << "Hand off data...";

@@ -10,6 +10,7 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
 
 #include "iomanager/SchemaUtils.hpp"
+#include "iomanager/network/ConfigClientStructs.hpp"
 
 #include "nlohmann/json.hpp"
 

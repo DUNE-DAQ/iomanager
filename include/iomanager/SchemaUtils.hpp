@@ -12,54 +12,16 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_SCHEMAUTILS_HPP_
 
 #include "iomanager/connection/Structs.hpp"
+#include "serialization/Serialization.hpp"
 
 #include <functional>
+#include <regex>
 #include <sstream>
 
-namespace dunedaq::iomanager {
+namespace dunedaq {
+namespace iomanager {
+
 namespace connection {
-
-inline std::string
-to_string(Endpoint const& ep, bool include_direction = true)
-{
-  if (ep.nickname != "") {
-    return ep.app_name + ":" + ep.module_name + ":" + ep.nickname;
-  }
-
-  if (include_direction) {
-
-    return ep.data_type + ":" + ep.app_name + ":" + ep.module_name + ":" + str(ep.direction);
-  }
-  return ep.data_type + ":" + ep.app_name + ":" + ep.module_name;
-}
-
-inline std::string
-to_string(ConnectionRequest const& cr)
-{
-
-  return cr.data_type + ":" + cr.app_name + ":" + cr.module_name;
-}
-
-inline std::string
-connection_name(Connection const& c)
-{
-  return to_string(c.bind_endpoint, false) + "_Connection";
-}
-
-inline std::string
-connection_names(std::vector<Connection> const& cs)
-{
-  if (cs.size() == 0)
-    return "";
-
-  std::ostringstream oss;
-  oss << connection_name(cs[0]);
-
-  for (size_t ii = 1; ii < cs.size(); ++ii) {
-    oss << ", " << connection_name(cs[ii]);
-  }
-  return oss.str();
-}
 
 inline QueueType
 string_to_queue_type(std::string type_name)
@@ -80,120 +42,45 @@ string_to_queue_type(std::string type_name)
 }
 
 inline bool
-operator<(const Endpoint& lhs, const Endpoint& rhs)
+operator<(ConnectionId const& l, ConnectionId const& r)
 {
-  return to_string(lhs) < to_string(rhs);
+  if (l.data_type == r.data_type) {
+    return l.uid < r.uid;
+  }
+  return l.data_type < r.data_type;
+}
+inline bool
+operator==(ConnectionId const& l, ConnectionId const& r)
+{
+  return l.uid == r.uid && l.data_type == r.data_type;
 }
 
 inline bool
-operator<(const ConnectionRequest& lhs, const ConnectionRequest& rhs)
+is_match(ConnectionId const& search, ConnectionId const& check)
 {
-  return to_string(lhs) < to_string(rhs);
-}
-
-inline bool
-operator==(const Endpoint& lhs, const Endpoint& rhs)
-{
-  return lhs.data_type == rhs.data_type && lhs.app_name == rhs.app_name && lhs.module_name == rhs.module_name &&
-         lhs.direction == rhs.direction && lhs.source_id.subsystem == rhs.source_id.subsystem &&
-         lhs.source_id.id == rhs.source_id.id;
-}
-
-inline bool
-operator==(const ConnectionRequest& lhs, const ConnectionRequest& rhs)
-{
-  return lhs.data_type == rhs.data_type && lhs.app_name == rhs.app_name && lhs.module_name == rhs.module_name &&
-         lhs.source_id.subsystem == rhs.source_id.subsystem && lhs.source_id.id == rhs.source_id.id;
-}
-inline bool
-operator==(const ConnectionRequest& lhs, const Endpoint& rhs)
-{
-  return lhs.data_type == rhs.data_type && lhs.app_name == rhs.app_name && lhs.module_name == rhs.module_name &&
-         lhs.source_id.subsystem == rhs.source_id.subsystem && lhs.source_id.id == rhs.source_id.id;
-}
-
-struct IOManagerConnectionRequest : public ConnectionRequest
-{
-  IOManagerConnectionRequest(Endpoint const& e) // NOLINT, we want to allow implicit conversions here
-    : ConnectionRequest{e.data_type, e.app_name, e.module_name,e.source_id}
-    , dir(e.direction)
-  {}
-  Direction dir{ Direction::kUnspecified };
-};
-
-inline bool
-is_match(const ConnectionRequest& search, const Endpoint& check)
-{
-  if (search == check)
-    return true;
-
   if (search.data_type != check.data_type)
     return false;
 
-  if (search.app_name != "*" && search.app_name != check.app_name) {
-    return false;
-  }
-  if (search.module_name != "*" && search.module_name != check.module_name) {
-    return false;
-  }
-
-  if (search.source_id.subsystem != Subsystem::kUnknown && search.source_id.subsystem != check.source_id.subsystem) {
-    return false;
-  }
-
-  if (search.source_id.id != static_cast<uint32_t>(-1) && search.source_id.id != check.source_id.id) {
-    return false;
-  }
-
-  return true;
-}
-
-inline bool
-is_match(const ConnectionRequest& search, const Connection& check)
-{
-  if (is_match(search, check.bind_endpoint)) {
-    return true;
-  }
-  for (auto& ep : check.connected_endpoints) {
-    if (is_match(search, ep)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-inline bool
-is_match(const ConnectionRequest& search, const QueueConfig& check)
-{
-  for (auto& ep : check.endpoints) {
-    if (is_match(search, ep)) {
-      return true;
-    }
-  }
-  return false;
+  std::regex search_ex(search.uid);
+  return std::regex_match(check.uid, search_ex);
 }
 
 } // namespace connection
 
 using namespace connection;
-} // namespace dunedaq::iomanager
+
+} // namespace iomanager
+
+} // namespace dunedaq
 
 namespace std {
 
 template<>
-struct hash<dunedaq::iomanager::connection::Endpoint>
+struct hash<dunedaq::iomanager::connection::ConnectionId>
 {
-  std::size_t operator()(const dunedaq::iomanager::connection::Endpoint& endpoint) const
+  std::size_t operator()(const dunedaq::iomanager::connection::ConnectionId& conn_id) const
   {
-    return std::hash<std::string>()(dunedaq::iomanager::connection::to_string(endpoint));
-  }
-};
-template<>
-struct hash<dunedaq::iomanager::connection::ConnectionRequest>
-{
-  std::size_t operator()(const dunedaq::iomanager::connection::ConnectionRequest& request) const
-  {
-    return std::hash<std::string>()(dunedaq::iomanager::connection::to_string(request));
+    return std::hash<std::string>()(conn_id.uid + conn_id.data_type);
   }
 };
 }
