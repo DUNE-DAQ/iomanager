@@ -62,8 +62,8 @@ private:
   NetworkManager& operator=(NetworkManager const&) = delete;
   NetworkManager& operator=(NetworkManager&&) = delete;
 
-  std::shared_ptr<ipm::Receiver> create_receiver(Connections_t connections);
-  std::shared_ptr<ipm::Sender> create_sender(Connection connection);
+  std::shared_ptr<ipm::Receiver> create_receiver(std::vector<ConnectionInfo> connections);
+  std::shared_ptr<ipm::Sender> create_sender(ConnectionInfo connection);
 
   std::unordered_map<std::string, Connection> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;

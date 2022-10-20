@@ -82,27 +82,30 @@ public:
     if (id.data_type != datatype_to_string<Datatype>()) {
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
-    return get_sender<Datatype>(id.uid);
+
+    static std::mutex dt_sender_mutex;
+    std::lock_guard<std::mutex> lk(dt_sender_mutex);
+
+    if (!m_senders.count(id)) {
+      if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
+        TLOG() << "Creating QueueSenderModel for uid " << id.uid << ", datatype " << id.data_type;
+        m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(id.uid));
+      } else {
+        TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type;
+        m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(id.uid));
+      }
+    }
+    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[id]);
   }
 
   template<typename Datatype>
   std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& uid)
   {
-    static std::mutex dt_sender_mutex;
-    std::lock_guard<std::mutex> lk(dt_sender_mutex);
-
     auto data_type = datatype_to_string<Datatype>();
-    auto key = uid + "@@" + data_type;
-    if (!m_senders.count(key)) {
-      if (QueueRegistry::get().has_queue(uid, data_type)) { // if queue
-        TLOG() << "Creating QueueSenderModel for uid " << uid << ", datatype " << data_type;
-        m_senders[key] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(uid));
-      } else {
-        TLOG() << "Creating NetworkSenderModel for uid " << uid << ", datatype " << data_type;
-        m_senders[key] = std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(uid));
-      }
-    }
-    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[key]);
+    ConnectionId id;
+    id.uid = uid;
+    id.data_type = data_type;
+    return get_sender<Datatype>(id);
   }
 
   template<typename Datatype>
@@ -111,27 +114,30 @@ public:
     if (id.data_type != datatype_to_string<Datatype>()) {
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
-    return get_receiver<Datatype>(id.uid);
+        
+    static std::mutex dt_receiver_mutex;
+    std::lock_guard<std::mutex> lk(dt_receiver_mutex);
+
+    if (!m_receivers.count(id)) {
+      if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
+        TLOG() << "Creating QueueReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
+        m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(id.uid));
+      } else {
+        TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
+        m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(id.uid));
+      }
+    }
+    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[id]); // NOLINT
   }
 
   template<typename Datatype>
   std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& uid)
   {
-    static std::mutex dt_receiver_mutex;
-    std::lock_guard<std::mutex> lk(dt_receiver_mutex);
-
     auto data_type = datatype_to_string<Datatype>();
-    auto key = uid + "@@" + data_type;
-    if (!m_receivers.count(key)) {
-      if (QueueRegistry::get().has_queue(uid, data_type)) { // if queue
-        TLOG() << "Creating QueueReceiverModel for uid " << uid << ", datatype " << data_type;
-        m_receivers[key] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(uid));
-      } else {
-        TLOG() << "Creating NetworkReceiverModel for uid " << uid << ", datatype " << data_type;
-        m_receivers[key] = std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(uid));
-      }
-    }
-    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[key]); // NOLINT
+    ConnectionId id;
+    id.uid = uid;
+    id.data_type = data_type;
+    return get_receiver<Datatype>(id);
   }
 
   template<typename Datatype>
@@ -165,8 +171,8 @@ public:
 private:
   IOManager() {}
 
-  using SenderMap = std::map<std::string, std::shared_ptr<Sender>>;
-  using ReceiverMap = std::map<std::string, std::shared_ptr<Receiver>>;
+  using SenderMap = std::map<ConnectionId, std::shared_ptr<Sender>>;
+  using ReceiverMap = std::map<ConnectionId, std::shared_ptr<Receiver>>;
   SenderMap m_senders;
   ReceiverMap m_receivers;
 

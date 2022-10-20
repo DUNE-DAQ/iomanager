@@ -42,6 +42,12 @@ ERS_DECLARE_ISSUE(iomanager,
                   "Failed to lookup " << target << " " << result,
                   ((std::string)target)((std::string)result))
 
+    ERS_DECLARE_ISSUE(iomanager,
+                      PublishException,
+                      "Caught exception <" << exc << "> while trying to publishn",
+                      ((std::string)exc))
+
+
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq

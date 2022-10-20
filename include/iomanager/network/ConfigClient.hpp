@@ -56,7 +56,7 @@ public:
    * @param query Query string to send to the server. Query is a
    *    regular expression that can match with multiple connection ids
    */
-  std::vector<std::string> resolveConnection(const std::string& query);
+  ConnectionResponse resolveConnection(const ConnectionRequest& query);
 
   /**
    * Publish information for a single connection
@@ -64,8 +64,7 @@ public:
    * @param connectionId  The connection Id to be published
    * @param uri           The uri corresponding to the connection id
    */
-  void publish(const std::string& connectionId,
-               const std::string& uri);
+  void publish(ConnectionRegistration const& connection);
   /**
    * Publish information for multiple connections
    * 
@@ -73,12 +72,11 @@ public:
    * @param uri          A vector of uris corresponding to the connection ids.
    *           This vector must be the same length as the connection id vector
    */
-  void publish(const std::vector<std::string>& connectionId,
-               const std::vector<std::string>& uri);
+  void publish(std::vector<ConnectionRegistration> const& connections);
   /**
    * Retract a single published connection
    */
-  void retract(const std::string& connectionId);
+  void retract(const ConnectionId& connectionId);
 
   /**
    * Retract multiple published connections
@@ -86,7 +84,7 @@ public:
    * @param connectionId  A vector of previously published connection Ids
    *                     to be retracted
    */
-  void retract(const std::vector<std::string>& connectionId);
+  void retract(const std::vector<ConnectionId>& connectionIds);
 
   /**
    * Retract all connection information that ew have published
@@ -102,7 +100,7 @@ private:
   beast::flat_buffer m_buffer;
 
   std::mutex m_mutex;
-  std::map<std::string,std::string> m_connectionMap;
+  std::set<ConnectionRegistration> m_registered_connections;
   std::thread m_thread;
   bool m_active;
 };

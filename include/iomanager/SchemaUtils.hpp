@@ -65,6 +65,12 @@ is_match(ConnectionId const& search, ConnectionId const& check)
   return std::regex_match(check.uid, search_ex);
 }
 
+inline std::string
+to_string(const ConnectionId& conn_id)
+{
+  return conn_id.uid + "@@" + conn_id.data_type;
+}
+
 } // namespace connection
 
 using namespace connection;
@@ -83,6 +89,7 @@ struct hash<dunedaq::iomanager::connection::ConnectionId>
     return std::hash<std::string>()(conn_id.uid + conn_id.data_type);
   }
 };
+
 }
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_SCHEMAUTILS_HPP_

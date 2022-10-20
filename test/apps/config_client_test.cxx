@@ -66,8 +66,7 @@ main(int argc, char* argv[])
   }
   ConfigClient client(server, port);
 
-  std::vector<std::string> connections;
-  std::vector<std::string> uris;
+  std::vector<ConnectionRegistration> connections;
   std::ostringstream numStr;
   for (int con=0;con<connectionCount; con++) {
     numStr.str("");
@@ -76,18 +75,22 @@ main(int argc, char* argv[])
     numStr.str("");
     numStr << 1234+con;
     std::string uri="tcp://192.168.1.100:"+numStr.str();
-    connections.push_back(connId);
-    uris.push_back(uri);
+    ConnectionRegistration conn_reg;
+    conn_reg.uid = connId;
+    conn_reg.data_type = "TPSet";
+    conn_reg.uri = uri;
+    conn_reg.connection_type = ConnectionType::kSendRecv;
+    connections.push_back(conn_reg);
   }
 
   std::cout << "Publishing my connections\n";
   auto start=system_clock::now();
   if (useMulti) {
-    client.publish(connections,uris);
+    client.publish(connections);
   }
   else {
     for (int con=0;con<connectionCount; con++) {
-      client.publish(connections[con],uris[con]);
+      client.publish(connections[con]);
     }
   }
   auto endPublish=system_clock::now();
@@ -106,22 +109,27 @@ main(int argc, char* argv[])
   auto startLookups=system_clock::now();
   std::cout << "Looking up connections[1]: ";
   std::cout.flush();
-  std::vector<std::string> result=client.resolveConnection(connections[1]);
-  if (result.size()==1) {
-    std::cout << "resolved to [" << result[0] << "]\n";
+  ConnectionRequest req;
+  req.data_type = connections[0].data_type;
+  req.uid_regex = connections[0].uid;
+  auto result=client.resolveConnection(req);
+  if (result.connections.size()==1) {
+    std::cout << "resolved to [" << result.connections[0].uid << "]\n";
   }
   else {
-    std::cout << "Unexpected number of uris (" << result.size() << ")in response\n";
+    std::cout << "Unexpected number of uris (" << result.connections.size() << ")in response\n";
   }
   for (std::string dt: {"2","DRO-.*-","DRO-00[1-4]-tp_to_trigger","tp_to_trigger"}) {
     std::cout << "Looking up connections matching '" << dt << "'";
-    result=client.resolveConnection(dt);
-    std::cout << ".  Resolved to " << result.size() << " uris:";
+    req.uid_regex = dt;
+    result=client.resolveConnection(req);
+    std::cout << ".  Resolved to " << result.connections.size() << " uris:";
     if (verbose) {
       std::cout << " [";
-      for (unsigned int i=0;i<result.size();i++) {
-        std::cout << result[i];
-        if (i<result.size()-1) std::cout << ",";
+      for (unsigned int i = 0; i < result.connections.size(); i++) {
+        std::cout << result.connections[i].uri;
+        if (i < result.connections.size() - 1)
+          std::cout << ",";
       }
       std::cout << "]";
     }
@@ -135,7 +143,10 @@ main(int argc, char* argv[])
   }
   else {
     for (auto con: connections) {
-      client.retract(con);
+      ConnectionId id;
+      id.uid = con.uid;
+      id.data_type = con.data_type;
+      client.retract(id);
     }
   }
 

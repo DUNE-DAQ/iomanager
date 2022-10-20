@@ -182,11 +182,18 @@ NetworkManager::get_uri_for_connection(Connection conn)
       gstart += 2;
     }
 
-    std::string conf = m_config_client->resolveConnection(conn);
-    auto jsconf = nlohmann::json::parse(conf);
-    TLOG() << "Replacing conn.uri <" << conn.uri << ">"
-           << " with <" << jsconf["uri"] << ">";
-    conn.uri = jsconf["uri"];
+    auto conf = m_config_client->resolveConnection(conn.id);
+    if (conf.connections.size() > 0) {
+      throw OperationFailed(ERS_HERE,
+                            "Multiple matches for a single UID indicates a serious problem!");
+    } else if (conf.connections.size() == 0) {
+      ers::error(ConnectionNotFound(ERS_HERE, conn.id.uid, conn.id.data_type));
+    } else {
+
+      TLOG() << "Replacing conn.uri <" << conn.uri << ">"
+             << " with <" << conf.connections[0].uri << ">";
+      conn.uri = conf.connections[0].uri;
+    }
   }
 
   return conn.uri;
@@ -206,7 +213,7 @@ NetworkManager::get_preconfigured_connections(ConnectionId const& conn_id) const
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::create_receiver(Connections_t connections)
+NetworkManager::create_receiver(std::vector<ConnectionInfo> connections)
 {
   TLOG_DEBUG(12) << "START";
   if (connections.size() == 0) {
@@ -237,9 +244,9 @@ NetworkManager::create_receiver(Connections_t connections)
   plugin->connect_for_receives(config_json);
 
   if (is_pubsub) {
-    TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].id.data_type << " after connect_for_receives";
+    TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].data_type << " after connect_for_receives";
     auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(plugin);
-    subscriber->subscribe(connections[0].id.data_type);
+    subscriber->subscribe(connections[0].data_type);
   }
 
   TLOG_DEBUG(12) << "END";
@@ -247,7 +254,7 @@ NetworkManager::create_receiver(Connections_t connections)
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::create_sender(Connection connection)
+NetworkManager::create_sender(ConnectionInfo connection)
 {
   auto is_pubsub = connection.connection_type == ConnectionType::kPubSub;
   auto plugin_type =
