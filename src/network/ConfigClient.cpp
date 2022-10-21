@@ -89,7 +89,10 @@ ConfigClient::resolveConnection(const ConnectionRequest& query)
   }
   json result = json::parse(response.body());
   TLOG_DEBUG(25) << result.dump();
-  ConnectionResponse res = result.get<ConnectionResponse>();
+  ConnectionResponse res;
+  for (auto item: result) {
+    res.connections.emplace_back(item.get<ConnectionInfo>());
+  }
   return res;
 }
 
@@ -104,7 +107,10 @@ ConfigClient::publish(ConnectionRegistration const& connection)
   req.set(http::field::content_type, "application/json");
 
   nlohmann::json jconn = connection;
-  req.body() = jconn.dump();
+  nlohmann::json body;
+  body["partition"]=m_partition;
+  body["connections"]=jconn;
+  req.body() = body.dump();
   req.prepare_payload();
 
   http::response<http::string_body> response;
@@ -152,7 +158,7 @@ ConfigClient::publish()
     }
   }
   content["connections"] = connections;
-  http::request<http::string_body> req{ http::verb::post, "/publishM", 11 };
+  http::request<http::string_body> req{ http::verb::post, "/publish", 11 };
   req.set(http::field::content_type, "application/json");
   req.body() = content.dump();
   req.prepare_payload();
