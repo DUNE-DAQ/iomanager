@@ -16,11 +16,21 @@ A simplified API for passing messages between DAQModules
 * `IOManager::get_sender<DataType>(std::string uid)` and `IOManager::get_receiver<DataType>(std::string uid)` should be used to get Sender and Receiver objects connected to the appropriate connections. Note that `ConnectionId` objects are not required, as they will be constructed from the provided DataType and uid arguments.
 * Subscribers interested in multiple connections for a single DataType should use a Regular Expression to match the desired connections; this can be anywhere from a full wildcard (`".*"`) to a specific connection UID, depending on the desired scope of the subscription. Topics are now automatically assigned by IOManager as the string representation of DataType.
 * The `topic` argument has been removed from `SenderConcept<T>::send`
+* `appfwk` will give DAQModules a list of `appfwk::app::ConnectionReference` objects, which associate a "name" to connection UIDs. Methods in `DAQModuleHelper.hpp` take DAQModule configuration objects and extract specific UIDs for given names.
+```C++
+  auto mandatory_connections =
+    appfwk::connection_index(init_data, { "token_connection", "td_connection", "busy_connection" });
+
+  m_token_connection = mandatory_connections["token_connection"];
+  m_td_connection = mandatory_connections["td_connection"];
+  auto busy_connection = mandatory_connections["busy_connection"];
+```
 
 ### Other Notes for Framework Developers
 
 * The `serialization` library provides a new macro `DUNE_DAQ_TYPESTRING(Type, string)` which is included in the standard `DUNE_DAQ_SERIALIZABLE` and `DUNE_DAQ_SERIALIZE_NON_INTRUSIVE` macros (called from the `dunedaq` namespace only). These macros define the function `datatype_to_string<T>` which is used by IOManager to translate a datatype to the appropriate string. This template function **must** be visible in every compilation unit sending or receiving a given type!
   * If it is not available, an error message will be produced at runtime that IOManager was unable to find connection "uid" of type Unknown
+* In `daqconf`, all connections and queues **must** have a declared data type that matches a call to `DUNE_DAQ_TYPESTRING`. `add_endpoint` and `connect_modules` have changed their API to accomodate this.
 
 ### ConnectionId, Connection, & Queue
 

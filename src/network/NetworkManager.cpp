@@ -96,6 +96,9 @@ NetworkManager::reset()
     m_receiver_plugins.clear();
   }
   m_preconfigured_connections.clear();
+  if (m_config_client != nullptr) {
+    m_config_client->retract();
+  }
 }
 
 std::shared_ptr<ipm::Receiver>
@@ -217,6 +220,10 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections)
     subscriber->subscribe(connections[0].data_type);
   }
 
+  if (m_config_client != nullptr && !is_pubsub) {
+    m_config_client->publish(connections[0]);
+  }
+
   TLOG_DEBUG(12) << "END";
   return plugin;
 }
@@ -232,6 +239,10 @@ NetworkManager::create_sender(ConnectionInfo connection)
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin";
   plugin->connect_for_sends({ { "connection_string", connection.uri } });
+
+  if (m_config_client != nullptr && is_pubsub) {
+    m_config_client->publish(connection);
+  }
 
   return plugin;
 }

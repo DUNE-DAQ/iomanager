@@ -56,6 +56,7 @@ private:
   static std::unique_ptr<NetworkManager> s_instance;
 
   NetworkManager() = default;
+  ~NetworkManager() { reset(); }
 
   NetworkManager(NetworkManager const&) = delete;
   NetworkManager(NetworkManager&&) = delete;
