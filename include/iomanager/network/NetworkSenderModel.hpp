@@ -9,8 +9,8 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
 
-#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/Sender.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 
 #include "ipm/Sender.hpp"
@@ -35,13 +35,10 @@ public:
     : SenderConcept<Datatype>(conn_uid)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
-    // get network resources
-    ConnectionId id{ conn_uid, datatype_to_string<Datatype>() };
-    m_network_sender_ptr = NetworkManager::get().get_sender(id);
-
-    if (NetworkManager::get().is_pubsub_connection(id)) {
-      TLOG() << "Setting topic to " << id.data_type;
-      m_topic = id.data_type;
+    try {
+      get_sender();
+    } catch (ConnectionNotFound const& ex) {
+      ers::warning(ex);
     }
   }
 
@@ -49,7 +46,8 @@ public:
     : SenderConcept<Datatype>(other.m_conn.uid)
     , m_network_sender_ptr(std::move(other.m_network_sender_ptr))
     , m_topic(std::move(other.m_topic))
-  {}
+  {
+  }
 
   void send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
   {
@@ -66,20 +64,52 @@ public:
   }
 
 private:
+  void get_sender()
+  {
+    // get network resources
+    try {
+      m_network_sender_ptr = NetworkManager::get().get_sender(this->id());
+
+      if (NetworkManager::get().is_pubsub_connection(this->id())) {
+        TLOG() << "Setting topic to " << this->id().data_type;
+        m_topic = this->id().data_type;
+      }
+    } catch (ers::Issue const& ex) {
+      m_network_sender_ptr = nullptr;
+      throw;
+    }
+  }
+
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type write_network(
     MessageType& message,
     Sender::timeout_t const& timeout)
   {
-    if (m_network_sender_ptr == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
+    auto start = std::chrono::steady_clock::now();
+    while (m_network_sender_ptr == nullptr &&
+           std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
+      try {
+        get_sender();
+      } catch (ConnectionNotFound const& ex) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+    }
+    if (m_network_sender_ptr == nullptr) {
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
+      throw TimeoutExpired(ERS_HERE, this->id().uid, "send", timeout.count());
+    }
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic << ", this="
     //  << (void*)this;
     std::lock_guard<std::mutex> lk(m_send_mutex);
 
-    m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic);
+    try {
+      m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic);
+    } catch (TimeoutExpired const& ex) {
+      m_network_sender_ptr = nullptr;
+      throw;
+    }
   }
 
   template<typename MessageType>
@@ -95,6 +125,15 @@ private:
     MessageType& message,
     Sender::timeout_t const& timeout)
   {
+    auto start = std::chrono::steady_clock::now();
+    while (m_network_sender_ptr == nullptr &&
+           std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
+      try {
+        get_sender();
+      } catch (ConnectionNotFound const& ex) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+    }
     if (m_network_sender_ptr == nullptr) {
       ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
       return false;
@@ -105,7 +144,11 @@ private:
     // ", this=" << (void*)this;
     std::lock_guard<std::mutex> lk(m_send_mutex);
 
-    return m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic, true);
+    auto res = m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic, true);
+    if (!res) {
+      m_network_sender_ptr = nullptr;
+    }
+    return res;
   }
 
   template<typename MessageType>

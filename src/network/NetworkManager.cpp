@@ -95,6 +95,11 @@ NetworkManager::reset()
     std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
     m_receiver_plugins.clear();
   }
+  m_subscriber_update_thread_running = false;
+  if (m_subscriber_update_thread && m_subscriber_update_thread->joinable()) {
+    m_subscriber_update_thread->join();
+  }
+
   m_preconfigured_connections.clear();
   if (m_config_client != nullptr) {
     m_config_client->retract();
@@ -112,7 +117,7 @@ NetworkManager::get_receiver(ConnectionId const& conn_id)
     auto response = get_connections(conn_id);
 
     TLOG_DEBUG(9) << "Creating receiver for connection " << conn_id.uid;
-    auto receiver = create_receiver(response.connections);
+    auto receiver = create_receiver(response.connections, conn_id);
 
     m_receiver_plugins[conn_id] = receiver;
   }
@@ -134,7 +139,12 @@ NetworkManager::get_sender(ConnectionId const& conn_id)
     auto sender = create_sender(response.connections[0]);
     m_sender_plugins[conn_id] = sender;
   }
-  return m_sender_plugins[conn_id];
+
+  if (m_sender_plugins.count(conn_id)) {
+    return m_sender_plugins[conn_id];
+  }
+
+  return nullptr;
 }
 
 bool
@@ -154,16 +164,28 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
   if (restrict_single && response.connections.size() > 1) {
     throw NameCollision(ERS_HERE, conn_id.uid);
   }
-  if (response.connections.size() == 0 && m_config_client != nullptr) {
+  if (m_config_client != nullptr) {
     try {
-      response = m_config_client->resolveConnection(conn_id);
+      auto client_response = m_config_client->resolveConnection(conn_id);
+      if (restrict_single && client_response.connections.size() > 1) {
+        throw NameCollision(ERS_HERE, conn_id.uid);
+      }
+
+      if (response.connections.size() == 0) {
+        response = client_response;
+      } else if (!restrict_single) {
+        for (auto& conn : client_response.connections) {
+
+          response.connections.push_back(conn);
+        }
+      }
     } catch (FailedLookup const& lf) {
       throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type, lf);
     }
-    if (restrict_single && response.connections.size() > 1) {
-      throw NameCollision(ERS_HERE, conn_id.uid);
-    }
-  } else if (response.connections.size() == 0) {
+    
+  }
+  
+  if (response.connections.size() == 0) {
     throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
   }
 
@@ -184,7 +206,7 @@ NetworkManager::get_preconfigured_connections(ConnectionId const& conn_id) const
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::create_receiver(std::vector<ConnectionInfo> connections)
+NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id)
 {
   TLOG_DEBUG(12) << "START";
   if (connections.size() == 0) {
@@ -218,6 +240,12 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections)
     TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].data_type << " after connect_for_receives";
     auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(plugin);
     subscriber->subscribe(connections[0].data_type);
+    std::lock_guard<std::mutex> lkk(m_subscriber_plugin_map_mutex);
+    m_subscriber_plugins[conn_id] = subscriber;
+    if (!m_subscriber_update_thread_running) {
+      m_subscriber_update_thread_running = true;
+      m_subscriber_update_thread.reset(new std::thread(&NetworkManager::update_subscribers, this));
+    }
   }
 
   if (m_config_client != nullptr && !is_pubsub) {
@@ -246,5 +274,27 @@ NetworkManager::create_sender(ConnectionInfo connection)
 
   return plugin;
 }
+void
+NetworkManager::update_subscribers()
+{
+  while (m_subscriber_update_thread_running.load()) {
+    {
+      std::lock_guard<std::mutex> lk(m_subscriber_plugin_map_mutex);
+      for (auto& subscriber_pair : m_subscriber_plugins) {
+        auto response = get_connections(subscriber_pair.first, false);
+
+        nlohmann::json config_json;
+        std::vector<std::string> uris;
+        for (auto& conn : response.connections)
+          uris.push_back(conn.uri);
+        config_json["connection_strings"] = uris;
+
+        subscriber_pair.second->connect_for_receives(config_json);
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+}
+
 
 } // namespace dunedaq::iomanager

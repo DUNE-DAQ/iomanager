@@ -9,8 +9,8 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
 
-#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/Receiver.hpp"
+#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 
 #include "ipm/Subscriber.hpp"
@@ -38,15 +38,11 @@ public:
   explicit NetworkReceiverModel(std::string const& request)
     : ReceiverConcept<Datatype>(request)
   {
-    TLOG() << "NetworkReceiverModel created with DT! ID: " << request
-           << " Addr: " << static_cast<void*>(this);
-    // get network resources
-
+    TLOG() << "NetworkReceiverModel created with DT! ID: " << request << " Addr: " << static_cast<void*>(this);
     try {
-      ConnectionId id{ request, datatype_to_string<Datatype>() };
-      m_network_receiver_ptr = NetworkManager::get().get_receiver(id);
-    } catch (ConnectionNotFound& ex) {
-      throw ConnectionInstanceNotFound(ERS_HERE, request, ex);
+      get_receiver();
+    } catch (ConnectionNotFound const& ex) {
+      ers::warning(ex);
     }
   }
   ~NetworkReceiverModel() { remove_callback(); }
@@ -57,7 +53,8 @@ public:
     , m_callback(std::move(other.m_callback))
     , m_event_loop_runner(std::move(other.m_event_loop_runner))
     , m_network_receiver_ptr(std::move(other.m_network_receiver_ptr))
-  {}
+  {
+  }
 
   Datatype receive(Receiver::timeout_t timeout) override
   {
@@ -88,17 +85,39 @@ public:
   }
 
 private:
+  void get_receiver()
+  {
+    // get network resources
+    try {
+      m_network_receiver_ptr = NetworkManager::get().get_receiver(this->id());
+    } catch (ers::Issue const& ex) {
+      m_network_receiver_ptr = nullptr;
+      throw;
+    }
+  }
+
   template<typename MessageType>
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout)
   {
     std::lock_guard<std::mutex> lk(m_receive_mutex);
-
-    if (m_network_receiver_ptr != nullptr) {
-      auto response = m_network_receiver_ptr->receive(timeout);
-      if (response.data.size() > 0) {
-        return dunedaq::serialization::deserialize<MessageType>(response.data);
+    auto start = std::chrono::steady_clock::now();
+    while (m_network_receiver_ptr == nullptr &&
+           std::chrono::duration_cast<Receiver::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
+     
+      try {
+        get_receiver();
+      } catch (ConnectionNotFound const& ex) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
+    }
+    if (m_network_receiver_ptr == nullptr) {
+      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);    
+    }
+
+    auto response = m_network_receiver_ptr->receive(timeout);
+    if (response.data.size() > 0) {
+      return dunedaq::serialization::deserialize<MessageType>(response.data);
     }
 
     throw TimeoutExpired(ERS_HERE, this->id().uid, "network receive", timeout.count());
@@ -117,12 +136,24 @@ private:
   typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
   try_read_network(Receiver::timeout_t const& timeout)
   {
-    ipm::Receiver::Response res;
     std::lock_guard<std::mutex> lk(m_receive_mutex);
+    auto start = std::chrono::steady_clock::now();
+    while (m_network_receiver_ptr == nullptr &&
+           std::chrono::duration_cast<Receiver::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
 
-    if (m_network_receiver_ptr != nullptr) {
-      res = m_network_receiver_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
+      try {
+        get_receiver();
+      } catch (ConnectionNotFound const& ex) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
     }
+    if (m_network_receiver_ptr == nullptr) {
+        ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
+        return std::nullopt;
+    }
+
+    ipm::Receiver::Response res;
+    res = m_network_receiver_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
 
     if (res.data.size() > 0) {
       return std::make_optional<MessageType>(dunedaq::serialization::deserialize<MessageType>(res.data));

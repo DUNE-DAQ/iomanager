@@ -101,32 +101,9 @@ ConfigClient::publish(ConnectionRegistration const& connection)
 {
   {
     std::lock_guard<std::mutex> lock(m_mutex);
+    TLOG_DEBUG(26) << "Adding connection with UID " << connection.uid << " and URI " << connection.uri << " to publish list";
+    
     m_registered_connections.insert(connection);
-  }
-  http::request<http::string_body> req{ http::verb::post, "/publish", 11 };
-  req.set(http::field::content_type, "application/json");
-
-  nlohmann::json jconn = connection;
-  nlohmann::json body;
-  body["partition"]=m_partition;
-  body["connections"]=jconn;
-  req.body() = body.dump();
-  req.prepare_payload();
-
-  http::response<http::string_body> response;
-  try {
-    m_stream.connect(m_addr);
-    http::write(m_stream, req);
-
-    http::read(m_stream, m_buffer, response);
-    beast::error_code ec;
-    m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
-
-    if (response.result_int() != 200) {
-      throw(FailedPublish(ERS_HERE, std::string(response.reason())));
-    }
-  } catch (std::exception const& ex) {
-    ers::error(FailedPublish(ERS_HERE, ex.what()));
   }
 }
 
@@ -136,10 +113,12 @@ ConfigClient::publish(const std::vector<ConnectionRegistration>& connections)
   {
     std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& entry : connections) {
+      TLOG_DEBUG(26) << "Adding connection with UID " << entry.uid << " and URI " << entry.uri
+                     << " to publish list";
+    
       m_registered_connections.insert(entry);
     }
   }
-  publish();
 }
 
 void

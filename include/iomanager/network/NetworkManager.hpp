@@ -63,17 +63,24 @@ private:
   NetworkManager& operator=(NetworkManager const&) = delete;
   NetworkManager& operator=(NetworkManager&&) = delete;
 
-  std::shared_ptr<ipm::Receiver> create_receiver(std::vector<ConnectionInfo> connections);
+  std::shared_ptr<ipm::Receiver> create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id);
   std::shared_ptr<ipm::Sender> create_sender(ConnectionInfo connection);
+
+  void update_subscribers();
 
   std::unordered_map<std::string, Connection> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
+  
+  std::unordered_map<ConnectionId, std::shared_ptr<ipm::Subscriber>> m_subscriber_plugins;
+  std::unique_ptr<std::thread> m_subscriber_update_thread;
+  std::atomic<bool> m_subscriber_update_thread_running{ false };
 
   std::unique_ptr<ConfigClient> m_config_client;
 
   mutable std::mutex m_receiver_plugin_map_mutex;
   mutable std::mutex m_sender_plugin_map_mutex;
+  mutable std::mutex m_subscriber_plugin_map_mutex;
 };
 } // namespace dunedaq::iomanager
 
