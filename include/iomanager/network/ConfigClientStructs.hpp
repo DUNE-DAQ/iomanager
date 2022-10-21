@@ -17,35 +17,6 @@
 namespace dunedaq {
 namespace iomanager {
 
-struct ConnectionRegistration
-{
-  std::string uid;
-  std::string data_type;
-  std::string uri;
-  ConnectionType connection_type;
-
-  ConnectionRegistration() {}
-
-  // Implicit conversion
-  ConnectionRegistration(Connection convert)
-    : uid(convert.id.uid)
-    , data_type(convert.id.data_type)
-    , uri(convert.uri)
-    , connection_type(convert.connection_type)
-  {
-  }
-
-  ConnectionRegistration(ConnectionInfo convert)
-    : uid(convert.uid)
-    , data_type(convert.data_type)
-    , uri(convert.uri)
-    , connection_type(convert.connection_type)
-  {
-  }
-
-  DUNE_DAQ_SERIALIZE(ConnectionRegistration, uid, data_type, uri, connection_type);
-};
-
 struct ConnectionRequest
 {
   std::string uid_regex;
@@ -82,6 +53,35 @@ struct ConnectionInfo
   }
 
   DUNE_DAQ_SERIALIZE(ConnectionInfo, uid, data_type, uri, connection_type);
+};
+
+struct ConnectionRegistration
+{
+  std::string uid;
+  std::string data_type;
+  std::string uri;
+  ConnectionType connection_type;
+
+  ConnectionRegistration() {}
+
+  // Implicit conversion
+  ConnectionRegistration(Connection convert)
+    : uid(convert.id.uid)
+    , data_type(convert.id.data_type)
+    , uri(convert.uri)
+    , connection_type(convert.connection_type)
+  {
+  }
+
+  ConnectionRegistration(ConnectionInfo convert)
+    : uid(convert.uid)
+    , data_type(convert.data_type)
+    , uri(convert.uri)
+    , connection_type(convert.connection_type)
+  {
+  }
+
+  DUNE_DAQ_SERIALIZE(ConnectionRegistration, uid, data_type, uri, connection_type);
 };
 
 struct ConnectionResponse

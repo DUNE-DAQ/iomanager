@@ -39,6 +39,7 @@ class NetworkManager
 
 public:
   static NetworkManager& get();
+  ~NetworkManager() { reset(); }
 
   void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
   void configure(const Connections_t& connections, bool use_config_client = true);
@@ -56,7 +57,6 @@ private:
   static std::unique_ptr<NetworkManager> s_instance;
 
   NetworkManager() = default;
-  ~NetworkManager() { reset(); }
 
   NetworkManager(NetworkManager const&) = delete;
   NetworkManager(NetworkManager&&) = delete;
