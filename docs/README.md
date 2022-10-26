@@ -24,7 +24,10 @@ A simplified API for passing messages between DAQModules
   m_token_connection = mandatory_connections["token_connection"];
   m_td_connection = mandatory_connections["td_connection"];
   auto busy_connection = mandatory_connections["busy_connection"];
+
+  m_busy_sender = iom->get_sender<dfmessages::TriggerInhibit>(busy_connection);
 ```
+* Upon agreement from both endpoints, a connection can use a generated UID string (e.g. from SourceID::to_string()). 
 
 ### Other Notes for Framework Developers
 
@@ -90,7 +93,7 @@ A simplified API for passing messages between DAQModules
 
 ```CPP
 // String receiver
-  std::string uid = "dsa";
+  std::string uid = "bar";
 
   auto receiver = IOManager::get()->get_receiver<std::string>(uid);
   std::string got;
