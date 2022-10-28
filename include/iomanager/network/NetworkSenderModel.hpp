@@ -38,8 +38,8 @@ public:
     try {
       get_sender();
     } catch (ConnectionNotFound const& ex) {
-      ers::warning(ex);
-    }
+      TLOG() << "Initial connection attempt failed: " << ex;    
+   }
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)

@@ -42,7 +42,7 @@ public:
     try {
       get_receiver();
     } catch (ConnectionNotFound const& ex) {
-      ers::warning(ex);
+      TLOG() << "Initial connection attempt failed: " << ex;
     }
   }
   ~NetworkReceiverModel() { remove_callback(); }
