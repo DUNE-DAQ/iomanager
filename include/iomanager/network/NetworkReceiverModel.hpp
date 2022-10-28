@@ -40,7 +40,7 @@ public:
   {
     TLOG() << "NetworkReceiverModel created with DT! ID: " << request << " Addr: " << static_cast<void*>(this);
     try {
-      get_receiver();
+      get_receiver(std::chrono::milliseconds(1000));
     } catch (ConnectionNotFound const& ex) {
       TLOG() << "Initial connection attempt failed: " << ex;
     }
@@ -85,14 +85,19 @@ public:
   }
 
 private:
-  void get_receiver()
+  void get_receiver(Receiver::timeout_t timeout)
   {
     // get network resources
-    try {
-      m_network_receiver_ptr = NetworkManager::get().get_receiver(this->id());
-    } catch (ers::Issue const& ex) {
-      m_network_receiver_ptr = nullptr;
-      throw;
+    auto start = std::chrono::steady_clock::now();
+    while (m_network_receiver_ptr == nullptr &&
+           std::chrono::duration_cast<Receiver::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
+
+      try {
+        m_network_receiver_ptr = NetworkManager::get().get_receiver(this->id());
+      } catch (ConnectionNotFound const& ex) {
+        m_network_receiver_ptr = nullptr;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
     }
   }
 
@@ -101,18 +106,10 @@ private:
     Receiver::timeout_t const& timeout)
   {
     std::lock_guard<std::mutex> lk(m_receive_mutex);
-    auto start = std::chrono::steady_clock::now();
-    while (m_network_receiver_ptr == nullptr &&
-           std::chrono::duration_cast<Receiver::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
-     
-      try {
-        get_receiver();
-      } catch (ConnectionNotFound const& ex) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
-    }
+    get_receiver(timeout);
+
     if (m_network_receiver_ptr == nullptr) {
-      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);    
+      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
     }
 
     auto response = m_network_receiver_ptr->receive(timeout);
@@ -137,19 +134,10 @@ private:
   try_read_network(Receiver::timeout_t const& timeout)
   {
     std::lock_guard<std::mutex> lk(m_receive_mutex);
-    auto start = std::chrono::steady_clock::now();
-    while (m_network_receiver_ptr == nullptr &&
-           std::chrono::duration_cast<Receiver::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
-
-      try {
-        get_receiver();
-      } catch (ConnectionNotFound const& ex) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
-    }
+    get_receiver(timeout);
     if (m_network_receiver_ptr == nullptr) {
-        ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
-        return std::nullopt;
+      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
+      return std::nullopt;
     }
 
     ipm::Receiver::Response res;

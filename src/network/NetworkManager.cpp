@@ -281,15 +281,18 @@ NetworkManager::update_subscribers()
     {
       std::lock_guard<std::mutex> lk(m_subscriber_plugin_map_mutex);
       for (auto& subscriber_pair : m_subscriber_plugins) {
-        auto response = get_connections(subscriber_pair.first, false);
+        try {
+          auto response = get_connections(subscriber_pair.first, false);
 
-        nlohmann::json config_json;
-        std::vector<std::string> uris;
-        for (auto& conn : response.connections)
-          uris.push_back(conn.uri);
-        config_json["connection_strings"] = uris;
+          nlohmann::json config_json;
+          std::vector<std::string> uris;
+          for (auto& conn : response.connections)
+            uris.push_back(conn.uri);
+          config_json["connection_strings"] = uris;
 
-        subscriber_pair.second->connect_for_receives(config_json);
+          subscriber_pair.second->connect_for_receives(config_json);
+        } catch (ers::Issue&) {
+        }
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));

@@ -25,7 +25,6 @@ using nlohmann::json;
 using namespace dunedaq::iomanager;
 
 ConfigClient::ConfigClient(const std::string& server, const std::string& port)
-  : m_stream(m_ioContext)
 {
   char* part = getenv("DUNEDAQ_PARTITION");
   if (part) {
@@ -71,13 +70,15 @@ ConfigClient::resolveConnection(const ConnectionRequest& query)
 
   http::response<http::string_body> response;
   try {
-    m_stream.connect(m_addr);
-    http::write(m_stream, req);
+    boost::beast::tcp_stream stream(m_ioContext);
+    stream.connect(m_addr);
+    http::write(stream, req);
 
-    http::read(m_stream, m_buffer, response);
+    boost::beast::flat_buffer buffer;
+    http::read(stream, buffer, response);
 
     beast::error_code ec;
-    m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     TLOG_DEBUG(25) << "get " << target << " response: " << response;
 
     if (response.result_int() != 200) {
@@ -143,18 +144,20 @@ ConfigClient::publish()
   req.prepare_payload();
 
   try {
-    m_stream.connect(m_addr);
-    http::write(m_stream, req);
+    boost::beast::tcp_stream stream(m_ioContext);
+    stream.connect(m_addr);
+    http::write(stream, req);
 
     http::response<http::string_body> response;
-    http::read(m_stream, m_buffer, response);
+    boost::beast::flat_buffer buffer;
+    http::read(stream, buffer, response);
     beast::error_code ec;
-    m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     if (response.result_int() != 200) {
       throw(FailedPublish(ERS_HERE, std::string(response.reason())));
     }
   } catch (std::exception const& ex) {
-    ers::error(FailedPublish(ERS_HERE, ex.what()));
+    throw(FailedPublish(ERS_HERE, ex.what(), ex));
   }
 }
 
@@ -181,12 +184,14 @@ ConfigClient::retract()
     req.prepare_payload();
 
     try {
-      m_stream.connect(m_addr);
-      http::write(m_stream, req);
+      boost::beast::tcp_stream stream(m_ioContext);
+      stream.connect(m_addr);
+      http::write(stream, req);
       http::response<http::string_body> response;
-      http::read(m_stream, m_buffer, response);
+      boost::beast::flat_buffer buffer;
+      http::read(stream, buffer, response);
       beast::error_code ec;
-      m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+      stream.socket().shutdown(tcp::socket::shutdown_both, ec);
       if (response.result_int() != 200) {
         throw(FailedRetract(ERS_HERE, "connection Id vector", std::string(response.reason())));
       }
@@ -235,12 +240,14 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
   req.prepare_payload();
 
   try {
-    m_stream.connect(m_addr);
-    http::write(m_stream, req);
+    boost::beast::tcp_stream stream(m_ioContext);
+    stream.connect(m_addr);
+    http::write(stream, req);
     http::response<http::string_body> response;
-    http::read(m_stream, m_buffer, response);
+    boost::beast::flat_buffer buffer;
+    http::read(stream, buffer, response);
     beast::error_code ec;
-    m_stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     if (response.result_int() != 200) {
       throw(FailedRetract(ERS_HERE, "connection Id vector", std::string(response.reason())));
     }

@@ -36,10 +36,10 @@ public:
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     try {
-      get_sender();
+      get_sender(std::chrono::milliseconds(1000));
     } catch (ConnectionNotFound const& ex) {
-      TLOG() << "Initial connection attempt failed: " << ex;    
-   }
+      TLOG() << "Initial connection attempt failed: " << ex;
+    }
   }
 
   NetworkSenderModel(NetworkSenderModel&& other)
@@ -64,19 +64,25 @@ public:
   }
 
 private:
-  void get_sender()
+  void get_sender(Sender::timeout_t const& timeout)
   {
-    // get network resources
-    try {
-      m_network_sender_ptr = NetworkManager::get().get_sender(this->id());
+    auto start = std::chrono::steady_clock::now();
 
-      if (NetworkManager::get().is_pubsub_connection(this->id())) {
-        TLOG() << "Setting topic to " << this->id().data_type;
-        m_topic = this->id().data_type;
+    while (m_network_sender_ptr == nullptr &&
+           std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) <= timeout) {
+
+      // get network resources
+      try {
+        m_network_sender_ptr = NetworkManager::get().get_sender(this->id());
+
+        if (NetworkManager::get().is_pubsub_connection(this->id())) {
+          TLOG() << "Setting topic to " << this->id().data_type;
+          m_topic = this->id().data_type;
+        }
+      } catch (ers::Issue const& ex) {
+        m_network_sender_ptr = nullptr;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
-    } catch (ers::Issue const& ex) {
-      m_network_sender_ptr = nullptr;
-      throw;
     }
   }
 
@@ -85,18 +91,10 @@ private:
     MessageType& message,
     Sender::timeout_t const& timeout)
   {
-    auto start = std::chrono::steady_clock::now();
-    while (m_network_sender_ptr == nullptr &&
-           std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
-      try {
-        get_sender();
-      } catch (ConnectionNotFound const& ex) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
-    }
+    get_sender(timeout);
     if (m_network_sender_ptr == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
-      throw TimeoutExpired(ERS_HERE, this->id().uid, "send", timeout.count());
+      throw TimeoutExpired(
+        ERS_HERE, this->id().uid, "send", timeout.count(), ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
     }
 
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
@@ -125,17 +123,9 @@ private:
     MessageType& message,
     Sender::timeout_t const& timeout)
   {
-    auto start = std::chrono::steady_clock::now();
-    while (m_network_sender_ptr == nullptr &&
-           std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
-      try {
-        get_sender();
-      } catch (ConnectionNotFound const& ex) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
-    }
+    get_sender(timeout);
     if (m_network_sender_ptr == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
+      TLOG() << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
       return false;
     }
 

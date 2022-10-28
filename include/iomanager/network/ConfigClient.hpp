@@ -96,8 +96,6 @@ private:
   std::string m_partition;
   net::io_context m_ioContext;
   net::ip::basic_resolver<net::ip::tcp>::results_type m_addr;
-  beast::tcp_stream m_stream;
-  beast::flat_buffer m_buffer;
 
   std::mutex m_mutex;
   std::set<ConnectionRegistration> m_registered_connections;
