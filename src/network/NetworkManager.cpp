@@ -87,6 +87,14 @@ NetworkManager::configure(const Connections_t& connections, bool use_config_clie
 void
 NetworkManager::reset()
 {
+  m_subscriber_update_thread_running = false;
+  if (m_subscriber_update_thread && m_subscriber_update_thread->joinable()) {
+    m_subscriber_update_thread->join();
+  }
+  {
+    std::lock_guard<std::mutex> lkk(m_subscriber_plugin_map_mutex);
+    m_subscriber_plugins.clear();
+  }
   {
     std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
     m_sender_plugins.clear();
@@ -94,10 +102,6 @@ NetworkManager::reset()
   {
     std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
     m_receiver_plugins.clear();
-  }
-  m_subscriber_update_thread_running = false;
-  if (m_subscriber_update_thread && m_subscriber_update_thread->joinable()) {
-    m_subscriber_update_thread->join();
   }
 
   m_preconfigured_connections.clear();
@@ -182,9 +186,8 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
     } catch (FailedLookup const& lf) {
       throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type, lf);
     }
-    
   }
-  
+
   if (response.connections.size() == 0) {
     throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type);
   }
@@ -298,6 +301,5 @@ NetworkManager::update_subscribers()
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 }
-
 
 } // namespace dunedaq::iomanager
