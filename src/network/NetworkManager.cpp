@@ -175,13 +175,8 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
         throw NameCollision(ERS_HERE, conn_id.uid);
       }
 
-      if (response.connections.size() == 0) {
+      if (client_response.connections.size() > 0) {
         response = client_response;
-      } else if (!restrict_single) {
-        for (auto& conn : client_response.connections) {
-
-          response.connections.push_back(conn);
-        }
       }
     } catch (FailedLookup const& lf) {
       throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type, lf);
@@ -237,7 +232,8 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   } else {
     config_json["connection_string"] = connections[0].uri;
   }
-  plugin->connect_for_receives(config_json);
+  connections[0].uri = plugin->connect_for_receives(config_json);
+  TLOG_DEBUG(12) << "Receiver reports connected to URI " << connections[0].uri;
 
   if (is_pubsub) {
     TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].data_type << " after connect_for_receives";
@@ -268,8 +264,9 @@ NetworkManager::create_sender(ConnectionInfo connection)
 
   TLOG_DEBUG(11) << "Creating sender plugin of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
-  TLOG_DEBUG(11) << "Connecting sender plugin";
-  plugin->connect_for_sends({ { "connection_string", connection.uri } });
+  TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
+  connection.uri = plugin->connect_for_sends({ { "connection_string", connection.uri } });
+  TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << connection.uri;
 
   if (m_config_client != nullptr && is_pubsub) {
     m_config_client->publish(connection);
