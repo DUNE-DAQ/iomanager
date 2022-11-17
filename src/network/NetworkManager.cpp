@@ -169,17 +169,25 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
     throw NameCollision(ERS_HERE, conn_id.uid);
   }
   if (m_config_client != nullptr) {
-    try {
-      auto client_response = m_config_client->resolveConnection(conn_id);
-      if (restrict_single && client_response.connections.size() > 1) {
-        throw NameCollision(ERS_HERE, conn_id.uid);
-      }
+    auto start_time = std::chrono::steady_clock::now();
+    while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
+           1000) {
+      try {
+        auto client_response = m_config_client->resolveConnection(conn_id);
+        if (restrict_single && client_response.connections.size() > 1) {
+          throw NameCollision(ERS_HERE, conn_id.uid);
+        }
 
-      if (client_response.connections.size() > 0) {
-        response = client_response;
+        if (client_response.connections.size() > 0) {
+          response = client_response;
+        }
+        break;
+      } catch (FailedLookup const& lf) {
+        if (m_config_client->is_connected()) {
+          throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type, lf);
+        }
+        usleep(1000);
       }
-    } catch (FailedLookup const& lf) {
-      throw ConnectionNotFound(ERS_HERE, conn_id.uid, conn_id.data_type, lf);
     }
   }
 

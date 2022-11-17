@@ -40,21 +40,36 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
     while (m_active) {
       try {
         publish();
+        m_connected = true;
+      } catch (ers::Issue& ex) {
+        if (m_connected)
+          ers::error(ex);
+        else
+          TLOG() << ex;
       } catch (std::exception& ex) {
-        ers::warning(PublishException(ERS_HERE, ex.what()));
+        auto ers_ex = PublishException(ERS_HERE, ex.what());
+        if (m_connected)
+          ers::error(ers_ex);
+        else
+          TLOG() << ers_ex;
       }
       std::this_thread::sleep_for(1s);
+    }
+    retract();
+    if (!m_connected) {
+      ers::error(PublishException(ERS_HERE, "Publish thread was unable to publish to Connectivity Service!"));
     }
   });
 }
 
 ConfigClient::~ConfigClient()
 {
+  m_connected = false;
   m_active = false;
-  retract();
   if (m_thread.joinable()) {
     m_thread.join();
   }
+  retract();
 }
 
 ConnectionResponse
@@ -84,14 +99,19 @@ ConfigClient::resolveConnection(const ConnectionRequest& query)
     if (response.result_int() != 200) {
       throw(FailedLookup(ERS_HERE, query.uid_regex, target, std::string(response.reason())));
     }
+  } catch (ers::Issue const&) {
+    m_connected = false;
+    throw;
   } catch (std::exception const& ex) {
+    m_connected = false;
     ers::error(FailedLookup(ERS_HERE, query.uid_regex, target, ex.what()));
     return ConnectionResponse();
   }
+  m_connected = true;
   json result = json::parse(response.body());
   TLOG_DEBUG(25) << result.dump();
   ConnectionResponse res;
-  for (auto item: result) {
+  for (auto item : result) {
     res.connections.emplace_back(item.get<ConnectionInfo>());
   }
   return res;
@@ -102,8 +122,9 @@ ConfigClient::publish(ConnectionRegistration const& connection)
 {
   {
     std::lock_guard<std::mutex> lock(m_mutex);
-    TLOG_DEBUG(26) << "Adding connection with UID " << connection.uid << " and URI " << connection.uri << " to publish list";
-    
+    TLOG_DEBUG(26) << "Adding connection with UID " << connection.uid << " and URI " << connection.uri
+                   << " to publish list";
+
     m_registered_connections.insert(connection);
   }
 }
@@ -114,9 +135,8 @@ ConfigClient::publish(const std::vector<ConnectionRegistration>& connections)
   {
     std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& entry : connections) {
-      TLOG_DEBUG(26) << "Adding connection with UID " << entry.uid << " and URI " << entry.uri
-                     << " to publish list";
-    
+      TLOG_DEBUG(26) << "Adding connection with UID " << entry.uid << " and URI " << entry.uri << " to publish list";
+
       m_registered_connections.insert(entry);
     }
   }
@@ -156,14 +176,20 @@ ConfigClient::publish()
     if (response.result_int() != 200) {
       throw(FailedPublish(ERS_HERE, std::string(response.reason())));
     }
+  } catch (ers::Issue const&) {
+    m_connected = false;
+    throw;
   } catch (std::exception const& ex) {
+    m_connected = false;
     throw(FailedPublish(ERS_HERE, ex.what(), ex));
   }
+  m_connected = true;
 }
 
 void
 ConfigClient::retract()
 {
+  TLOG() << "retract() called, getting connection information";
   json connections = json::array();
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -175,6 +201,7 @@ ConfigClient::retract()
     }
     m_registered_connections.clear();
   }
+  TLOG() << "retract(): Retracting " << connections.size() << " connections";
   if (connections.size() > 0) {
     http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
     req.set(http::field::content_type, "application/json");
@@ -195,9 +222,14 @@ ConfigClient::retract()
       if (response.result_int() != 200) {
         throw(FailedRetract(ERS_HERE, "connection Id vector", std::string(response.reason())));
       }
+    } catch (ers::Issue const&) {
+      m_connected = false;
+      throw;
     } catch (std::exception const& ex) {
+      m_connected = false;
       ers::error(FailedRetract(ERS_HERE, "connection Id vector", ex.what()));
     }
+    m_connected = true;
   }
 }
 
@@ -251,7 +283,12 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
     if (response.result_int() != 200) {
       throw(FailedRetract(ERS_HERE, "connection Id vector", std::string(response.reason())));
     }
+  } catch (ers::Issue const&) {
+    m_connected = false;
+    throw;
   } catch (std::exception const& ex) {
+    m_connected = false;
     ers::error(FailedRetract(ERS_HERE, "connection Id vector", ex.what()));
   }
+  m_connected = true;
 }

@@ -91,7 +91,9 @@ public:
    */
   void retract();
 
-private:
+  bool is_connected() { return m_connected.load(); }
+
+  private:
   void publish();
   std::string m_partition;
   net::io_context m_ioContext;
@@ -101,6 +103,7 @@ private:
   std::set<ConnectionRegistration> m_registered_connections;
   std::thread m_thread;
   bool m_active;
+  std::atomic<bool> m_connected{ false };
 };
 } // namespace dunedaq::iomanager
 
