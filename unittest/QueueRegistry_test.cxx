@@ -6,7 +6,7 @@
  * received with this code.
  */
 
-#include "iomanager/QueueRegistry.hpp"
+#include "iomanager/queue/QueueRegistry.hpp"
 
 #define BOOST_TEST_MODULE QueueRegistry_test // NOLINT
 
@@ -22,33 +22,30 @@ using namespace dunedaq::iomanager;
 
 BOOST_AUTO_TEST_CASE(Configure)
 {
-  std::map<std::string, QueueConfig> test_map;
+  std::vector<QueueConfig> queue_registry_config;
   QueueConfig qc;
-  qc.kind = QueueConfig::kUnknown;
+  qc.id.uid = "test_queue_unknown";
+  qc.queue_type = QueueType::kUnknown;
   qc.capacity = 10;
-  test_map["test_queue_unknown"] = qc;
-  qc.kind = QueueConfig::kStdDeQueue;
+  queue_registry_config.push_back(qc);
+  qc.queue_type = QueueType::kStdDeQueue;
   qc.capacity = 10;
-  test_map["test_queue_stddeque"] = qc;
-  qc.kind = QueueConfig::kFollySPSCQueue;
+  qc.id.uid = "test_queue_stddeque";
+  queue_registry_config.push_back(qc);
+  qc.queue_type = QueueType::kFollySPSCQueue;
   qc.capacity = 10;
-  test_map["test_queue_fspsc"] = qc;
-  qc.kind = QueueConfig::kFollyMPMCQueue;
+  qc.id.uid = "test_queue_fspsc";
+  queue_registry_config.push_back(qc);
+  qc.queue_type = QueueType::kFollyMPMCQueue;
   qc.capacity = 10;
-  test_map["test_queue_fmpmc"] = qc;
+  qc.id.uid = "test_queue_fmpmc";
+  queue_registry_config.push_back(qc);
 
-  QueueRegistry::get().configure(test_map);
+  QueueRegistry::get().configure(queue_registry_config);
 
-  BOOST_REQUIRE_EXCEPTION(
-    QueueRegistry::get().configure(test_map), QueueRegistryConfigured, [&](QueueRegistryConfigured) { return true; });
-}
-
-BOOST_AUTO_TEST_CASE(StoQK)
-{
-  BOOST_REQUIRE_EQUAL(QueueConfig::stoqk("StdDeQueue"), QueueConfig::kStdDeQueue);
-  BOOST_REQUIRE_EQUAL(QueueConfig::stoqk("FollySPSCQueue"), QueueConfig::kFollySPSCQueue);
-  BOOST_REQUIRE_EQUAL(QueueConfig::stoqk("FollyMPMCQueue"), QueueConfig::kFollyMPMCQueue);
-  BOOST_REQUIRE_EXCEPTION(QueueConfig::stoqk("blahblahblah"), QueueKindUnknown, [&](QueueKindUnknown) { return true; });
+  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(queue_registry_config),
+                          QueueRegistryConfigured,
+                          [&](QueueRegistryConfigured const&) { return true; });
 }
 
 BOOST_AUTO_TEST_CASE(GatherStats)
@@ -73,8 +70,8 @@ BOOST_AUTO_TEST_CASE(CreateQueue)
   auto queue_ptr_fmpmc = QueueRegistry::get().get_queue<int>("test_queue_fmpmc");
   BOOST_REQUIRE(queue_ptr_fmpmc != nullptr);
   BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().get_queue<int>("test_queue_unknown"),
-                          QueueKindUnknown,
-                          [&](QueueKindUnknown) { return true; });
+                          QueueTypeUnknown,
+                          [&](QueueTypeUnknown const&) { return true; });
 }
 
 BOOST_AUTO_TEST_SUITE_END()

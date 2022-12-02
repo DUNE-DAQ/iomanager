@@ -8,7 +8,7 @@
  * received with this code.
  */
 
-#include "iomanager/FollyQueue.hpp"
+#include "iomanager/queue/FollyQueue.hpp"
 
 #define BOOST_TEST_MODULE FollyQueue_metric_test // NOLINT
 #include "boost/test/included/unit_test.hpp"

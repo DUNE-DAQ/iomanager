@@ -14,8 +14,8 @@
  * received with this code.
  */
 
-#include "iomanager/FollyQueue.hpp"
-#include "iomanager/StdDeQueue.hpp"
+#include "iomanager/queue/FollyQueue.hpp"
+#include "iomanager/queue/StdDeQueue.hpp"
 
 #include "logging/Logging.hpp"
 
@@ -123,12 +123,12 @@ add_things(const volatile bool& spinlock)
 
     while (true) {
       try {
-
+        auto i_copy = i;
         if (!enable_per_pushpop_timing) {
-          queue->push(std::move(i), timeout);
+          queue->push(std::move(i_copy), timeout); // NOLINT
         } else {
           start_time_push = std::chrono::steady_clock::now();
-          queue->push(std::move(i), timeout);
+          queue->push(std::move(i_copy), timeout); // NOLINT
           if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
                                                                     start_time_push) > timeout) {
             timeout_pushes++;
@@ -233,7 +233,7 @@ main(int argc, char* argv[])
 {
 
   std::ostringstream descstr;
-  descstr << argv[0] << " known arguments ";
+  descstr << argv[0] << " known arguments "; // NOLINT
 
   std::ostringstream num_elements_desc;
   num_elements_desc << "# of elements you want pushed and/or popped (default is " << num_elements << ")";

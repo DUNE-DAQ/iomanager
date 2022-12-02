@@ -8,4 +8,6 @@
 
 #include "iomanager/IOManager.hpp"
 
+#include <memory>
+
 std::shared_ptr<dunedaq::iomanager::IOManager> dunedaq::iomanager::IOManager::s_instance = nullptr;

@@ -12,7 +12,7 @@
  * received with this code.
  */
 
-#include "iomanager/Queue.hpp"
+#include "iomanager/queue/Queue.hpp"
 
 #include <atomic>
 #include <cassert>
@@ -28,8 +28,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 /**
  * @brief A Queue Implementation that uses a std::deque as its backend
  * @tparam T Data Type to be stored in the std::deque
@@ -79,9 +78,7 @@ private:
   std::condition_variable m_no_longer_empty;
 };
 
-} // namespace iomanager
-
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #include "detail/StdDeQueue.hxx"
 

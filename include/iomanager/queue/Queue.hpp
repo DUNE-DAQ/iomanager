@@ -14,7 +14,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
 
-#include "iomanager/QueueBase.hpp"
+#include "iomanager/queue/QueueBase.hpp"
 
 #include "opmonlib/InfoCollector.hpp"
 
