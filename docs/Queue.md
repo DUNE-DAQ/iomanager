@@ -28,4 +28,4 @@ Represents the send end of a Queue, implementation of SenderConcept and exposed 
 
 ### API Diagram
 
-![Class Diagrams](https://github.com/DUNE-DAQ/iomanager/raw/develop/docs/Queue.png)
+![Class Diagrams](https://github.com/DUNE-DAQ/iomanager/raw/develop/docs/iomanager-queue.png)

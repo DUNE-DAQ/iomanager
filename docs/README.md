@@ -65,7 +65,7 @@ A simplified API for passing messages between DAQModules
 
 ### API Diagram
 
-![Class Diagrams](https://github.com/DUNE-DAQ/iomanager/raw/develop/docs/IOManager.png)
+![Class Diagrams](https://github.com/DUNE-DAQ/iomanager/raw/develop/docs/iomanager-common.png)
 
 ## Examples
 
