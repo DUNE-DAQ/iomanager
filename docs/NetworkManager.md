@@ -22,4 +22,4 @@ Represents the send end of a network connection, implementation of SenderConcept
 
 ## API Description
 
-![Class Diagrams](https://github.com/DUNE-DAQ/iomanager/raw/develop/docs/NetworkManager.png)
+![Class Diagrams](https://github.com/DUNE-DAQ/iomanager/raw/develop/docs/iomanager-network.png)
