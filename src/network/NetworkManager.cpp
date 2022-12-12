@@ -170,9 +170,8 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
   }
   if (m_config_client != nullptr) {
     auto start_time = std::chrono::steady_clock::now();
-    while (
-      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
-      1000) {
+    while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
+           1000) {
       try {
         auto client_response = m_config_client->resolveConnection(conn_id);
         if (restrict_single && client_response.connections.size() > 1) {

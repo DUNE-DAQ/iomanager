@@ -10,9 +10,9 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
 
+#include "iomanager/network/NetworkIssues.hpp"
 #include "iomanager/connection/Structs.hpp"
 #include "iomanager/network/ConfigClient.hpp"
-#include "iomanager/network/NetworkIssues.hpp"
 
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
@@ -71,7 +71,7 @@ private:
   std::unordered_map<std::string, Connection> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
-
+  
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Subscriber>> m_subscriber_plugins;
   std::unique_ptr<std::thread> m_subscriber_update_thread;
   std::atomic<bool> m_subscriber_update_thread_running{ false };

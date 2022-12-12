@@ -49,8 +49,7 @@ public:
    */
   explicit Queue(const std::string& name)
     : QueueBase(name)
-  {
-  }
+  {}
 
   /**
    * @brief Determine whether the Queue may be pushed onto

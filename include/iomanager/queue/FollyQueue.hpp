@@ -36,8 +36,7 @@ public:
     : Queue<T>(name)
     , m_queue(capacity)
     , m_capacity(capacity)
-  {
-  }
+  {}
 
   size_t get_capacity() const noexcept override { return m_capacity; }
 
