@@ -49,8 +49,16 @@ BOOST_AUTO_TEST_CASE(three_thread_test)
 {
 
   std::future<size_t> size_thread = std::async(std::launch::async, [&]() {
-    std::this_thread::sleep_for(test_time / 2);
-    return queue.size();
+    size_t size = 0;
+    auto start_time = std::chrono::steady_clock::now();
+    auto stop_time = start_time + test_time / 2;
+
+    while (std::chrono::steady_clock::now() < stop_time) {
+      size_t temp = queue.size();
+      if (temp > size)
+        size = temp;
+    }
+    return size;
   });
 
   std::future<int> push_thread = std::async(std::launch::async, [&]() {
