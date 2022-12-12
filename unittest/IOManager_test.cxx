@@ -171,6 +171,7 @@ datatype_to_string<NonSerializableNonCopyable>()
 }
 } // namespace dunedaq
 
+
 BOOST_AUTO_TEST_SUITE(IOManager_test)
 
 struct ConfigurationTestFixture
@@ -242,6 +243,7 @@ BOOST_FIXTURE_TEST_CASE(DatatypeMismatchException, ConfigurationTestFixture)
   auto receiver = IOManager::get()->get_receiver<Data>(conn_id);
   BOOST_REQUIRE_EXCEPTION(
     IOManager::get()->get_receiver<Data>(bad_id), DatatypeMismatch, [](DatatypeMismatch const&) { return true; });
+
 }
 
 BOOST_FIXTURE_TEST_CASE(SimpleSendReceive, ConfigurationTestFixture)

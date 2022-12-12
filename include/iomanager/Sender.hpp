@@ -51,8 +51,7 @@ class SenderConcept : public Sender
 public:
   explicit SenderConcept(std::string const& conn_uid)
     : Sender(conn_uid, datatype_to_string<Datatype>())
-  {
-  }
+  {}
   virtual void send(Datatype&& data, Sender::timeout_t timeout) = 0;     // NOLINT
   virtual bool try_send(Datatype&& data, Sender::timeout_t timeout) = 0; // NOLINT
 };

@@ -51,7 +51,7 @@ struct ConfigurationTestFixture
     queue_id = ConnectionId{ "queue", "data_t" };
 
     dunedaq::iomanager::Queues_t queues;
-    queues.emplace_back(QueueConfig{ queue_id, QueueType::kFollySPSCQueue, 50 });
+    queues.emplace_back(QueueConfig{queue_id, QueueType::kFollySPSCQueue, 50 });
 
     dunedaq::iomanager::Connections_t connections;
     connections.emplace_back(Connection{ network_id, "inproc://foo", ConnectionType::kSendRecv });
