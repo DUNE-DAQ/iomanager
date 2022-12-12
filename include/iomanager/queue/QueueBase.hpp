@@ -44,7 +44,8 @@ public:
    */
   explicit QueueBase(const std::string& name)
     : utilities::NamedObject(name)
-  {}
+  {
+  }
 
   /**
    * @brief Method to retrieve information (occupancy) from
