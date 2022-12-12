@@ -27,7 +27,8 @@ class TestQueue : public Queue<T>
 public:
   explicit TestQueue(const std::string& name)
     : Queue<T>(name)
-  {}
+  {
+  }
 
   void push(T&& push, const std::chrono::milliseconds& tmo) override
   {
