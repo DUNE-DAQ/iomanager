@@ -136,7 +136,7 @@ The standard `send()` and `receive()` methods will throw an ERS exception if the
 
 ## Updating existing code to use IOManager
 
-Please see [this page](Updating.md) for information about updating your code to use IOManager. Also, if you are interested in using dynamic connection names, look at [](Using-dynamic-connection-names.md)
+Please see [this page](Updating.md) for information about updating your code to use IOManager. Also, if you are interested in using dynamic connection names, look at [this page](Using-dynamic-connection-names.md)
 
 ## APIs used by IOManager
 
