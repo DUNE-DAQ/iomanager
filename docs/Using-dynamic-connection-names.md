@@ -3,7 +3,7 @@
 With the connectivity service changes, it is now possible for DAQ modules to generate their own connection names, as long as both ends of the connection agree on the naming convention in use. This document shows an example of using these dynamic connection names for the TriggerRecordBuilder.
 
 # Configuration-based
-```cpp=
+```cpp
 void
 TriggerRecordBuilder::init(const data_t& init_data)
 {
@@ -46,7 +46,7 @@ TriggerRecordBuilder::init(const data_t& init_data)
 ```
 
 # Using dynamic names
-```cpp=
+```cpp
 void
 TriggerRecordBuilder::init(const data_t& init_data)
 {
