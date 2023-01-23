@@ -55,7 +55,7 @@ struct ConfigurationTestFixture
 
     dunedaq::iomanager::Connections_t connections;
     connections.emplace_back(Connection{ network_id, "inproc://foo", ConnectionType::kSendRecv });
-    IOManager::get()->configure(queues, connections);
+    IOManager::get()->configure(queues, connections, false, 0ms); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 

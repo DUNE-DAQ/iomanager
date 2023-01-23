@@ -24,7 +24,7 @@ using nlohmann::json;
 
 using namespace dunedaq::iomanager;
 
-ConfigClient::ConfigClient(const std::string& server, const std::string& port)
+ConfigClient::ConfigClient(const std::string& server, const std::string& port, std::chrono::milliseconds publish_interval)
 {
   char* part = getenv("DUNEDAQ_PARTITION");
   if (part) {
@@ -36,7 +36,7 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
   tcp::resolver resolver(m_ioContext);
   m_addr = resolver.resolve(server, port);
   m_active = true;
-  m_thread = std::thread([this]() {
+  m_thread = std::thread([this,&publish_interval]() {
     while (m_active) {
       try {
         publish();
@@ -53,7 +53,7 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port)
         else
           TLOG() << ers_ex;
       }
-      std::this_thread::sleep_for(1s);
+      std::this_thread::sleep_for(publish_interval);
     }
     retract();
     if (!m_connected) {

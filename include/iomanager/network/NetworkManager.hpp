@@ -42,7 +42,7 @@ public:
   ~NetworkManager() { reset(); }
 
   void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
-  void configure(const Connections_t& connections, bool use_config_client = true);
+  void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval);
   void reset();
 
   std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
@@ -77,6 +77,7 @@ private:
   std::atomic<bool> m_subscriber_update_thread_running{ false };
 
   std::unique_ptr<ConfigClient> m_config_client;
+  std::chrono::milliseconds m_config_client_interval;
 
   mutable std::mutex m_receiver_plugin_map_mutex;
   mutable std::mutex m_sender_plugin_map_mutex;
