@@ -63,6 +63,15 @@ public:
     return try_write_network<Datatype>(data, timeout);
   }
 
+  void send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string topic) override // NOLINT
+  {
+    try {
+      write_network_with_topic<Datatype>(data, timeout, topic);
+    } catch (ipm::SendTimeoutExpired& ex) {
+      throw TimeoutExpired(ERS_HERE, this->id().uid, "send", timeout.count(), ex);
+    }
+  }
+
 private:
   void get_sender(Sender::timeout_t const& timeout)
   {
@@ -148,6 +157,41 @@ private:
   {
     ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name())); // NOLINT(runtime/rtti)
     return false;
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type write_network_with_topic(
+    MessageType& message,
+    Sender::timeout_t const& timeout,
+    std::string topic)
+  {
+    get_sender(timeout);
+    if (m_network_sender_ptr == nullptr) {
+      throw TimeoutExpired(
+        ERS_HERE, this->id().uid, "send", timeout.count(), ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
+    }
+
+    auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
+    //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic << ", this="
+    //  << (void*)this;
+    std::lock_guard<std::mutex> lk(m_send_mutex);
+
+    try {
+      m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
+    } catch (TimeoutExpired const& ex) {
+      m_network_sender_ptr = nullptr;
+      throw;
+    }
+  }
+
+  template<typename MessageType>
+  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+  write_network_with_topic(
+    MessageType&,
+    Sender::timeout_t const&,
+    std::string)
+  {
+    throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
   }
 
   std::shared_ptr<ipm::Sender> m_network_sender_ptr;
