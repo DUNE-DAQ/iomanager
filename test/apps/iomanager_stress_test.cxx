@@ -62,52 +62,63 @@ configure_connsvc(std::string host, int port)
   setenv("CONNECTION_PORT", std::to_string(port).c_str(), 1);
 }
 
+std::string
+get_connection_name(size_t conn_id)
+{
+  std::stringstream ss;
+  ss << "conn_"  << std::hex << std::internal << std::showbase << std::setw(10) << std::setfill('0') << conn_id; // The tempatation to use printf is strong...
+  return ss.str();
+}
+
 void
-configure_iomanager(size_t num_connections, bool use_connectivity_service, int /*publish_interval*/, bool verbose)
+configure_iomanager(size_t num_connections, bool use_connectivity_service, int /*publish_interval*/, bool verbose, bool configure_connections)
 {
   setenv("DUNEDAQ_PARTITION", "iomanager_stress_test", 0);
 
   dunedaq::iomanager::Queues_t queues;
   dunedaq::iomanager::Connections_t connections;
 
-  assert(num_connections < (1 << 23));
-  for (size_t ii = 0; ii < num_connections; ++ii) {
-    size_t conn_ip = ii + 1;
-    int first_byte = (conn_ip << 1) & 0xFF;
-    if (first_byte == 0)
-      first_byte = 1;
-    int second_byte = (conn_ip >> 7) & 0xFF;
-    int third_byte = (conn_ip >> 15) & 0xFF;
-    std::string conn_addr = "tcp://127." + std::to_string(third_byte) + "." + std::to_string(second_byte) + "." +
-                            std::to_string(first_byte) + ":15500";
+  if (configure_connections) {
+    assert(num_connections < (1 << 23));
+    for (size_t ii = 0; ii < num_connections; ++ii) {
+      size_t conn_ip = ii + 1;
+      int first_byte = (conn_ip << 1) & 0xFF;
+      if (first_byte == 0)
+        first_byte = 1;
+      int second_byte = (conn_ip >> 7) & 0xFF;
+      int third_byte = (conn_ip >> 15) & 0xFF;
+      std::string conn_addr = "tcp://127." + std::to_string(third_byte) + "." + std::to_string(second_byte) + "." +
+                              std::to_string(first_byte) + ":15500";
+      if (verbose) {
+        TLOG() << "Adding connection with id "
+               << "conn_" << ii << " and address " << conn_addr;
+      }
+      connections.emplace_back(
+        dunedaq::iomanager::Connection{ dunedaq::iomanager::ConnectionId{ get_connection_name(ii), "data_t" },
+                                        conn_addr,
+                                        dunedaq::iomanager::ConnectionType::kSendRecv });
+    }
+
+    std::string conn_addr = "tcp://127.0.0.1:25500";
     if (verbose) {
-      TLOG() << "Adding connection with id "
-             << "conn_" << ii << " and address " << conn_addr;
+      TLOG() << "Adding control connection conn_control with address " << conn_addr;
     }
     connections.emplace_back(
-      dunedaq::iomanager::Connection{ dunedaq::iomanager::ConnectionId{ "conn_" + std::to_string(ii), "data_t" },
+      dunedaq::iomanager::Connection{ dunedaq::iomanager::ConnectionId{ "conn_control", "control_t" },
                                       conn_addr,
-                                      dunedaq::iomanager::ConnectionType::kSendRecv });
+                                      dunedaq::iomanager::ConnectionType::kPubSub });
   }
-
-  std::string conn_addr = "tcp://127.0.0.1:25500";
-  if (verbose) {
-    TLOG() << "Adding control connection conn_control with address " << conn_addr;
-  }
-  connections.emplace_back(
-    dunedaq::iomanager::Connection{ dunedaq::iomanager::ConnectionId{ "conn_control", "control_t" },
-                                    conn_addr,
-                                    dunedaq::iomanager::ConnectionType::kPubSub });
-
   dunedaq::iomanager::IOManager::get()->configure(queues, connections, use_connectivity_service /*, publish_interval*/);
 }
 
 struct receiver_info
 {
-  size_t conn_id;
   size_t last_sequence_received{ 0 };
   std::atomic<size_t> msgs_received{ 0 };
   std::atomic<size_t> msgs_with_error{ 0 };
+  std::chrono::steady_clock::time_point first_receive;
+  std::chrono::steady_clock::time_point last_receive;
+  std::atomic<bool> first_received{ false };
 };
 
 void
@@ -118,48 +129,98 @@ receive(size_t my_id,
         size_t message_size_kb,
         bool verbose)
 {
+  auto start = std::chrono::steady_clock::now();
   auto control_sender = dunedaq::get_iom_sender<dunedaq::iomanager::Control>("conn_control");
+  auto after_control = std::chrono::steady_clock::now();
 
-  std::vector<std::shared_ptr<receiver_info>> receivers;
+  std::unordered_map<size_t, std::shared_ptr<receiver_info>> receivers;
   for (size_t conn_id = 0; conn_id < num_connections; ++conn_id) {
     auto info = std::make_shared<receiver_info>();
-    info->conn_id = conn_id;
+    receivers[conn_id] = info;
+  }
 
+  auto after_info = std::chrono::steady_clock::now();
+
+  for (size_t conn_id = 0; conn_id < num_connections; ++conn_id) {
+    auto info = receivers[conn_id];
     auto recv_proc = [=](dunedaq::iomanager::Data& msg) {
       if (verbose) {
         TLOG() << "Received message " << msg.seq_number << " with size " << msg.contents.size()
-               << " bytes from connection " << info->conn_id;
+               << " bytes from connection " << conn_id;
+      }
+      if (!info->first_received) {
+        info->first_received = true;
+        info->first_receive = std::chrono::steady_clock::now();
       }
       if (msg.contents.size() != message_size_kb * 1024 || msg.seq_number != info->last_sequence_received + 1) {
         info->msgs_with_error++;
       }
       info->last_sequence_received = msg.seq_number;
+      info->last_receive = std::chrono::steady_clock::now();
       info->msgs_received++;
     };
 
-    auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>("conn_" + std::to_string(conn_id));
+    auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>(get_connection_name(conn_id));
     receiver->add_callback(recv_proc);
-    receivers.push_back(info);
   }
+  auto after_callbacks = std::chrono::steady_clock::now();
 
   bool all_done = false;
   while (!all_done) {
     size_t recvrs_done = 0;
     for (auto& receiver : receivers) {
-      if (receiver->msgs_received.load() == num_messages)
+      if (receiver.second->msgs_received.load() == num_messages)
         recvrs_done++;
     }
     all_done = recvrs_done == num_connections;
   }
+  auto after_receives = std::chrono::steady_clock::now();
 
   for (auto& info : receivers) {
-    auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>("conn_" + std::to_string(info->conn_id));
+    auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>(get_connection_name(info.first));
     receiver->remove_callback();
   }
+  auto after_cleanup = std::chrono::steady_clock::now();
 
   dunedaq::iomanager::Control msg(my_id, run_number, true);
 
   control_sender->send(std::move(msg), dunedaq::iomanager::Sender::s_block);
+
+  auto after_control_send = std::chrono::steady_clock::now();
+
+  int min_time = std::numeric_limits<int>::max();
+  int max_time = 0;
+  int sum_time = 0;
+  for (auto& info : receivers) {
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(info.second->last_receive - info.second->first_receive).count();
+    if (time > max_time) max_time = time;
+    if (time < min_time)
+      min_time = time;
+    sum_time += time;
+  }
+  double average_time = static_cast<double>(sum_time) / static_cast<double>(num_connections);
+
+  TLOG() << "RUN TIMES: ";
+  TLOG() << "Getting control connection: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << " ms";
+  TLOG() << "Setting up counters: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(after_info - after_control).count() << " ms";
+  TLOG() << "Adding receive callbacks: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(after_callbacks - after_info).count() << " ms";
+  TLOG() << "Waiting for receives to complete: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(after_receives - after_callbacks).count() << " ms";
+  TLOG() << "Removing receive callbacks: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(after_cleanup - after_receives).count() << " ms";
+  TLOG() << "Sending complete message: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_cleanup).count() << " ms";
+  TLOG() << "Receive start to complete: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_receives).count() << " ms";
+  TLOG() << "Minimum time receiving: " << min_time << " ms";
+  TLOG() << "Maximum time receiving: " << max_time << " ms";
+  TLOG() << "Average time receiving: " << average_time << " ms";
+  TLOG() << "TOTAL: " << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - start).count()
+         << " ms";
+
 
   receivers.clear();
 }
@@ -167,7 +228,6 @@ receive(size_t my_id,
 struct sender_info
 {
   std::shared_ptr<dunedaq::iomanager::SenderConcept<dunedaq::iomanager::Data>> sender;
-  size_t conn_id;
   std::atomic<size_t> msgs_sent{ 0 };
   std::unique_ptr<std::thread> send_thread;
 };
@@ -179,12 +239,11 @@ send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool v
   auto control_receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Control>("conn_control");
   auto after_control = std::chrono::steady_clock::now();
 
-  std::vector<std::shared_ptr<sender_info>> senders;
+  std::unordered_map<size_t, std::shared_ptr<sender_info>> senders;
   for (size_t conn_id = 0; conn_id < num_connections; ++conn_id) {
     auto info = std::make_shared<sender_info>();
-    info->sender = dunedaq::get_iom_sender<dunedaq::iomanager::Data>("conn_" + std::to_string(conn_id));
-    info->conn_id = conn_id;
-    senders.push_back(info);
+    info->sender = dunedaq::get_iom_sender<dunedaq::iomanager::Data>(get_connection_name(conn_id));
+    senders[conn_id] = info;
   }
   auto after_senders = std::chrono::steady_clock::now();
 
@@ -195,7 +254,7 @@ send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool v
 
         if (verbose) {
           TLOG() << "Sending message " << ii << " with size " << message_size_kb * 1024
-                 << " bytes to connection " << info->conn_id;
+                 << " bytes to connection " << conn_id;
         }
 
         dunedaq::iomanager::Data d(ii, message_size_kb * 1024);
@@ -210,7 +269,7 @@ send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool v
   while (!all_done) {
     size_t senders_done = 0;
     for (auto& sndr : senders) {
-      if (sndr->msgs_sent.load() == num_messages)
+      if (sndr.second->msgs_sent.load() == num_messages)
         senders_done++;
     }
     all_done = senders_done == num_connections;
@@ -218,8 +277,8 @@ send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool v
   auto after_sends = std::chrono::steady_clock::now();
 
   for (auto& sender : senders) {
-    sender->send_thread->join();
-    sender->send_thread.reset(nullptr);
+    sender.second->send_thread->join();
+    sender.second->send_thread.reset(nullptr);
   }
   auto after_join = std::chrono::steady_clock::now();
 
@@ -309,10 +368,12 @@ main(int argc, char* argv[])
     configure_connsvc(server, port);
   }
 
-  if (is_receiver || (is_sender && !use_connectivity_service)) {
     TLOG() << "Configuring IOManager";
-    configure_iomanager(num_connections, use_connectivity_service, publish_interval, verbose);
-  }
+    configure_iomanager(num_connections,
+                        use_connectivity_service,
+                        publish_interval,
+                        verbose,
+                        is_receiver || (is_sender && !use_connectivity_service));
 
   for (size_t run = 0; run < num_runs; ++run) {
     TLOG() << "Starting test run " << run;
