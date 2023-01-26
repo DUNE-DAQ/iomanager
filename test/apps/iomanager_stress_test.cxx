@@ -104,7 +104,6 @@ configure_iomanager(size_t num_connections, bool use_connectivity_service, int /
 
 struct receiver_info
 {
-  std::shared_ptr<dunedaq::iomanager::ReceiverConcept<dunedaq::iomanager::Data>> receiver;
   size_t conn_id;
   size_t last_sequence_received{ 0 };
   std::atomic<size_t> msgs_received{ 0 };
@@ -116,7 +115,7 @@ receive(size_t my_id,
         size_t run_number,
         size_t num_connections,
         size_t num_messages,
-        size_t message_size_mb,
+        size_t message_size_kb,
         bool verbose)
 {
   auto control_sender = dunedaq::get_iom_sender<dunedaq::iomanager::Control>("conn_control");
@@ -124,7 +123,6 @@ receive(size_t my_id,
   std::vector<std::shared_ptr<receiver_info>> receivers;
   for (size_t conn_id = 0; conn_id < num_connections; ++conn_id) {
     auto info = std::make_shared<receiver_info>();
-    info->receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>("conn_" + std::to_string(conn_id));
     info->conn_id = conn_id;
 
     auto recv_proc = [=](dunedaq::iomanager::Data& msg) {
@@ -132,29 +130,31 @@ receive(size_t my_id,
         TLOG() << "Received message " << msg.seq_number << " with size " << msg.contents.size()
                << " bytes from connection " << info->conn_id;
       }
-      if (msg.contents.size() != message_size_mb * 1024 * 1024 || msg.seq_number != info->last_sequence_received + 1) {
+      if (msg.contents.size() != message_size_kb * 1024 || msg.seq_number != info->last_sequence_received + 1) {
         info->msgs_with_error++;
       }
       info->last_sequence_received = msg.seq_number;
       info->msgs_received++;
     };
 
-    info->receiver->add_callback(recv_proc);
+    auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>("conn_" + std::to_string(conn_id));
+    receiver->add_callback(recv_proc);
     receivers.push_back(info);
   }
 
   bool all_done = false;
   while (!all_done) {
     size_t recvrs_done = 0;
-    for (auto& rcvr : receivers) {
-      if (rcvr->msgs_received.load() == num_messages)
+    for (auto& receiver : receivers) {
+      if (receiver->msgs_received.load() == num_messages)
         recvrs_done++;
     }
     all_done = recvrs_done == num_connections;
   }
 
-  for (auto& recvr : receivers) {
-    recvr->receiver->remove_callback();
+  for (auto& info : receivers) {
+    auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>("conn_" + std::to_string(info->conn_id));
+    receiver->remove_callback();
   }
 
   dunedaq::iomanager::Control msg(my_id, run_number, true);
@@ -173,7 +173,7 @@ struct sender_info
 };
 
 void
-send(size_t num_connections, size_t num_messages, size_t message_size_mb, bool verbose)
+send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool verbose)
 {
   auto start = std::chrono::steady_clock::now();
   auto control_receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Control>("conn_control");
@@ -194,11 +194,11 @@ send(size_t num_connections, size_t num_messages, size_t message_size_mb, bool v
       for (size_t ii = 0; ii < num_messages; ++ii) {
 
         if (verbose) {
-          TLOG() << "Sending message " << ii << " with size " << message_size_mb * 1024 * 1024
+          TLOG() << "Sending message " << ii << " with size " << message_size_kb * 1024
                  << " bytes to connection " << info->conn_id;
         }
 
-        dunedaq::iomanager::Data d(ii, message_size_mb * 1024 * 1024);
+        dunedaq::iomanager::Data d(ii, message_size_kb * 1024);
         info->sender->send(std::move(d), dunedaq::iomanager::Sender::s_block);
         info->msgs_sent++;
       }
@@ -260,7 +260,7 @@ main(int argc, char* argv[])
   std::string server = "localhost";
   size_t num_connections = 10;
   size_t num_messages = 100;
-  size_t message_size_mb = 10;
+  size_t message_size_kb = 10;
   size_t num_runs = 2;
   int publish_interval = 1000;
   bool is_sender = false;
@@ -276,7 +276,7 @@ main(int argc, char* argv[])
     "port,p", po::value<int>(&port), "port to connect to on configuration server")(
     "server,s", po::value<std::string>(&server), "Configuration server to connect to")(
     "num_messages,m", po::value<size_t>(&num_messages), "Number of messages to send on each connection")(
-    "message_size_mb,z", po::value<size_t>(&message_size_mb), "Size of each message, in MB")(
+    "message_size_kb,z", po::value<size_t>(&message_size_kb), "Size of each message, in KB")(
     "num_runs,r", po::value<size_t>(&num_runs), "Number of times to clear the sender and send all messages")(
     "publish_interval,i",
     po::value<int>(&publish_interval),
@@ -317,9 +317,9 @@ main(int argc, char* argv[])
   for (size_t run = 0; run < num_runs; ++run) {
     TLOG() << "Starting test run " << run;
     if (is_receiver) {
-      receive(0, run, num_connections, num_messages, message_size_mb, verbose);
+      receive(0, run, num_connections, num_messages, message_size_kb, verbose);
     } else if (is_sender) {
-      send(num_connections, num_messages, message_size_mb, verbose);
+      send(num_connections, num_messages, message_size_kb, verbose);
     }
     TLOG() << "Test run " << run << " complete.";
   }
