@@ -66,6 +66,8 @@ public:
 
   bool has_queue(std::string const& uid, std::string const& data_type);
 
+  std::set<std::string> get_datatypes(std::string const& uid);
+
 private:
   struct QueueEntry
   {

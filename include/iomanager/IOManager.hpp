@@ -114,7 +114,7 @@ public:
     if (id.data_type != datatype_to_string<Datatype>()) {
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
-        
+
     static std::mutex dt_receiver_mutex;
     std::lock_guard<std::mutex> lk(dt_receiver_mutex);
 
@@ -166,6 +166,16 @@ public:
   {
     auto receiver = get_receiver<Datatype>(uid);
     receiver->remove_callback();
+  }
+
+  std::set<std::string> get_datatypes(std::string const& uid)
+  {
+    auto output = QueueRegistry::get().get_datatypes(uid);
+    auto networks = NetworkManager::get().get_datatypes(uid);
+    for (auto& dt : networks) {
+      output.insert(dt);
+    }
+    return output;
   }
 
 private:

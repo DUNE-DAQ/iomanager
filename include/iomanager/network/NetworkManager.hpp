@@ -53,6 +53,8 @@ public:
   ConnectionResponse get_connections(ConnectionId const& conn_id, bool restrict_single = false) const;
   ConnectionResponse get_preconfigured_connections(ConnectionId const& conn_id) const;
 
+  std::set<std::string> get_datatypes(std::string const& uid);
+
 private:
   static std::unique_ptr<NetworkManager> s_instance;
 
