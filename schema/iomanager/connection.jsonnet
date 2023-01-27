@@ -19,6 +19,7 @@ local c = {
     ConnectionId: s.record("ConnectionId",[
         s.field("uid", self.uid, doc="Identifier for the Connection instance"),
         s.field("data_type", self.datatype, doc="Name of the expected data type"),
+        s.field("partition", self.uid, default="", doc="Name of the partition this Connection lives in")
     ]),
 
     Queue: s.record("QueueConfig", [

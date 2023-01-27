@@ -73,9 +73,12 @@ ConfigClient::~ConfigClient()
 }
 
 ConnectionResponse
-ConfigClient::resolveConnection(const ConnectionRequest& query)
+ConfigClient::resolveConnection(const ConnectionRequest& query, std::string partition)
 {
-  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in partition " << m_partition;
+  if (partition == "") {
+    partition = m_partition;
+  }
+  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in partition " << partition;
   std::string target = "/getconnection/" + m_partition;
   http::request<http::string_body> req{ http::verb::post, target, 11 };
   req.set(http::field::content_type, "application/json");

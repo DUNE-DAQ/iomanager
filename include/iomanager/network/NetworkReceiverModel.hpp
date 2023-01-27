@@ -35,10 +35,10 @@ template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit NetworkReceiverModel(std::string const& request)
-    : ReceiverConcept<Datatype>(request)
+  explicit NetworkReceiverModel(ConnectionId const& conn_id)
+    : ReceiverConcept<Datatype>(conn_id)
   {
-    TLOG() << "NetworkReceiverModel created with DT! ID: " << request << " Addr: " << static_cast<void*>(this);
+    TLOG() << "NetworkReceiverModel created with DT! ID: " << conn_id.uid << " Addr: " << static_cast<void*>(this);
     try {
       get_receiver(std::chrono::milliseconds(1000));
     } catch (ConnectionNotFound const& ex) {

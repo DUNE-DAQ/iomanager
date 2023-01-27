@@ -30,12 +30,6 @@ public:
     , m_conn(this_conn)
   {
   }
-  explicit Sender(std::string const& conn_uid, std::string const& data_type)
-    : utilities::NamedObject(conn_uid)
-  {
-    m_conn.uid = conn_uid;
-    m_conn.data_type = data_type;
-  }
   virtual ~Sender() = default;
 
   ConnectionId id() const { return m_conn; }
@@ -49,8 +43,8 @@ template<typename Datatype>
 class SenderConcept : public Sender
 {
 public:
-  explicit SenderConcept(std::string const& conn_uid)
-    : Sender(conn_uid, datatype_to_string<Datatype>())
+  explicit SenderConcept(ConnectionId const& conn_id)
+    : Sender(conn_id)
   {}
   virtual void send(Datatype&& data, Sender::timeout_t timeout) = 0;     // NOLINT
   virtual bool try_send(Datatype&& data, Sender::timeout_t timeout) = 0; // NOLINT

@@ -55,8 +55,9 @@ public:
    *
    * @param query Query string to send to the server. Query is a
    *    regular expression that can match with multiple connection ids
+   * @param partition The partition that the requested connection is part of
    */
-  ConnectionResponse resolveConnection(const ConnectionRequest& query);
+  ConnectionResponse resolveConnection(const ConnectionRequest& query, std::string partition = "");
 
   /**
    * Publish information for a single connection

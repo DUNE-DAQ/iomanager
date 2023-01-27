@@ -56,6 +56,13 @@ public:
 
   void configure(Queues_t queues, Connections_t connections, bool use_config_client = true)
   {
+    char* part = getenv("DUNEDAQ_PARTITION");
+    if (part) {
+      m_partition = std::string(part);
+    } else {
+      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_PARTITION"));
+    }
+
     Queues_t qCfg = queues;
     Connections_t nwCfg;
 
@@ -77,10 +84,14 @@ public:
   }
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId const& id)
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId id)
   {
     if (id.data_type != datatype_to_string<Datatype>()) {
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
+    }
+
+    if (id.partition == "") {
+      id.partition = m_partition;
     }
 
     static std::mutex dt_sender_mutex;
@@ -89,10 +100,10 @@ public:
     if (!m_senders.count(id)) {
       if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
         TLOG() << "Creating QueueSenderModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(QueueSenderModel<Datatype>(id.uid));
+        m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(id);
       } else {
-        TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(NetworkSenderModel<Datatype>(id.uid));
+        TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type << " in partition " << id.partition;
+        m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(id);
       }
     }
     return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[id]);
@@ -105,26 +116,32 @@ public:
     ConnectionId id;
     id.uid = uid;
     id.data_type = data_type;
+    id.partition = m_partition;
     return get_sender<Datatype>(id);
   }
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionId const& id)
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionId id)
   {
     if (id.data_type != datatype_to_string<Datatype>()) {
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
-        
+
+    if (id.partition == "") {
+      id.partition = m_partition;
+    }
+
     static std::mutex dt_receiver_mutex;
     std::lock_guard<std::mutex> lk(dt_receiver_mutex);
 
     if (!m_receivers.count(id)) {
       if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
         TLOG() << "Creating QueueReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(QueueReceiverModel<Datatype>(id.uid));
+        m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(id);
       } else {
-        TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(NetworkReceiverModel<Datatype>(id.uid));
+        TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type
+               << " in partition " << id.partition;
+        m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(id);
       }
     }
     return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[id]); // NOLINT
@@ -137,6 +154,7 @@ public:
     ConnectionId id;
     id.uid = uid;
     id.data_type = data_type;
+    id.partition = m_partition;
     return get_receiver<Datatype>(id);
   }
 
@@ -175,6 +193,7 @@ private:
   using ReceiverMap = std::map<ConnectionId, std::shared_ptr<Receiver>>;
   SenderMap m_senders;
   ReceiverMap m_receivers;
+  std::string m_partition;
 
   static std::shared_ptr<IOManager> s_instance;
 };

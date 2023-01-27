@@ -173,7 +173,7 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
     while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
            1000) {
       try {
-        auto client_response = m_config_client->resolveConnection(conn_id);
+        auto client_response = m_config_client->resolveConnection(conn_id, conn_id.partition);
         if (restrict_single && client_response.connections.size() > 1) {
           throw NameCollision(ERS_HERE, conn_id.uid);
         }
