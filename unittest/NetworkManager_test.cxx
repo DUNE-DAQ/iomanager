@@ -59,6 +59,10 @@ struct NetworkManagerTestFixture
     testConn.id = pubSubConnId3;
     testConn.uri = "inproc://abr";
     testConfig.push_back(testConn);
+
+    testConn.id.data_type = "words";
+    testConn.uri = "inproc:/oof";
+    testConfig.push_back(testConn);
     NetworkManager::get().configure(testConfig, false); // Not using ConfigClient
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
@@ -159,6 +163,21 @@ BOOST_FIXTURE_TEST_CASE(NameCollisionInConfiguration, NetworkManagerTestFixture)
   testConfig.emplace_back(Connection{ sendRecvConnId, "inproc://bar", ConnectionType::kSendRecv });
   BOOST_REQUIRE_EXCEPTION(
     NetworkManager::get().configure(testConfig), NameCollision, [&](NameCollision const&) { return true; });
+}
+
+BOOST_FIXTURE_TEST_CASE(GetDatatypes, NetworkManagerTestFixture)
+{
+  auto sendRecvDataType = NetworkManager::get().get_datatypes("sendRecv");
+  BOOST_REQUIRE_EQUAL(sendRecvDataType.size(), 1);
+  BOOST_REQUIRE_EQUAL(*sendRecvDataType.begin(), "data");
+
+  auto pubsub3DataType = NetworkManager::get().get_datatypes("pubsub3");
+  BOOST_REQUIRE_EQUAL(pubsub3DataType.size(), 2);
+  BOOST_REQUIRE_EQUAL(pubsub3DataType.count("String"), 1);
+  BOOST_REQUIRE_EQUAL(pubsub3DataType.count("words"), 1);
+
+  auto invalidDataType = NetworkManager::get().get_datatypes("NonExistentUID");
+  BOOST_REQUIRE_EQUAL(invalidDataType.size(), 0);
 }
 
 BOOST_AUTO_TEST_CASE(MakeIPMPlugins) {}

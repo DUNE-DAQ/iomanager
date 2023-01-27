@@ -52,7 +52,7 @@ QueueRegistry::gather_stats(opmonlib::InfoCollector& ic, int level)
 }
 
 bool
-QueueRegistry::has_queue(const std::string& uid, const std::string& data_type)
+QueueRegistry::has_queue(const std::string& uid, const std::string& data_type) const
 {
   for (auto& config : m_queue_configs) {
     if (config.id.uid == uid && config.id.data_type == data_type) {
@@ -61,6 +61,20 @@ QueueRegistry::has_queue(const std::string& uid, const std::string& data_type)
   }
 
   return false;
+}
+
+std::set<std::string>
+QueueRegistry::get_datatypes(const std::string& uid) const
+{
+  std::set<std::string> output;
+
+  for (auto& config : m_queue_configs) {
+    if (config.id.uid == uid) {
+      output.insert(config.id.data_type);
+    }
+  }
+
+  return output;
 }
 
 } // namespace dunedaq::iomanager
