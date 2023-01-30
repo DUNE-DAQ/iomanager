@@ -11,6 +11,9 @@
 
 #include "boost/program_options.hpp"
 
+#include <algorithm>
+#include <execution>
+
 namespace dunedaq {
 namespace iomanager {
 struct Data
@@ -66,12 +69,17 @@ std::string
 get_connection_name(size_t conn_id)
 {
   std::stringstream ss;
-  ss << "conn_"  << std::hex << std::internal << std::showbase << std::setw(10) << std::setfill('0') << conn_id; // The tempatation to use printf is strong...
+  ss << "conn_" << std::hex << std::internal << std::showbase << std::setw(10) << std::setfill('0')
+     << conn_id; // The tempatation to use printf is strong...
   return ss.str();
 }
 
 void
-configure_iomanager(size_t num_connections, bool use_connectivity_service, int /*publish_interval*/, bool verbose, bool configure_connections)
+configure_iomanager(size_t num_connections,
+                    bool use_connectivity_service,
+                    int /*publish_interval*/,
+                    bool verbose,
+                    bool configure_connections)
 {
   setenv("DUNEDAQ_PARTITION", "iomanager_stress_test", 0);
 
@@ -140,29 +148,33 @@ receive(size_t my_id,
   }
 
   auto after_info = std::chrono::steady_clock::now();
+  std::for_each(std::execution::par_unseq,
+                std::begin(receivers),
+                std::end(receivers),
+                [&](std::pair<size_t, std::shared_ptr<receiver_info>> info_pair) {
+                  auto conn_id = info_pair.first;
+                  auto info = info_pair.second;
+                  auto recv_proc = [=](dunedaq::iomanager::Data& msg) {
+                    if (verbose) {
+                      TLOG() << "Received message " << msg.seq_number << " with size " << msg.contents.size()
+                             << " bytes from connection " << conn_id;
+                    }
+                    if (!info->first_received) {
+                      info->first_received = true;
+                      info->first_receive = std::chrono::steady_clock::now();
+                    }
+                    if (msg.contents.size() != message_size_kb * 1024 ||
+                        msg.seq_number != info->last_sequence_received + 1) {
+                      info->msgs_with_error++;
+                    }
+                    info->last_sequence_received = msg.seq_number;
+                    info->last_receive = std::chrono::steady_clock::now();
+                    info->msgs_received++;
+                  };
 
-  for (size_t conn_id = 0; conn_id < num_connections; ++conn_id) {
-    auto info = receivers[conn_id];
-    auto recv_proc = [=](dunedaq::iomanager::Data& msg) {
-      if (verbose) {
-        TLOG() << "Received message " << msg.seq_number << " with size " << msg.contents.size()
-               << " bytes from connection " << conn_id;
-      }
-      if (!info->first_received) {
-        info->first_received = true;
-        info->first_receive = std::chrono::steady_clock::now();
-      }
-      if (msg.contents.size() != message_size_kb * 1024 || msg.seq_number != info->last_sequence_received + 1) {
-        info->msgs_with_error++;
-      }
-      info->last_sequence_received = msg.seq_number;
-      info->last_receive = std::chrono::steady_clock::now();
-      info->msgs_received++;
-    };
-
-    auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>(get_connection_name(conn_id));
-    receiver->add_callback(recv_proc);
-  }
+                  auto receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Data>(get_connection_name(conn_id));
+                  receiver->add_callback(recv_proc);
+                });
   auto after_callbacks = std::chrono::steady_clock::now();
 
   bool all_done = false;
@@ -192,8 +204,11 @@ receive(size_t my_id,
   int max_time = 0;
   int sum_time = 0;
   for (auto& info : receivers) {
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(info.second->last_receive - info.second->first_receive).count();
-    if (time > max_time) max_time = time;
+    auto time =
+      std::chrono::duration_cast<std::chrono::milliseconds>(info.second->last_receive - info.second->first_receive)
+        .count();
+    if (time > max_time)
+      max_time = time;
     if (time < min_time)
       min_time = time;
     sum_time += time;
@@ -220,7 +235,6 @@ receive(size_t my_id,
   TLOG() << "Average time receiving: " << average_time << " ms";
   TLOG() << "TOTAL: " << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - start).count()
          << " ms";
-
 
   receivers.clear();
 }
@@ -253,8 +267,8 @@ send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool v
       for (size_t ii = 0; ii < num_messages; ++ii) {
 
         if (verbose) {
-          TLOG() << "Sending message " << ii << " with size " << message_size_kb * 1024
-                 << " bytes to connection " << conn_id;
+          TLOG() << "Sending message " << ii << " with size " << message_size_kb * 1024 << " bytes to connection "
+                 << conn_id;
         }
 
         dunedaq::iomanager::Data d(ii, message_size_kb * 1024);
@@ -368,12 +382,12 @@ main(int argc, char* argv[])
     configure_connsvc(server, port);
   }
 
-    TLOG() << "Configuring IOManager";
-    configure_iomanager(num_connections,
-                        use_connectivity_service,
-                        publish_interval,
-                        verbose,
-                        is_receiver || (is_sender && !use_connectivity_service));
+  TLOG() << "Configuring IOManager";
+  configure_iomanager(num_connections,
+                      use_connectivity_service,
+                      publish_interval,
+                      verbose,
+                      is_receiver || (is_sender && !use_connectivity_service));
 
   for (size_t run = 0; run < num_runs; ++run) {
     TLOG() << "Starting test run " << run;
