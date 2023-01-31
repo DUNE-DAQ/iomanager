@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <execution>
+#include <fstream>
 
 namespace dunedaq {
 namespace iomanager {
@@ -135,6 +136,7 @@ receive(size_t my_id,
         size_t num_connections,
         size_t num_messages,
         size_t message_size_kb,
+        std::string info_file_base,
         bool verbose)
 {
   auto start = std::chrono::steady_clock::now();
@@ -215,26 +217,30 @@ receive(size_t my_id,
   }
   double average_time = static_cast<double>(sum_time) / static_cast<double>(num_connections);
 
-  TLOG() << "RUN TIMES: ";
-  TLOG() << "Getting control connection: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << " ms";
-  TLOG() << "Setting up counters: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_info - after_control).count() << " ms";
-  TLOG() << "Adding receive callbacks: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_callbacks - after_info).count() << " ms";
-  TLOG() << "Waiting for receives to complete: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_receives - after_callbacks).count() << " ms";
-  TLOG() << "Removing receive callbacks: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_cleanup - after_receives).count() << " ms";
-  TLOG() << "Sending complete message: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_cleanup).count() << " ms";
-  TLOG() << "Receive start to complete: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_receives).count() << " ms";
-  TLOG() << "Minimum time receiving: " << min_time << " ms";
-  TLOG() << "Maximum time receiving: " << max_time << " ms";
-  TLOG() << "Average time receiving: " << average_time << " ms";
-  TLOG() << "TOTAL: " << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - start).count()
-         << " ms";
+  std::string info_file_name = info_file_base + "_receiver.csv";
+  
+  struct stat buffer;
+  bool file_exists = stat(info_file_name.c_str(), &buffer) == 0;
+
+  std::ofstream of(info_file_name, std::ios::app);
+
+  if (!file_exists) {
+    of << "APP_TYPE,RUN,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTERS_MS,ADD_CALLBACKS_MS,RECV_COMPLETE_MS"
+          ",RM_CALLBACKS_MS,SEND_COMPMSG_MS,RECV_MS,MIN_RECV_MS,MAX_RECV_MS,AVG_RECV_MS,TOTAL_MS"
+       << std::endl;
+  }
+
+  of << "R"
+     << "," << run_number << "," << num_connections << "," << num_messages << "," << message_size_kb << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_info - after_control).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_callbacks - after_info).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_receives - after_callbacks).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_cleanup - after_receives).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_cleanup).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_receives).count() << ","
+     << min_time << "," << max_time << "," << average_time << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - start).count() << std::endl;
 
   receivers.clear();
 }
@@ -247,7 +253,12 @@ struct sender_info
 };
 
 void
-send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool verbose)
+send(size_t run_number,
+     size_t num_connections,
+     size_t num_messages,
+     size_t message_size_kb,
+     std::string info_file_base,
+     bool verbose)
 {
   auto start = std::chrono::steady_clock::now();
   auto control_receiver = dunedaq::get_iom_receiver<dunedaq::iomanager::Control>("conn_control");
@@ -302,23 +313,29 @@ send(size_t num_connections, size_t num_messages, size_t message_size_kb, bool v
     TLOG() << "Received control message indicating completion of reception: " << controlMsg.done_receiving;
   }
 
-  TLOG() << "RUN TIMES: ";
-  TLOG() << "Getting control connection: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << " ms";
-  TLOG() << "Getting data connections: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_senders - after_control).count() << " ms";
-  TLOG() << "Starting threads: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_send_start - after_senders).count() << " ms";
-  TLOG() << "Waiting for sends to complete: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_sends - after_send_start).count() << " ms";
-  TLOG() << "Joining send threads: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_join - after_sends).count() << " ms";
-  TLOG() << "Waiting for acknowledgement from receiver: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_join).count() << " ms";
-  TLOG() << "Send start to complete: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_senders).count() << " ms";
-  TLOG() << "TOTAL: " << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - start).count()
-         << " ms";
+  std::string info_file_name = info_file_base + "_sender.csv";
+
+  struct stat buffer;
+  bool file_exists = stat(info_file_name.c_str(), &buffer) == 0;
+
+  std::ofstream of(info_file_name, std::ios::app);
+
+  if (!file_exists) {
+    of << "APP_TYPE,RUN,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,DATA_MS,THREAD_MS,COMPLETE_MS,JOIN_MS,ACK_MS,"
+          "SEND_MS,TOTAL_MS"
+       << std::endl;
+  }
+
+  of << "S"
+     << "," << run_number << "," << num_connections << "," << num_messages << "," << message_size_kb << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_senders - after_control).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_send_start - after_senders).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_sends - after_send_start).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_join - after_sends).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_join).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_senders).count() << ","
+     << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - start).count() << std::endl;
 
   senders.clear();
 }
@@ -331,6 +348,7 @@ main(int argc, char* argv[])
   bool use_connectivity_service = false;
   int port = 5000;
   std::string server = "localhost";
+  std::string info_file_base = "iom_stress_test";
   size_t num_connections = 10;
   size_t num_messages = 100;
   size_t message_size_kb = 10;
@@ -356,6 +374,9 @@ main(int argc, char* argv[])
     "Interval, in ms, for ConfigClient to re-publish connection info")(
     "is_sender,S", po::bool_switch(&is_sender), "Run app in sender mode (one sender and one receiver required)")(
     "is_receiver,R", po::bool_switch(&is_receiver), "Run app in receiver mode (one sender and one receiver required)")(
+    "output_file_base,o",
+    po::value<std::string>(&info_file_base),
+    "Base name for output info file (will have _sender.csv or _receiver.csv appended)")(
     "verbose,v", po::bool_switch(&verbose), "print more verbose output");
 
   try {
@@ -392,9 +413,9 @@ main(int argc, char* argv[])
   for (size_t run = 0; run < num_runs; ++run) {
     TLOG() << "Starting test run " << run;
     if (is_receiver) {
-      receive(0, run, num_connections, num_messages, message_size_kb, verbose);
+      receive(0, run, num_connections, num_messages, message_size_kb, info_file_base, verbose);
     } else if (is_sender) {
-      send(num_connections, num_messages, message_size_kb, verbose);
+      send(run, num_connections, num_messages, message_size_kb, info_file_base, verbose);
     }
     TLOG() << "Test run " << run << " complete.";
   }
