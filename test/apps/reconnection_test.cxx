@@ -191,12 +191,14 @@ main(int argc, char* argv[])
       auto msg = dunedaq::iomanager::IOManager::get()
                    ->get_receiver<dunedaq::iomanager::Data>(config.get_connection_name(config.my_offset))
                    ->try_receive(std::chrono::milliseconds(2 * config.message_interval_ms));
-      if(msg) {
+      if (msg) {
         msg_idx = msg->seq_number;
         TLOG() << "Received message " << msg_idx << " from " << msg->sender_id << " with size " << msg->contents.size();
       } else {
         TLOG() << "DID NOT RECEIVE message with expected index " << (msg_idx + 1) << "! Continuing with send...";
-        if(config.my_offset != 0) {msg_idx++;}
+        if (config.my_offset != 0) {
+          msg_idx++;
+        }
       }
     }
 
@@ -204,18 +206,23 @@ main(int argc, char* argv[])
       msg_idx++;
     }
 
-    bool send_success = false;
-    while (!send_success) {
-      dunedaq::iomanager::Data msg(msg_idx, config.my_offset, config.message_size_kb * 1024);
-      send_success = dunedaq::iomanager::IOManager::get()
-                       ->get_sender<dunedaq::iomanager::Data>(config.get_connection_name(config.get_send_id()))
-                       ->try_send(std::move(msg), std::chrono::milliseconds(4*config.message_interval_ms));
-      if(!send_success) TLOG() << "try_send call failed, retrying...";
-    }
+    dunedaq::iomanager::Data msg(msg_idx, config.my_offset, config.message_size_kb * 1024);
+    dunedaq::iomanager::IOManager::get()
+      ->get_sender<dunedaq::iomanager::Data>(config.get_connection_name(config.get_send_id()))
+      ->send(std::move(msg), dunedaq::iomanager::Sender::s_block);
 
-    if(config.my_offset == 0) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(config.message_interval_ms));
+    if (config.my_offset == 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(config.message_interval_ms));
     }
+  }
+
+  bool ret = true;
+  while (ret) {
+
+    auto msg = dunedaq::iomanager::IOManager::get()
+                 ->get_receiver<dunedaq::iomanager::Data>(config.get_connection_name(config.my_offset))
+                 ->try_receive(std::chrono::milliseconds(2 * config.message_interval_ms));
+    ret = msg.has_value();
   }
 
   TLOG() << "Cleaning up";
