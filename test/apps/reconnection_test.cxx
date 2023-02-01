@@ -209,11 +209,13 @@ main(int argc, char* argv[])
       dunedaq::iomanager::Data msg(msg_idx, config.my_offset, config.message_size_kb * 1024);
       send_success = dunedaq::iomanager::IOManager::get()
                        ->get_sender<dunedaq::iomanager::Data>(config.get_connection_name(config.get_send_id()))
-                       ->try_send(std::move(msg), dunedaq::iomanager::Sender::s_block);
+                       ->try_send(std::move(msg), std::chrono::milliseconds(4*config.message_interval_ms));
       if(!send_success) TLOG() << "try_send call failed, retrying...";
     }
 
+    if(config.my_offset == 0) {
     std::this_thread::sleep_for(std::chrono::milliseconds(config.message_interval_ms));
+    }
   }
 
   TLOG() << "Cleaning up";
