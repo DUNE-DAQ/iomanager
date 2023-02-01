@@ -143,7 +143,7 @@ struct ReceiverTest
   void receive(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_sender = dunedaq::get_iom_sender<Control>("conn_control");
+    auto control_sender = dunedaq::get_iom_sender<Control>( "conn_control_" + std::to_string(config.my_id));
     auto after_control = std::chrono::steady_clock::now();
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
@@ -269,7 +269,7 @@ struct SenderTest
   void send(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_control");
+    auto control_receiver = dunedaq::get_iom_receiver<Control>( "conn_control_" + std::to_string(config.my_id));
     auto after_control = std::chrono::steady_clock::now();
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
