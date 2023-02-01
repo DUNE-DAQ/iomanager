@@ -36,11 +36,12 @@ ConfigClient::ConfigClient(const std::string& server, const std::string& port, s
   tcp::resolver resolver(m_ioContext);
   m_addr = resolver.resolve(server, port);
   m_active = true;
-  m_thread = std::thread([this,&publish_interval]() {
+  m_thread = std::thread([this,publish_interval]() {
     while (m_active) {
       try {
         publish();
         m_connected = true;
+        TLOG_DEBUG(24) << "Automatic publish complete";
       } catch (ers::Issue& ex) {
         if (m_connected)
           ers::error(ex);
