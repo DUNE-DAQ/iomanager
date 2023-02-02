@@ -61,14 +61,13 @@ struct TestConfig
   int port = 5000;
   std::string server = "localhost";
   std::string info_file_base = "iom_stress_test";
-  size_t num_apps = 10;
-  size_t num_connections = 10;
+  size_t num_apps = 1;
+  size_t num_connections = 1;
   size_t num_messages = 100;
-  size_t message_size_kb = 10;
-  size_t num_runs = 2;
+  size_t message_size_kb = 1024;
+  size_t num_runs = 1;
   size_t my_id = 0;
   int publish_interval = 1000;
-  bool verbose = false;
 
   void configure_connsvc()
   {
@@ -103,25 +102,25 @@ struct TestConfig
         int third_byte = (conn_ip >> 15) & 0xFF;
         std::string conn_addr = "tcp://127." + std::to_string(third_byte) + "." + std::to_string(second_byte) + "." +
                                 std::to_string(first_byte) + ":15500";
-        if (verbose) {
-          TLOG() << "Adding connection with id " << get_connection_name(ii) << " and address " << conn_addr;
-        }
+        
+          TLOG_DEBUG(1) << "Adding connection with id " << get_connection_name(ii) << " and address " << conn_addr;
+        
         connections.emplace_back(
           Connection{ ConnectionId{ get_connection_name(ii), "data_t" }, conn_addr, ConnectionType::kSendRecv });
       }
 
-      int port = 25500 + my_id;
+      auto port = 13000 + my_id;
       std::string conn_addr = "tcp://127.0.0.1:" + std::to_string(port);
-      if (verbose) {
-        TLOG() << "Adding control connection conn_control_" << my_id << " with address " << conn_addr;
-      }
+     TLOG_DEBUG(1) << "Adding control connection conn_control_" << my_id << " with address " << conn_addr;
+      
       connections.emplace_back(Connection{
         ConnectionId{ "conn_control_" + std::to_string(my_id), "control_t" }, conn_addr, ConnectionType::kPubSub });
     }
-    IOManager::get()->configure(queues, connections, use_connectivity_service , std::chrono::milliseconds(publish_interval));
+    IOManager::get()->configure(
+      queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
   }
 };
-struct ReceiverTest 
+struct ReceiverTest
 {
   struct ReceiverInfo
   {
@@ -143,7 +142,7 @@ struct ReceiverTest
   void receive(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_sender = dunedaq::get_iom_sender<Control>( "conn_control_" + std::to_string(config.my_id));
+    auto control_sender = dunedaq::get_iom_sender<Control>("conn_control_" + std::to_string(config.my_id));
     auto after_control = std::chrono::steady_clock::now();
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
@@ -159,10 +158,9 @@ struct ReceiverTest
                     auto conn_id = info_pair.first;
                     auto info = info_pair.second;
                     auto recv_proc = [=](Data& msg) {
-                      if (config.verbose) {
-                        TLOG() << "Received message " << msg.seq_number << " with size " << msg.contents.size()
+                      TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
                                << " bytes from connection " << conn_id;
-                      }
+                      
                       if (!info->first_received) {
                         info->first_received = true;
                         info->first_receive = std::chrono::steady_clock::now();
@@ -198,6 +196,8 @@ struct ReceiverTest
     }
     auto after_cleanup = std::chrono::steady_clock::now();
 
+    TLOG_DEBUG(2) << "Sending Control message indicating completion from ID " << config.my_id << " for run " << run_number;
+    
     Control msg(config.my_id, run_number, true);
 
     control_sender->send(std::move(msg), Sender::s_block);
@@ -249,7 +249,7 @@ struct ReceiverTest
   }
 };
 
-struct SenderTest 
+struct SenderTest
 {
   struct SenderInfo
   {
@@ -269,7 +269,17 @@ struct SenderTest
   void send(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_receiver = dunedaq::get_iom_receiver<Control>( "conn_control_" + std::to_string(config.my_id));
+    auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_control_" + std::to_string(config.my_id));
+    std::atomic<bool> end_msg_received{ false };
+    auto control_callback = [=, &end_msg_received](Control& msg) {
+     TLOG_DEBUG(5) << "Received Control message indicating completion of reception: " << msg.done_receiving << " from ID "
+               << msg.receiver_id << " for run " << msg.run_number;
+      
+      if (msg.receiver_id == config.my_id && msg.run_number == run_number) {
+        end_msg_received = msg.done_receiving;
+      }
+    };
+    control_receiver->add_callback(control_callback);
     auto after_control = std::chrono::steady_clock::now();
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
@@ -284,10 +294,8 @@ struct SenderTest
       info->send_thread.reset(new std::thread([=]() {
         for (size_t ii = 0; ii < config.num_messages; ++ii) {
 
-          if (config.verbose) {
-            TLOG() << "Sending message " << ii << " with size " << config.message_size_kb * 1024
+          TLOG_DEBUG(4) << "Sending message " << ii << " with size " << config.message_size_kb * 1024
                    << " bytes to connection " << conn_id;
-          }
 
           Data d(ii, config.message_size_kb * 1024);
           info->sender->send(std::move(d), Sender::s_block);
@@ -314,11 +322,11 @@ struct SenderTest
     }
     auto after_join = std::chrono::steady_clock::now();
 
-    auto controlMsg = control_receiver->receive(Receiver::s_block);
-    auto after_control_recvd = std::chrono::steady_clock::now();
-    if (config.verbose) {
-      TLOG() << "Received control message indicating completion of reception: " << controlMsg.done_receiving;
+    while (end_msg_received.load() == false) {
+      std::this_thread::sleep_for(100ms);
     }
+    control_receiver->remove_callback();
+    auto after_control_recvd = std::chrono::steady_clock::now();
 
     std::string info_file_name = config.info_file_base + "_sender.csv";
 
@@ -380,8 +388,7 @@ main(int argc, char* argv[])
     "Interval, in ms, for ConfigClient to re-publish connection info")(
     "output_file_base,o",
     po::value<std::string>(&config.info_file_base),
-    "Base name for output info file (will have _sender.csv or _receiver.csv appended)")(
-    "verbose,v", po::bool_switch(&config.verbose), "print more verbose output");
+    "Base name for output info file (will have _sender.csv or _receiver.csv appended)");
 
   try {
     po::variables_map vm;
