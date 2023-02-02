@@ -54,7 +54,7 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  void configure(Queues_t queues, Connections_t connections, bool use_config_client = true)
+  void configure(Queues_t queues, Connections_t connections, bool use_config_client, std::chrono::milliseconds config_client_interval)
   {
     char* part = getenv("DUNEDAQ_PARTITION");
     if (part) {
@@ -71,7 +71,7 @@ public:
     }
 
     QueueRegistry::get().configure(qCfg);
-    NetworkManager::get().configure(nwCfg, use_config_client);
+    NetworkManager::get().configure(nwCfg, use_config_client, config_client_interval);
   }
 
   void reset()
