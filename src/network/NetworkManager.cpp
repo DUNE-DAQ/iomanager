@@ -50,7 +50,7 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 }
 
 void
-NetworkManager::configure(const Connections_t& connections, bool use_config_client)
+NetworkManager::configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval)
 {
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
@@ -80,7 +80,8 @@ NetworkManager::configure(const Connections_t& connections, bool use_config_clie
     if (env) {
       connectionPort = std::string(env);
     }
-    m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort);
+    m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
+    m_config_client_interval = config_client_interval;
   }
 }
 
@@ -315,7 +316,7 @@ NetworkManager::update_subscribers()
         }
       }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(m_config_client_interval);
   }
 }
 

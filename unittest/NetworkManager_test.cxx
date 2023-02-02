@@ -63,7 +63,7 @@ struct NetworkManagerTestFixture
     testConn.id.data_type = "words";
     testConn.uri = "inproc:/oof";
     testConfig.push_back(testConn);
-    NetworkManager::get().configure(testConfig, false); // Not using ConfigClient
+    NetworkManager::get().configure(testConfig, false, 0ms); // Not using ConfigClient
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
 
@@ -144,11 +144,11 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
   testConn.connection_type = ConnectionType::kSendRecv;
   testConfig.push_back(testConn);
   BOOST_REQUIRE_EXCEPTION(
-    NetworkManager::get().configure(testConfig), AlreadyConfigured, [&](AlreadyConfigured const&) { return true; });
+    NetworkManager::get().configure(testConfig, false, 0ms), AlreadyConfigured, [&](AlreadyConfigured const&) { return true; });
 
   NetworkManager::get().reset();
 
-  NetworkManager::get().configure(testConfig, false);
+  NetworkManager::get().configure(testConfig, false, 0ms);
   conn_res = NetworkManager::get().get_preconfigured_connections(id_notfound);
   BOOST_REQUIRE_EQUAL(conn_res.connections.size(), 1);
   conn_res = NetworkManager::get().get_preconfigured_connections(sendRecvConnId);
@@ -162,7 +162,7 @@ BOOST_FIXTURE_TEST_CASE(NameCollisionInConfiguration, NetworkManagerTestFixture)
   testConfig.emplace_back(Connection{ sendRecvConnId, "inproc://foo", ConnectionType::kSendRecv });
   testConfig.emplace_back(Connection{ sendRecvConnId, "inproc://bar", ConnectionType::kSendRecv });
   BOOST_REQUIRE_EXCEPTION(
-    NetworkManager::get().configure(testConfig), NameCollision, [&](NameCollision const&) { return true; });
+    NetworkManager::get().configure(testConfig, false, 0ms), NameCollision, [&](NameCollision const&) { return true; });
 }
 
 BOOST_FIXTURE_TEST_CASE(GetDatatypes, NetworkManagerTestFixture)
