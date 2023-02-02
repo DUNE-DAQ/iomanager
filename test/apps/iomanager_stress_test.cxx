@@ -118,7 +118,7 @@ struct TestConfig
       connections.emplace_back(Connection{
         ConnectionId{ "conn_control_" + std::to_string(my_id), "control_t" }, conn_addr, ConnectionType::kPubSub });
     }
-    IOManager::get()->configure(queues, connections, use_connectivity_service /*, publish_interval*/);
+    IOManager::get()->configure(queues, connections, use_connectivity_service , std::chrono::milliseconds(publish_interval));
   }
 };
 struct ReceiverTest 

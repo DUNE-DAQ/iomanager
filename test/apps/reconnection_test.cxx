@@ -102,7 +102,7 @@ struct TestConfig
       connections.push_back(send_conn);
     }
 
-    IOManager::get()->configure(queues, connections, use_connectivity_service /*, publish_interval*/);
+    IOManager::get()->configure(queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
   }
 };
 
