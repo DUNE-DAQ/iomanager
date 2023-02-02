@@ -42,17 +42,19 @@ struct Control
 {
   size_t receiver_id;
   size_t run_number;
+  bool ready_to_receive;
   bool done_receiving;
 
   Control() = default;
-  Control(size_t id, size_t run, bool done)
+  Control(size_t id, size_t run, bool ready, bool done)
     : receiver_id(id)
     , run_number(run)
+    , ready_to_receive(ready)
     , done_receiving(done)
   {
   }
 
-  DUNE_DAQ_SERIALIZE(Control, receiver_id, run_number, done_receiving);
+  DUNE_DAQ_SERIALIZE(Control, receiver_id, run_number, ready_to_receive, done_receiving);
 };
 
 struct TestConfig
@@ -181,6 +183,13 @@ struct ReceiverTest
                   });
     auto after_callbacks = std::chrono::steady_clock::now();
 
+    while (!std::any_of(
+      receivers.begin(), receivers.end(), [](std::pair<size_t, std::shared_ptr<ReceiverInfo>> info) { return info.second->first_received.load(); })) {
+      Control msg(config.my_id, run_number, true, false);
+      control_sender->send(std::move(msg), Sender::s_block);
+      std::this_thread::sleep_for(10ms);
+    }
+
     bool all_done = false;
     while (!all_done) {
       size_t recvrs_done = 0;
@@ -201,9 +210,9 @@ struct ReceiverTest
     TLOG_DEBUG(2) << "Sending Control message indicating completion from ID " << config.my_id << " for run "
                   << run_number;
 
-    Control msg(config.my_id, run_number, true);
+    Control msg2(config.my_id, run_number, false, true);
 
-    control_sender->send(std::move(msg), Sender::s_block);
+    control_sender->send(std::move(msg2), Sender::s_block);
 
     auto after_control_send = std::chrono::steady_clock::now();
 
@@ -273,13 +282,16 @@ struct SenderTest
   {
     auto start = std::chrono::steady_clock::now();
     auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_" + std::to_string(config.my_id) + "_control");
+    std::atomic<bool> ready_msg_received{ false };
     std::atomic<bool> end_msg_received{ false };
-    auto control_callback = [=, &end_msg_received](Control& msg) {
-      TLOG_DEBUG(5) << "Received Control message indicating completion of reception: " << msg.done_receiving
-                    << " from ID " << msg.receiver_id << " for run " << msg.run_number;
+    auto control_callback = [=, &end_msg_received, &ready_msg_received](Control& msg) {
+      TLOG_DEBUG(5) << "Received Control message Ready: " << std::boolalpha << msg.ready_to_receive
+                    << ", Done: " << msg.done_receiving << " from ID " << msg.receiver_id << " for run "
+                    << msg.run_number;
 
       if (msg.receiver_id == config.my_id && msg.run_number == run_number) {
         end_msg_received = msg.done_receiving;
+        ready_msg_received = msg.ready_to_receive;
       }
     };
     control_receiver->add_callback(control_callback);
@@ -294,7 +306,10 @@ struct SenderTest
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
       auto info = senders[conn_id];
-      info->send_thread.reset(new std::thread([=]() {
+      info->send_thread.reset(new std::thread([=, &ready_msg_received]() {
+        while (!ready_msg_received.load()) {
+          std::this_thread::sleep_for(10ms);
+        }
         for (size_t ii = 0; ii < config.num_messages; ++ii) {
 
           TLOG_DEBUG(4) << "Sending message " << ii << " with size " << config.message_size_kb * 1024
@@ -446,16 +461,15 @@ main(int argc, char* argv[])
   dunedaq::iomanager::IOManager::get()->reset();
   TLOG() << "DONE";
 
-  if(forked_pids.size() > 0) {
+  if (forked_pids.size() > 0) {
     TLOG() << "Waiting for forked PIDs";
 
-    for(auto& pid : forked_pids) 
-    {
+    for (auto& pid : forked_pids) {
       siginfo_t status;
       auto sts = waitid(P_PID, pid, &status, WEXITED);
 
-      TLOG_DEBUG(6) << "Forked process " << pid << " exited with status " << status.si_status << " (wait status " << sts << ")";
+      TLOG_DEBUG(6) << "Forked process " << pid << " exited with status " << status.si_status << " (wait status " << sts
+                    << ")";
     }
-
   }
 };
