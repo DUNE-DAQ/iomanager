@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <execution>
 #include <fstream>
+#include <sys/wait.h>
 
 namespace dunedaq {
 namespace iomanager {
@@ -410,13 +411,17 @@ main(int argc, char* argv[])
 
   auto startup_time = std::chrono::steady_clock::now();
   bool is_receiver = false;
+  std::vector<pid_t> forked_pids;
   for (size_t ii = 1; ii < 2 * config.num_apps; ++ii) {
     auto pid = fork();
     if (pid == 0) { // child
       is_receiver = ii >= config.num_apps;
       config.my_id = is_receiver ? ii - config.num_apps : ii;
       TLOG() << "STARTUP: I am a " << (is_receiver ? "Receiver" : "Sender") << " process with ID " << config.my_id;
+      forked_pids.clear();
       break;
+    } else {
+      forked_pids.push_back(pid);
     }
   }
 
@@ -440,4 +445,17 @@ main(int argc, char* argv[])
   TLOG() << "Cleaning up";
   dunedaq::iomanager::IOManager::get()->reset();
   TLOG() << "DONE";
+
+  if(forked_pids.size() > 0) {
+    TLOG() << "Waiting for forked PIDs";
+
+    for(auto& pid : forked_pids) 
+    {
+      siginfo_t status;
+      auto sts = waitid(P_PID, pid, &status, WEXITED);
+
+      TLOG_DEBUG(6) << "Forked process " << pid << " exited with status " << status.si_status << " (wait status " << sts << ")";
+    }
+
+  }
 };
