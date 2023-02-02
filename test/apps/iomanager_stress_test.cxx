@@ -111,10 +111,10 @@ struct TestConfig
 
       auto port = 13000 + my_id;
       std::string conn_addr = "tcp://127.0.0.1:" + std::to_string(port);
-     TLOG_DEBUG(1) << "Adding control connection conn_control_" << my_id << " with address " << conn_addr;
+     TLOG_DEBUG(1) << "Adding control connection conn_" << my_id << "_control with address " << conn_addr;
       
       connections.emplace_back(Connection{
-        ConnectionId{ "conn_control_" + std::to_string(my_id), "control_t" }, conn_addr, ConnectionType::kPubSub });
+        ConnectionId{ "conn_" +std::to_string(my_id)+ "_control", "control_t" }, conn_addr, ConnectionType::kPubSub });
     }
     IOManager::get()->configure(
       queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
@@ -142,7 +142,7 @@ struct ReceiverTest
   void receive(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_sender = dunedaq::get_iom_sender<Control>("conn_control_" + std::to_string(config.my_id));
+    auto control_sender = dunedaq::get_iom_sender<Control>("conn_" +std::to_string(config.my_id)+ "_control");
     auto after_control = std::chrono::steady_clock::now();
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
@@ -269,7 +269,7 @@ struct SenderTest
   void send(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_control_" + std::to_string(config.my_id));
+    auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_" +std::to_string(config.my_id)+ "_control");
     std::atomic<bool> end_msg_received{ false };
     auto control_callback = [=, &end_msg_received](Control& msg) {
      TLOG_DEBUG(5) << "Received Control message indicating completion of reception: " << msg.done_receiving << " from ID "
