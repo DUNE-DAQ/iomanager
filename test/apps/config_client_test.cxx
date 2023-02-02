@@ -60,11 +60,11 @@ main(int argc, char* argv[])
 
   std::string part="DUNEDAQ_PARTITION="+name;
   try {
-    ConfigClient dummyclient(server, port);
+    ConfigClient dummyclient(server, port, 1000ms);
   } catch (EnvNotFound& ex) {
     putenv(const_cast<char*>(part.c_str())); // NOLINT
   }
-  ConfigClient client(server, port);
+  ConfigClient client(server, port, 1000ms);
 
   std::vector<ConnectionRegistration> connections;
   std::ostringstream numStr;
