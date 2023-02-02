@@ -102,19 +102,20 @@ struct TestConfig
         int third_byte = (conn_ip >> 15) & 0xFF;
         std::string conn_addr = "tcp://127." + std::to_string(third_byte) + "." + std::to_string(second_byte) + "." +
                                 std::to_string(first_byte) + ":15500";
-        
-          TLOG_DEBUG(1) << "Adding connection with id " << get_connection_name(ii) << " and address " << conn_addr;
-        
+
+        TLOG_DEBUG(1) << "Adding connection with id " << get_connection_name(ii) << " and address " << conn_addr;
+
         connections.emplace_back(
           Connection{ ConnectionId{ get_connection_name(ii), "data_t" }, conn_addr, ConnectionType::kSendRecv });
       }
 
       auto port = 13000 + my_id;
       std::string conn_addr = "tcp://127.0.0.1:" + std::to_string(port);
-     TLOG_DEBUG(1) << "Adding control connection conn_" << my_id << "_control with address " << conn_addr;
-      
-      connections.emplace_back(Connection{
-        ConnectionId{ "conn_" +std::to_string(my_id)+ "_control", "control_t" }, conn_addr, ConnectionType::kPubSub });
+      TLOG_DEBUG(1) << "Adding control connection conn_" << my_id << "_control with address " << conn_addr;
+
+      connections.emplace_back(Connection{ ConnectionId{ "conn_" + std::to_string(my_id) + "_control", "control_t" },
+                                           conn_addr,
+                                           ConnectionType::kPubSub });
     }
     IOManager::get()->configure(
       queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
@@ -142,7 +143,7 @@ struct ReceiverTest
   void receive(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_sender = dunedaq::get_iom_sender<Control>("conn_" +std::to_string(config.my_id)+ "_control");
+    auto control_sender = dunedaq::get_iom_sender<Control>("conn_" + std::to_string(config.my_id) + "_control");
     auto after_control = std::chrono::steady_clock::now();
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
@@ -159,8 +160,8 @@ struct ReceiverTest
                     auto info = info_pair.second;
                     auto recv_proc = [=](Data& msg) {
                       TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
-                               << " bytes from connection " << conn_id;
-                      
+                                    << " bytes from connection " << conn_id;
+
                       if (!info->first_received) {
                         info->first_received = true;
                         info->first_receive = std::chrono::steady_clock::now();
@@ -196,8 +197,9 @@ struct ReceiverTest
     }
     auto after_cleanup = std::chrono::steady_clock::now();
 
-    TLOG_DEBUG(2) << "Sending Control message indicating completion from ID " << config.my_id << " for run " << run_number;
-    
+    TLOG_DEBUG(2) << "Sending Control message indicating completion from ID " << config.my_id << " for run "
+                  << run_number;
+
     Control msg(config.my_id, run_number, true);
 
     control_sender->send(std::move(msg), Sender::s_block);
@@ -227,14 +229,14 @@ struct ReceiverTest
     std::ofstream of(info_file_name, std::ios::app);
 
     if (!file_exists) {
-      of << "APP_TYPE,APP_ID,RUN,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTERS_MS,ADD_CALLBACKS_MS,RECV_COMPLETE_MS"
-            ",RM_CALLBACKS_MS,SEND_COMPMSG_MS,RECV_MS,MIN_RECV_MS,MAX_RECV_MS,AVG_RECV_MS,TOTAL_MS"
+      of << "APP_TYPE,APP_ID,RUN,N_APPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTERS_MS,ADD_CALLBACKS_MS,"
+            "RECV_COMPLETE_MS,RM_CALLBACKS_MS,SEND_COMPMSG_MS,RECV_MS,MIN_RECV_MS,MAX_RECV_MS,AVG_RECV_MS,TOTAL_MS"
          << std::endl;
     }
 
     of << "R"
-       << "," << config.my_id << "," << run_number << "," << config.num_connections << "," << config.num_messages << ","
-       << config.message_size_kb << ","
+       << "," << config.my_id << "," << run_number << "," << config.num_apps << "," << config.num_connections << ","
+       << config.num_messages << "," << config.message_size_kb << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_info - after_control).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_callbacks - after_info).count() << ","
@@ -269,12 +271,12 @@ struct SenderTest
   void send(size_t run_number)
   {
     auto start = std::chrono::steady_clock::now();
-    auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_" +std::to_string(config.my_id)+ "_control");
+    auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_" + std::to_string(config.my_id) + "_control");
     std::atomic<bool> end_msg_received{ false };
     auto control_callback = [=, &end_msg_received](Control& msg) {
-     TLOG_DEBUG(5) << "Received Control message indicating completion of reception: " << msg.done_receiving << " from ID "
-               << msg.receiver_id << " for run " << msg.run_number;
-      
+      TLOG_DEBUG(5) << "Received Control message indicating completion of reception: " << msg.done_receiving
+                    << " from ID " << msg.receiver_id << " for run " << msg.run_number;
+
       if (msg.receiver_id == config.my_id && msg.run_number == run_number) {
         end_msg_received = msg.done_receiving;
       }
@@ -295,7 +297,7 @@ struct SenderTest
         for (size_t ii = 0; ii < config.num_messages; ++ii) {
 
           TLOG_DEBUG(4) << "Sending message " << ii << " with size " << config.message_size_kb * 1024
-                   << " bytes to connection " << conn_id;
+                        << " bytes to connection " << conn_id;
 
           Data d(ii, config.message_size_kb * 1024);
           info->sender->send(std::move(d), Sender::s_block);
@@ -336,14 +338,15 @@ struct SenderTest
     std::ofstream of(info_file_name, std::ios::app);
 
     if (!file_exists) {
-      of << "APP_TYPE,RUN,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,DATA_MS,THREAD_MS,COMPLETE_MS,JOIN_MS,ACK_MS,"
-            "SEND_MS,TOTAL_MS"
-         << std::endl;
+      of
+        << "APP_TYPE,APP_D,RUN,N_APPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,DATA_MS,THREAD_MS,COMPLETE_MS,JOIN_MS,ACK_MS,"
+           "SEND_MS,TOTAL_MS"
+        << std::endl;
     }
 
     of << "S"
-       << "," << config.my_id << "," << run_number << "," << config.num_connections << "," << config.num_messages << ","
-       << config.message_size_kb << ","
+       << "," << config.my_id << "," << run_number << "," << config.num_apps << "," << config.num_connections << ","
+       << config.num_messages << "," << config.message_size_kb << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_senders - after_control).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_send_start - after_senders).count() << ","
