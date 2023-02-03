@@ -163,7 +163,7 @@ struct ReceiverTest
                     auto info = info_pair.second;
                     auto recv_proc = [=](Data& msg) {
                       TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
-                                    << " bytes from connection " << conn_id;
+                                    << " bytes from connection " <<  config.get_connection_name(conn_id);
 
                       if (!info->first_received) {
                         info->first_received = true;
@@ -313,7 +313,7 @@ struct SenderTest
         for (size_t ii = 0; ii < config.num_messages; ++ii) {
 
           TLOG_DEBUG(4) << "Sending message " << ii << " with size " << config.message_size_kb * 1024
-                        << " bytes to connection " << conn_id;
+                        << " bytes to connection " << config.get_connection_name(conn_id);
 
           Data d(ii, config.message_size_kb * 1024);
           info->sender->send(std::move(d), Sender::s_block);
