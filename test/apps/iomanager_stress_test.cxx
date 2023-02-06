@@ -66,7 +66,7 @@ struct TestConfig
   std::string info_file_base = "iom_stress_test";
   size_t num_apps = 1;
   size_t num_connections = 1;
-  size_t num_messages = 100;
+  size_t num_messages = 1;
   size_t message_size_kb = 1024;
   size_t num_runs = 1;
   size_t my_id = 0;
@@ -131,8 +131,8 @@ struct ReceiverTest
     size_t last_sequence_received{ 0 };
     std::atomic<size_t> msgs_received{ 0 };
     std::atomic<size_t> msgs_with_error{ 0 };
-    std::chrono::steady_clock::time_point first_receive;
-    std::chrono::steady_clock::time_point last_receive;
+    std::chrono::milliseconds get_receiver_time;
+    std::chrono::milliseconds add_callback_time;
     std::atomic<bool> first_received{ false };
   };
   std::unordered_map<size_t, std::shared_ptr<ReceiverInfo>> receivers;
@@ -163,28 +163,30 @@ struct ReceiverTest
                     auto info = info_pair.second;
                     auto recv_proc = [=](Data& msg) {
                       TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
-                                    << " bytes from connection " <<  config.get_connection_name(conn_id);
+                                    << " bytes from connection " << config.get_connection_name(conn_id);
 
-                      if (!info->first_received) {
-                        info->first_received = true;
-                        info->first_receive = std::chrono::steady_clock::now();
-                      }
                       if (msg.contents.size() != config.message_size_kb * 1024 ||
                           msg.seq_number != info->last_sequence_received + 1) {
                         info->msgs_with_error++;
                       }
+                      info->first_received = true;
                       info->last_sequence_received = msg.seq_number;
-                      info->last_receive = std::chrono::steady_clock::now();
                       info->msgs_received++;
                     };
 
+                    auto before_receiver = std::chrono::steady_clock::now();
                     auto receiver = dunedaq::get_iom_receiver<Data>(config.get_connection_name(conn_id));
+                    auto after_receiver = std::chrono::steady_clock::now();
                     receiver->add_callback(recv_proc);
+                    auto after_callback = std::chrono::steady_clock::now();
+                    info->get_receiver_time = std::chrono::duration_cast<std::chrono::milliseconds>(after_receiver - before_receiver);
+                    info->add_callback_time = std::chrono::duration_cast<std::chrono::milliseconds>(after_callback - after_receiver);
                   });
     auto after_callbacks = std::chrono::steady_clock::now();
 
-    while (!std::any_of(
-      receivers.begin(), receivers.end(), [](std::pair<size_t, std::shared_ptr<ReceiverInfo>> info) { return info.second->first_received.load(); })) {
+    while (!std::any_of(receivers.begin(), receivers.end(), [](std::pair<size_t, std::shared_ptr<ReceiverInfo>> info) {
+      return info.second->first_received.load();
+    })) {
       Control msg(config.my_id, run_number, true, false);
       control_sender->send(std::move(msg), Sender::s_block);
       std::this_thread::sleep_for(10ms);
@@ -216,20 +218,28 @@ struct ReceiverTest
 
     auto after_control_send = std::chrono::steady_clock::now();
 
-    int min_time = std::numeric_limits<int>::max();
-    int max_time = 0;
-    int sum_time = 0;
+    int min_get_time = std::numeric_limits<int>::max();
+    int max_get_time = 0;
+    int sum_get_time = 0;
+    int min_cb_time = std::numeric_limits<int>::max();
+    int max_cb_time = 0;
+    int sum_cb_time = 0;
     for (auto& info : receivers) {
-      auto time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(info.second->last_receive - info.second->first_receive)
-          .count();
-      if (time > max_time)
-        max_time = time;
-      if (time < min_time)
-        min_time = time;
-      sum_time += time;
+      auto get_time = info.second->get_receiver_time.count();
+      auto cb_time = info.second->add_callback_time.count();
+      if (get_time > max_get_time)
+        max_get_time = get_time;
+      if (get_time < min_get_time)
+        min_get_time = get_time;
+      sum_get_time += get_time;
+      if (cb_time > max_cb_time)
+        max_cb_time = cb_time;
+      if (cb_time < min_cb_time)
+        min_cb_time = cb_time;
+      sum_cb_time += cb_time;
     }
-    double average_time = static_cast<double>(sum_time) / static_cast<double>(config.num_connections);
+    double average_get_time = static_cast<double>(sum_get_time) / static_cast<double>(config.num_connections);
+    double average_cb_time = static_cast<double>(sum_cb_time) / static_cast<double>(config.num_connections);
 
     std::string info_file_name = config.info_file_base + "_receiver.csv";
 
@@ -240,7 +250,8 @@ struct ReceiverTest
 
     if (!file_exists) {
       of << "APP_TYPE,APP_ID,RUN,N_APPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTERS_MS,ADD_CALLBACKS_MS,"
-            "RECV_COMPLETE_MS,RM_CALLBACKS_MS,SEND_COMPMSG_MS,RECV_MS,MIN_RECV_MS,MAX_RECV_MS,AVG_RECV_MS,TOTAL_MS"
+            "RECV_COMPLETE_MS,RM_CALLBACKS_MS,SEND_COMPMSG_MS,RECV_MS,MIN_GET_RECVR_TIME,MAX_GET_RECVR_TIME,AVG_GET_"
+            "RECVR_TIME,MIN_ADD_CB_TIME,MAX_ADD_CB_TIME,AVG_ADD_CB_TIME,TOTAL_MS"
          << std::endl;
     }
 
@@ -254,7 +265,8 @@ struct ReceiverTest
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_cleanup - after_receives).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_cleanup).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_receives).count() << ","
-       << min_time << "," << max_time << "," << average_time << ","
+       << min_get_time << "," << max_get_time << "," << average_get_time << "," << min_cb_time << "," << max_cb_time
+       << "," << average_cb_time << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - start).count() << std::endl;
 
     receivers.clear();
@@ -268,6 +280,7 @@ struct SenderTest
     std::shared_ptr<SenderConcept<Data>> sender;
     std::atomic<size_t> msgs_sent{ 0 };
     std::unique_ptr<std::thread> send_thread;
+    std::chrono::milliseconds get_sender_time;
   };
 
   std::unordered_map<size_t, std::shared_ptr<SenderInfo>> senders;
@@ -299,9 +312,21 @@ struct SenderTest
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
       auto info = std::make_shared<SenderInfo>();
-      info->sender = dunedaq::get_iom_sender<Data>(config.get_connection_name(conn_id));
       senders[conn_id] = info;
     }
+    auto after_counters = std::chrono::steady_clock::now();
+    std::for_each(std::execution::par_unseq,
+                  std::begin(senders),
+                  std::end(senders),
+                  [&](std::pair<size_t, std::shared_ptr<SenderInfo>> info_pair) {
+                    auto conn_id = info_pair.first;
+                    auto info = info_pair.second;
+                    auto before_sender = std::chrono::steady_clock::now();
+                    info->sender = dunedaq::get_iom_sender<Data>(config.get_connection_name(conn_id));
+                    auto after_sender = std::chrono::steady_clock::now();
+                    info->get_sender_time = std::chrono::duration_cast<std::chrono::milliseconds>(after_sender - before_sender);
+                  });
+
     auto after_senders = std::chrono::steady_clock::now();
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
@@ -346,6 +371,19 @@ struct SenderTest
     control_receiver->remove_callback();
     auto after_control_recvd = std::chrono::steady_clock::now();
 
+    int min_get_time = std::numeric_limits<int>::max();
+    int max_get_time = 0;
+    int sum_get_time = 0;
+    for (auto& info : senders) {
+      auto get_time = info.second->get_sender_time.count();
+      if (get_time > max_get_time)
+        max_get_time = get_time;
+      if (get_time < min_get_time)
+        min_get_time = get_time;
+      sum_get_time += get_time;
+    }
+    double average_get_time = static_cast<double>(sum_get_time) / static_cast<double>(config.num_connections);
+
     std::string info_file_name = config.info_file_base + "_sender.csv";
 
     struct stat buffer;
@@ -354,23 +392,25 @@ struct SenderTest
     std::ofstream of(info_file_name, std::ios::app);
 
     if (!file_exists) {
-      of
-        << "APP_TYPE,APP_D,RUN,N_APPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,DATA_MS,THREAD_MS,COMPLETE_MS,JOIN_MS,ACK_MS,"
-           "SEND_MS,TOTAL_MS"
-        << std::endl;
+      of << "APP_TYPE,APP_D,RUN,N_APPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTER_MS,DATA_MS,THREAD_MS,COMPLETE_MS,"
+            "JOIN_MS,ACK_MS,"
+            "SEND_MS,TOTAL_MS,MIN_SENDER_MS,MAX_SENDER_MS,AVG_SENDER_MS"
+         << std::endl;
     }
 
     of << "S"
        << "," << config.my_id << "," << run_number << "," << config.num_apps << "," << config.num_connections << ","
        << config.num_messages << "," << config.message_size_kb << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control - start).count() << ","
-       << std::chrono::duration_cast<std::chrono::milliseconds>(after_senders - after_control).count() << ","
+       << std::chrono::duration_cast<std::chrono::milliseconds>(after_counters - after_control).count() << ","
+       << std::chrono::duration_cast<std::chrono::milliseconds>(after_senders - after_counters).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_send_start - after_senders).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_sends - after_send_start).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_join - after_sends).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_join).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_senders).count() << ","
-       << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - start).count() << std::endl;
+       << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - start).count() << ","
+       << min_get_time << "," << max_get_time << "," << average_get_time << std::endl;
 
     senders.clear();
   }
