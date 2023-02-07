@@ -64,7 +64,9 @@ public:
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
 
-  bool has_queue(std::string const& uid, std::string const& data_type);
+  bool has_queue(std::string const& uid, std::string const& data_type) const;
+
+  std::set<std::string> get_datatypes(std::string const& uid) const;
 
 private:
   struct QueueEntry
