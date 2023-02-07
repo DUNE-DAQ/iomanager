@@ -44,7 +44,7 @@ ERS_DECLARE_ISSUE(iomanager,
 
     ERS_DECLARE_ISSUE(iomanager,
                       PublishException,
-                      "Caught exception <" << exc << "> while trying to publishn",
+                      "Caught exception <" << exc << "> while trying to publish",
                       ((std::string)exc))
 
 
