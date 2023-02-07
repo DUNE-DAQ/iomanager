@@ -59,13 +59,13 @@ NetworkManager::configure(const Connections_t& connections, bool use_config_clie
   for (auto& connection : connections) {
     auto name = connection.id.uid;
     TLOG_DEBUG(15) << "Adding connection " << name << " to connection map";
-    if (m_preconfigured_connections.count(name)) {
-      TLOG_DEBUG(15) << "Name collision for connection " << name
-                     << " connection_map.count: " << m_preconfigured_connections.count(name);
+    if (m_preconfigured_connections.count(connection.id)) {
+      TLOG_DEBUG(15) << "Name collision for connection " << name << ", DT " << connection.id.data_type
+                     << " connection_map.count: " << m_preconfigured_connections.count(connection.id);
       reset();
       throw NameCollision(ERS_HERE, connection.id.uid);
     }
-    m_preconfigured_connections[name] = connection;
+    m_preconfigured_connections[connection.id] = connection;
   }
 
   if (use_config_client && m_config_client == nullptr) {
@@ -210,6 +210,18 @@ NetworkManager::get_preconfigured_connections(ConnectionId const& conn_id) const
   }
 
   return matching_connections;
+}
+
+std::set<std::string>
+NetworkManager::get_datatypes(std::string const& uid) const
+{
+  std::set<std::string> output;
+  for (auto& conn : m_preconfigured_connections) {
+    if (conn.second.id.uid == uid)
+      output.insert(conn.second.id.data_type);
+  }
+
+  return output;
 }
 
 std::shared_ptr<ipm::Receiver>

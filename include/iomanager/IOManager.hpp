@@ -186,6 +186,16 @@ public:
     receiver->remove_callback();
   }
 
+  std::set<std::string> get_datatypes(std::string const& uid)
+  {
+    auto output = QueueRegistry::get().get_datatypes(uid);
+    auto networks = NetworkManager::get().get_datatypes(uid);
+    for (auto& dt : networks) {
+      output.insert(dt);
+    }
+    return output;
+  }
+
 private:
   IOManager() {}
 

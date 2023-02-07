@@ -181,6 +181,8 @@ struct ConfigurationTestFixture
 
     conn_id = ConnectionId{ "network", "data_t" };
     queue_id = ConnectionId{ "queue", "data_t" };
+    conn_id2 = ConnectionId{ "test", "data2_t" };
+    queue_id2 = ConnectionId{ "test", "data3_t" };
     pub1_id = ConnectionId{ "pub1", "data2_t" };
     pub2_id = ConnectionId{ "pub2", "data2_t" };
     pub3_id = ConnectionId{ "pub3", "data3_t" };
@@ -190,9 +192,11 @@ struct ConfigurationTestFixture
 
     dunedaq::iomanager::Queues_t queues;
     queues.emplace_back(QueueConfig{ queue_id, QueueType::kFollySPSCQueue, 50 });
+    queues.emplace_back(QueueConfig{ queue_id2, QueueType::kFollySPSCQueue, 50 });
 
     dunedaq::iomanager::Connections_t connections;
     connections.emplace_back(Connection{ conn_id, "inproc://foo", ConnectionType::kSendRecv });
+    connections.emplace_back(Connection{ conn_id2, "inproc://oof", ConnectionType::kSendRecv });
     connections.emplace_back(Connection{ pub1_id, "inproc://bar", ConnectionType::kPubSub });
     connections.emplace_back(Connection{ pub2_id, "inproc://baz", ConnectionType::kPubSub });
     connections.emplace_back(Connection{ pub3_id, "inproc://qui", ConnectionType::kPubSub });
@@ -206,7 +210,9 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
 
   ConnectionId conn_id;
+  ConnectionId conn_id2;
   ConnectionId queue_id;
+  ConnectionId queue_id2;
   ConnectionId pub1_id;
   ConnectionId pub2_id;
   ConnectionId pub3_id;
@@ -610,6 +616,26 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
   BOOST_CHECK_EQUAL(recv_data.d3, "test2");
 
   IOManager::get()->remove_callback<NonSerializableNonCopyable>(queue_id);
+}
+
+BOOST_FIXTURE_TEST_CASE(GetDatatype, ConfigurationTestFixture)
+{
+  auto networkDataTypes = IOManager::get()->get_datatypes("network");
+  auto queueDataTypes = IOManager::get()->get_datatypes("queue");
+  auto testDataTypes = IOManager::get()->get_datatypes("test");
+  auto invalidDataTypes = IOManager::get()->get_datatypes("NotAConnectionUID");
+
+  BOOST_REQUIRE_EQUAL(networkDataTypes.size(), 1);
+  BOOST_REQUIRE_EQUAL(networkDataTypes.count("data_t"), 1);
+
+  BOOST_REQUIRE_EQUAL(queueDataTypes.size(), 1);
+  BOOST_REQUIRE_EQUAL(queueDataTypes.count("data_t"), 1);
+
+  BOOST_REQUIRE_EQUAL(testDataTypes.size(), 2);
+  BOOST_REQUIRE_EQUAL(testDataTypes.count("data2_t"), 1);
+  BOOST_REQUIRE_EQUAL(testDataTypes.count("data3_t"), 1);
+
+  BOOST_REQUIRE_EQUAL(invalidDataTypes.size(), 0);
 }
 
 // TODO: Eric Flumerfelt <eflumerf@github.com>, June-16-2022: Reimplement this test for IOManager
