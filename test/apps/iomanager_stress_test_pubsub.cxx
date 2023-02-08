@@ -47,12 +47,12 @@ struct Data
 struct QuotaReached
 {
   size_t sender_id;
-  size_t group_id;
+  int group_id;
   size_t conn_id;
   size_t run_number;
 
   QuotaReached() = default;
-  QuotaReached(size_t sender, size_t group, size_t conn, size_t run)
+  QuotaReached(size_t sender, int group, size_t conn, size_t run)
     : sender_id(sender)
     , group_id(group)
     , conn_id(conn)
@@ -223,13 +223,14 @@ struct SubscriberTest
       }
     }
 
+    std::atomic<std::chrono::steady_clock::time_point> last_received = std::chrono::steady_clock::now();
     TLOG_DEBUG(5) << "Adding callbacks for each subscriber";
     auto after_info = std::chrono::steady_clock::now();
     std::for_each(std::execution::par_unseq,
                   std::begin(subscribers),
                   std::end(subscribers),
                   [&](std::shared_ptr<SubscriberInfo> info) {
-                    auto recv_proc = [=](Data& msg) {
+                    auto recv_proc = [=, &last_received](Data& msg) {
                       TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
                                     << " bytes from connection "
                                     << config.get_connection_name(msg.publisher_id, msg.group_id, msg.conn_id) << " at "
@@ -241,9 +242,11 @@ struct SubscriberTest
                       }
                       info->last_sequence_received[msg.conn_id] = msg.seq_number;
                       info->msgs_received++;
+                      last_received = std::chrono::steady_clock::now();
 
                       if (info->msgs_received >= config.num_messages && !info->is_group_subscriber) {
-                        TLOG_DEBUG(3) << "Complete condition reached, sending QuotaReached message for " << info->get_connection_name(config);
+                        TLOG_DEBUG(3) << "Complete condition reached, sending QuotaReached message for "
+                                      << info->get_connection_name(config);
                         QuotaReached q(config.my_id, info->group_id, info->conn_id, run_number);
                         quota_sender->send(std::move(q), Sender::s_block);
                         info->complete = true;
@@ -278,6 +281,14 @@ struct SubscriberTest
     }
     auto after_receives = std::chrono::steady_clock::now();
 
+    while (
+      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - last_received.load())
+        .count() < 500) {
+      QuotaReached q(config.my_id, -1, 0, run_number);
+      quota_sender->send(std::move(q), Sender::s_block);
+      std::this_thread::sleep_for(100ms);
+    }
+
     TLOG_DEBUG(5) << "Removing callbacks";
     for (auto& info : subscribers) {
       auto receiver = dunedaq::get_iom_receiver<Data>(info->get_connection_name(config));
@@ -293,7 +304,8 @@ struct SubscriberTest
     int max_cb_time = 0;
     int sum_cb_time = 0;
     for (auto& info : subscribers) {
-      TLOG_DEBUG(6) << "Received " << info->msgs_received << " messages at " << info->get_connection_name(config) << " (" << info->msgs_with_error << " size/sequence errors)";
+      TLOG_DEBUG(6) << "Received " << info->msgs_received << " messages at " << info->get_connection_name(config)
+                    << " (" << info->msgs_with_error << " size/sequence errors)";
       auto get_time = info->get_receiver_time.count();
       auto cb_time = info->add_callback_time.count();
       if (get_time > max_get_time)
@@ -373,7 +385,7 @@ struct PublisherTest
     TLOG_DEBUG(7) << "Getting QuotaReached receiver and adding callback";
     auto start = std::chrono::steady_clock::now();
     auto quota_receiver = dunedaq::get_iom_receiver<QuotaReached>(config.get_publisher_quota_name());
-    std::unordered_map<size_t, std::set<size_t>> completed_receiver_tracking;
+    std::unordered_map<int, std::set<size_t>> completed_receiver_tracking;
     std::mutex tracking_mutex;
     auto quota_callback = [&](QuotaReached& msg) {
       TLOG_DEBUG(4) << "Received QuotaReached message from app " << msg.sender_id << ", group " << msg.group_id
@@ -414,32 +426,34 @@ struct PublisherTest
     auto after_senders = std::chrono::steady_clock::now();
 
     TLOG_DEBUG(7) << "Starting publish threads";
-    std::for_each(std::execution::par_unseq,
-                  std::begin(publishers),
-                  std::end(publishers),
-                  [&](std::shared_ptr<PublisherInfo> info) {
-                    info->send_thread.reset(new std::thread([=, &completed_receiver_tracking, &tracking_mutex]() {
-                      bool complete_received = false;
-                      while (!complete_received) {
-                        TLOG_DEBUG(4) << "Sending message " << info->messages_sent << " with size " << config.message_size_kb * 1024
-                                      << " bytes to connection "
-                                      << config.get_connection_name(config.my_id, info->group_id, info->conn_id);
+    std::for_each(
+      std::execution::par_unseq,
+      std::begin(publishers),
+      std::end(publishers),
+      [&](std::shared_ptr<PublisherInfo> info) {
+        info->send_thread.reset(new std::thread([=, &completed_receiver_tracking, &tracking_mutex]() {
+          bool complete_received = false;
+          while (!complete_received) {
+            TLOG_DEBUG(4) << "Sending message " << info->messages_sent << " with size " << config.message_size_kb * 1024
+                          << " bytes to connection "
+                          << config.get_connection_name(config.my_id, info->group_id, info->conn_id);
 
-                        Data d(info->messages_sent, config.my_id, info->group_id, info->conn_id, config.message_size_kb * 1024);
-                        info->sender->try_send(std::move(d), std::chrono::milliseconds(config.send_interval_ms));
-                        ++info->messages_sent;
-                        {
-                          std::lock_guard<std::mutex> lk(tracking_mutex);
-                          if (completed_receiver_tracking.count(info->group_id) &&
-                              completed_receiver_tracking[info->group_id].count(info->conn_id)) {
-                            complete_received = true;
-                          }
-                        }
+            Data d(info->messages_sent, config.my_id, info->group_id, info->conn_id, config.message_size_kb * 1024);
+            info->sender->try_send(std::move(d), std::chrono::milliseconds(config.send_interval_ms));
+            ++info->messages_sent;
+            {
+              std::lock_guard<std::mutex> lk(tracking_mutex);
+              if ((completed_receiver_tracking.count(info->group_id) &&
+                   completed_receiver_tracking[info->group_id].count(info->conn_id)) ||
+                  completed_receiver_tracking.count(-1)) {
+                complete_received = true;
+              }
+            }
 
-                        std::this_thread::sleep_for(std::chrono::milliseconds(config.send_interval_ms));
-                      }
-                    }));
-                  });
+            std::this_thread::sleep_for(std::chrono::milliseconds(config.send_interval_ms));
+          }
+        }));
+      });
     auto after_send_start = std::chrono::steady_clock::now();
 
     TLOG_DEBUG(7) << "Joining send threads";
