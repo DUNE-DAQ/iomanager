@@ -89,7 +89,7 @@ struct TestConfig
   std::string get_connection_name(size_t app_id, size_t group_id, size_t conn_id)
   {
     std::stringstream ss;
-    ss << "conn_A" << app_id << "_G" << group_id << "_C" << conn_id;
+    ss << "conn_A" << app_id << "_G" << group_id << "_C" << conn_id << "_";
     return ss.str();
   }
   std::string get_group_connection_name(size_t app_id, size_t group_id)
