@@ -402,8 +402,9 @@ struct PublisherTest
     auto after_control = std::chrono::steady_clock::now();
 
     auto check_subscriber = [subscriber_pid]() {
-      auto ret = kill(subscriber_pid, 0);
-      return ret == 0;
+      siginfo_t status;
+      auto sts = waitid(P_PID, subscriber_pid, &status, WEXITED|WNOHANG);
+      return status.si_pid == 0;
     };
 
     TLOG_DEBUG(7) << "Setting up PublisherInfo objects";
