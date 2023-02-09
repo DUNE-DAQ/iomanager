@@ -575,12 +575,23 @@ main(int argc, char* argv[])
 
   auto startup_time = std::chrono::steady_clock::now();
   bool is_subscriber = false;
+  bool is_publisher = false;
   std::vector<pid_t> forked_pids;
-  for (size_t ii = 1; ii < 2 * config.num_apps; ++ii) {
+  for (size_t ii = 0; ii < config.num_apps; ++ii) {
     auto pid = fork();
     if (pid == 0) { // child
-      is_subscriber = ii >= config.num_apps;
-      config.my_id = is_subscriber ? ii - config.num_apps : ii;
+
+      forked_pids.clear();
+      config.my_id = ii;
+
+      auto subscriber_pid = fork();
+      if (subscriber_pid == 0) {
+        is_subscriber = true;
+        is_publisher = false;
+      } else {
+        is_publisher = true;
+        forked_pids.push_back(subscriber_pid);
+      }
       TLOG() << "STARTUP: I am a " << (is_subscriber ? "Subscriber" : "Publisher") << " process with ID "
              << config.my_id;
       forked_pids.clear();
@@ -590,35 +601,37 @@ main(int argc, char* argv[])
     }
   }
 
-  std::this_thread::sleep_until(startup_time + 2s);
+  if (is_subscriber || is_publisher) {
+    std::this_thread::sleep_until(startup_time + 2s);
 
-  TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
-         << "Configuring IOManager";
-  config.configure_iomanager(!is_subscriber);
-
-  auto subscriber = std::make_unique<dunedaq::iomanager::SubscriberTest>(config);
-  auto publisher = std::make_unique<dunedaq::iomanager::PublisherTest>(config);
-
-  for (size_t run = 0; run < config.num_runs; ++run) {
     TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
-           << "Starting test run " << run;
-    if (is_subscriber) {
-      subscriber->receive(run);
-    } else {
-      publisher->send(run);
+           << "Configuring IOManager";
+    config.configure_iomanager(!is_subscriber);
+
+    auto subscriber = std::make_unique<dunedaq::iomanager::SubscriberTest>(config);
+    auto publisher = std::make_unique<dunedaq::iomanager::PublisherTest>(config);
+
+    for (size_t run = 0; run < config.num_runs; ++run) {
+      TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
+             << "Starting test run " << run;
+      if (is_subscriber) {
+        subscriber->receive(run);
+      } else {
+        publisher->send(run);
+      }
+      TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
+             << "Test run " << run << " complete.";
     }
+
     TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
-           << "Test run " << run << " complete.";
+           << "Cleaning up";
+    subscriber.reset(nullptr);
+    publisher.reset(nullptr);
+
+    dunedaq::iomanager::IOManager::get()->reset();
+    TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
+           << "DONE";
   }
-
-  TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
-         << "Cleaning up";
-  subscriber.reset(nullptr);
-  publisher.reset(nullptr);
-
-  dunedaq::iomanager::IOManager::get()->reset();
-  TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
-         << "DONE";
 
   if (forked_pids.size() > 0) {
     TLOG() << "Waiting for forked PIDs";

@@ -179,8 +179,10 @@ struct ReceiverTest
                     auto after_receiver = std::chrono::steady_clock::now();
                     receiver->add_callback(recv_proc);
                     auto after_callback = std::chrono::steady_clock::now();
-                    info->get_receiver_time = std::chrono::duration_cast<std::chrono::milliseconds>(after_receiver - before_receiver);
-                    info->add_callback_time = std::chrono::duration_cast<std::chrono::milliseconds>(after_callback - after_receiver);
+                    info->get_receiver_time =
+                      std::chrono::duration_cast<std::chrono::milliseconds>(after_receiver - before_receiver);
+                    info->add_callback_time =
+                      std::chrono::duration_cast<std::chrono::milliseconds>(after_callback - after_receiver);
                   });
     auto after_callbacks = std::chrono::steady_clock::now();
 
@@ -324,7 +326,8 @@ struct SenderTest
                     auto before_sender = std::chrono::steady_clock::now();
                     info->sender = dunedaq::get_iom_sender<Data>(config.get_connection_name(conn_id));
                     auto after_sender = std::chrono::steady_clock::now();
-                    info->get_sender_time = std::chrono::duration_cast<std::chrono::milliseconds>(after_sender - before_sender);
+                    info->get_sender_time =
+                      std::chrono::duration_cast<std::chrono::milliseconds>(after_sender - before_sender);
                   });
 
     auto after_senders = std::chrono::steady_clock::now();
@@ -428,6 +431,7 @@ main(int argc, char* argv[])
   dunedaq::logging::Logging::setup();
   dunedaq::iomanager::TestConfig config;
 
+  bool help_requested = false;
   namespace po = boost::program_options;
   po::options_description desc("Program to test IOManager load with many connections");
   desc.add_options()("use_connectivity_service,c",
@@ -447,7 +451,8 @@ main(int argc, char* argv[])
     "Interval, in ms, for ConfigClient to re-publish connection info")(
     "output_file_base,o",
     po::value<std::string>(&config.info_file_base),
-    "Base name for output info file (will have _sender.csv or _receiver.csv appended)");
+    "Base name for output info file (will have _sender.csv or _receiver.csv appended)")(
+    "help,h", po::bool_switch(&help_requested), "Print this help message");
 
   try {
     po::variables_map vm;
@@ -456,6 +461,10 @@ main(int argc, char* argv[])
   } catch (std::exception& ex) {
     std::cerr << "Error parsing command line " << ex.what() << std::endl;
     std::cerr << desc << std::endl;
+    return 1;
+  }
+  if (help_requested) {
+    std::cout << desc << std::endl;
     return 0;
   }
 
@@ -466,43 +475,62 @@ main(int argc, char* argv[])
 
   auto startup_time = std::chrono::steady_clock::now();
   bool is_receiver = false;
+  bool is_sender = false;
   std::vector<pid_t> forked_pids;
-  for (size_t ii = 1; ii < 2 * config.num_apps; ++ii) {
+  for (size_t ii = 0; ii < config.num_apps; ++ii) {
     auto pid = fork();
     if (pid == 0) { // child
-      is_receiver = ii >= config.num_apps;
-      config.my_id = is_receiver ? ii - config.num_apps : ii;
-      TLOG() << "STARTUP: I am a " << (is_receiver ? "Receiver" : "Sender") << " process with ID " << config.my_id;
+
       forked_pids.clear();
+      config.my_id = ii;
+
+      auto sender_pid = fork();
+      if (sender_pid == 0) { // Sender
+        is_receiver = false;
+        is_sender = true;
+      } else {
+        forked_pids.push_back(sender_pid);
+        is_receiver = true;
+      }
+
+      TLOG() << "STARTUP: I am a " << (is_receiver ? "Receiver" : "Sender") << " process with ID " << config.my_id;
       break;
     } else {
       forked_pids.push_back(pid);
     }
   }
 
-  std::this_thread::sleep_until(startup_time + 2s);
+  if (is_sender || is_receiver) {
+    std::this_thread::sleep_until(startup_time + 2s);
 
-  TLOG() << "Configuring IOManager";
-  config.configure_iomanager(is_receiver);
+    TLOG() << (is_receiver ? "Receiver " : "Sender ") << config.my_id << ": "
+           << "Configuring IOManager";
+    config.configure_iomanager(is_receiver);
 
-  for (size_t run = 0; run < config.num_runs; ++run) {
-    TLOG() << "Starting test run " << run;
-    if (is_receiver) {
-      dunedaq::iomanager::ReceiverTest receiver(config);
-      receiver.receive(run);
-    } else {
-      dunedaq::iomanager::SenderTest sender(config);
-      sender.send(run);
+    for (size_t run = 0; run < config.num_runs; ++run) {
+      TLOG() << (is_receiver ? "Receiver " : "Sender ") << config.my_id << ": "
+             << "Starting test run " << run;
+      if (is_receiver) {
+        dunedaq::iomanager::ReceiverTest receiver(config);
+        receiver.receive(run);
+      } else {
+        dunedaq::iomanager::SenderTest sender(config);
+        sender.send(run);
+      }
+      TLOG() << (is_receiver ? "Receiver " : "Sender ") << config.my_id << ": "
+             << "Test run " << run << " complete.";
     }
-    TLOG() << "Test run " << run << " complete.";
+
+    TLOG() << (is_receiver ? "Receiver " : "Sender ") << config.my_id << ": "
+           << "Cleaning up";
+    dunedaq::iomanager::IOManager::get()->reset();
+    TLOG() << (is_receiver ? "Receiver " : "Sender ") << config.my_id << ": "
+           << "DONE";
   }
 
-  TLOG() << "Cleaning up";
-  dunedaq::iomanager::IOManager::get()->reset();
-  TLOG() << "DONE";
-
   if (forked_pids.size() > 0) {
-    TLOG() << "Waiting for forked PIDs";
+    TLOG() << (is_receiver ? "Receiver " : "Sender ") << config.my_id << ": "
+           << "Waiting for forked PIDs";
 
     for (auto& pid : forked_pids) {
       siginfo_t status;
