@@ -380,7 +380,7 @@ struct PublisherTest
   {
   }
 
-  void send(size_t run_number)
+  void send(size_t run_number, pid_t subscriber_pid)
   {
     TLOG_DEBUG(7) << "Getting QuotaReached receiver and adding callback";
     auto start = std::chrono::steady_clock::now();
@@ -400,6 +400,11 @@ struct PublisherTest
     };
     quota_receiver->add_callback(quota_callback);
     auto after_control = std::chrono::steady_clock::now();
+
+    auto check_subscriber = [=]() {
+      auto ret = kill(subscriber_pid, 0);
+      return ret == 0;
+    };
 
     TLOG_DEBUG(7) << "Setting up PublisherInfo objects";
     for (size_t group = 0; group < config.num_groups; ++group) {
@@ -450,6 +455,10 @@ struct PublisherTest
               }
             }
 
+            if(!check_subscriber()) {
+              TLOG_DEBUG(7) << "Subscriber app has gone away, but I didn't receive a QuotaReached message!";
+              complete_received = true;
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(config.send_interval_ms));
           }
         }));
@@ -594,7 +603,6 @@ main(int argc, char* argv[])
       }
       TLOG() << "STARTUP: I am a " << (is_subscriber ? "Subscriber" : "Publisher") << " process with ID "
              << config.my_id;
-      forked_pids.clear();
       break;
     } else {
       forked_pids.push_back(pid);
@@ -606,7 +614,7 @@ main(int argc, char* argv[])
 
     TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
            << "Configuring IOManager";
-    config.configure_iomanager(!is_subscriber);
+    config.configure_iomanager(is_publisher);
 
     auto subscriber = std::make_unique<dunedaq::iomanager::SubscriberTest>(config);
     auto publisher = std::make_unique<dunedaq::iomanager::PublisherTest>(config);
@@ -617,7 +625,7 @@ main(int argc, char* argv[])
       if (is_subscriber) {
         subscriber->receive(run);
       } else {
-        publisher->send(run);
+        publisher->send(run, forked_pids[0]);
       }
       TLOG() << (is_subscriber ? "Subscriber " : "Publisher ") << config.my_id << ": "
              << "Test run " << run << " complete.";
