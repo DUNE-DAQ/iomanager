@@ -229,7 +229,7 @@ struct SubscriberTest
     std::for_each(std::execution::par_unseq,
                   std::begin(subscribers),
                   std::end(subscribers),
-                  [&](std::shared_ptr<SubscriberInfo> info) {
+                  [=, &last_received](std::shared_ptr<SubscriberInfo> info) {
                     auto recv_proc = [=, &last_received](Data& msg) {
                       TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
                                     << " bytes from connection "
@@ -387,7 +387,7 @@ struct PublisherTest
     auto quota_receiver = dunedaq::get_iom_receiver<QuotaReached>(config.get_publisher_quota_name());
     std::unordered_map<int, std::set<size_t>> completed_receiver_tracking;
     std::mutex tracking_mutex;
-    auto quota_callback = [&](QuotaReached& msg) {
+    auto quota_callback = [=, &completed_receiver_tracking, &tracking_mutex](QuotaReached& msg) {
       TLOG_DEBUG(4) << "Received QuotaReached message from app " << msg.sender_id << ", group " << msg.group_id
                     << ", conn " << msg.conn_id << " for run " << msg.run_number;
 
@@ -401,7 +401,7 @@ struct PublisherTest
     quota_receiver->add_callback(quota_callback);
     auto after_control = std::chrono::steady_clock::now();
 
-    auto check_subscriber = [=]() {
+    auto check_subscriber = [subscriber_pid]() {
       auto ret = kill(subscriber_pid, 0);
       return ret == 0;
     };
@@ -419,7 +419,7 @@ struct PublisherTest
     std::for_each(std::execution::par_unseq,
                   std::begin(publishers),
                   std::end(publishers),
-                  [&](std::shared_ptr<PublisherInfo> info) {
+                  [=](std::shared_ptr<PublisherInfo> info) {
                     auto before_sender = std::chrono::steady_clock::now();
                     info->sender = dunedaq::get_iom_sender<Data>(
                       config.get_connection_name(config.my_id, info->group_id, info->conn_id));
@@ -435,7 +435,7 @@ struct PublisherTest
       std::execution::par_unseq,
       std::begin(publishers),
       std::end(publishers),
-      [&](std::shared_ptr<PublisherInfo> info) {
+      [=, &completed_receiver_tracking, &tracking_mutex](std::shared_ptr<PublisherInfo> info) {
         info->send_thread.reset(new std::thread([=, &completed_receiver_tracking, &tracking_mutex]() {
           bool complete_received = false;
           while (!complete_received) {
@@ -455,7 +455,7 @@ struct PublisherTest
               }
             }
 
-            if(!check_subscriber()) {
+            if (!check_subscriber()) {
               TLOG_DEBUG(7) << "Subscriber app has gone away, but I didn't receive a QuotaReached message!";
               complete_received = true;
             }
