@@ -24,19 +24,26 @@ using nlohmann::json;
 
 using namespace dunedaq::iomanager;
 
-ConfigClient::ConfigClient(const std::string& server, const std::string& port, std::chrono::milliseconds publish_interval)
+ConfigClient::ConfigClient(const std::string& server,
+                           const std::string& port,
+                           std::chrono::milliseconds publish_interval)
 {
-  char* part = getenv("DUNEDAQ_PARTITION");
-  if (part) {
-    m_partition = std::string(part);
+  char* session = getenv("DUNEDAQ_SESSION");
+  if (session) {
+    m_session = std::string(session);
   } else {
-    throw(EnvNotFound(ERS_HERE, "DUNEDAQ_PARTITION"));
+    session = getenv("DUNEDAQ_PARTITION");
+    if (session) {
+      m_session = std::string(session);
+    } else {
+      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
+    }
   }
 
   tcp::resolver resolver(m_ioContext);
   m_addr = resolver.resolve(server, port);
   m_active = true;
-  m_thread = std::thread([this,publish_interval]() {
+  m_thread = std::thread([this, publish_interval]() {
     while (m_active) {
       try {
         publish();
@@ -74,13 +81,13 @@ ConfigClient::~ConfigClient()
 }
 
 ConnectionResponse
-ConfigClient::resolveConnection(const ConnectionRequest& query, std::string partition)
+ConfigClient::resolveConnection(const ConnectionRequest& query, std::string session)
 {
-  if (partition == "") {
-    partition = m_partition;
+  if (session == "") {
+    session = m_session;
   }
-  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in partition " << partition;
-  std::string target = "/getconnection/" + m_partition;
+  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in session " << session;
+  std::string target = "/getconnection/" + m_session;
   http::request<http::string_body> req{ http::verb::post, target, 11 };
   req.set(http::field::content_type, "application/json");
   nlohmann::json jquery = query;
@@ -149,7 +156,7 @@ ConfigClient::publish(const std::vector<ConnectionRegistration>& connections)
 void
 ConfigClient::publish()
 {
-  json content{ { "partition", m_partition } };
+  json content{ { "partition", m_session } };
   json connections = json::array();
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -209,7 +216,7 @@ ConfigClient::retract()
   if (connections.size() > 0) {
     http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
     req.set(http::field::content_type, "application/json");
-    json body{ { "partition", m_partition } };
+    json body{ { "partition", m_session } };
     body["connections"] = connections;
     req.body() = body.dump();
     req.prepare_payload();
@@ -270,7 +277,7 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
       }
     }
   }
-  json body{ { "partition", m_partition } };
+  json body{ { "partition", m_session } };
   body["connections"] = connections;
   req.body() = body.dump();
   req.prepare_payload();

@@ -44,18 +44,18 @@ string_to_queue_type(std::string type_name)
 inline bool
 operator<(ConnectionId const& l, ConnectionId const& r)
 {
-  if (l.partition == r.partition || l.partition == "" || r.partition == "") {
+  if (l.session == r.session || l.session == "" || r.session == "") {
     if (l.data_type == r.data_type) {
       return l.uid < r.uid;
     }
     return l.data_type < r.data_type;
   }
-  return l.partition < r.partition;
+  return l.session < r.session;
 }
 inline bool
 operator==(ConnectionId const& l, ConnectionId const& r)
 {
-  return (l.partition == "" || r.partition == "" ||  l.partition == r.partition) && l.uid == r.uid &&
+  return (l.session == "" || r.session == "" ||  l.session == r.session) && l.uid == r.uid &&
          l.data_type == r.data_type;
 }
 
@@ -65,7 +65,7 @@ is_match(ConnectionId const& search, ConnectionId const& check)
   if (search.data_type != check.data_type)
     return false;
 
-  if (search.partition != check.partition && search.partition != "" && check.partition != "")
+  if (search.session != check.session && search.session != "" && check.session != "")
     return false;
 
   std::regex search_ex(search.uid);
@@ -75,8 +75,8 @@ is_match(ConnectionId const& search, ConnectionId const& check)
 inline std::string
 to_string(const ConnectionId& conn_id)
 {
-  if (conn_id.partition != "") {
-    return conn_id.partition + "/" + conn_id.uid + "@@" + conn_id.data_type;
+  if (conn_id.session != "") {
+    return conn_id.session + "/" + conn_id.uid + "@@" + conn_id.data_type;
   }
   return conn_id.uid + "@@" + conn_id.data_type;
 }
@@ -96,7 +96,7 @@ struct hash<dunedaq::iomanager::connection::ConnectionId>
 {
   std::size_t operator()(const dunedaq::iomanager::connection::ConnectionId& conn_id) const
   {
-    return std::hash<std::string>()(conn_id.partition + conn_id.uid + conn_id.data_type);
+    return std::hash<std::string>()(conn_id.session + conn_id.uid + conn_id.data_type);
   }
 };
 

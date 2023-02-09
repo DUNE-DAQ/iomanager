@@ -54,13 +54,21 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  void configure(Queues_t queues, Connections_t connections, bool use_config_client, std::chrono::milliseconds config_client_interval)
+  void configure(Queues_t queues,
+                 Connections_t connections,
+                 bool use_config_client,
+                 std::chrono::milliseconds config_client_interval)
   {
-    char* part = getenv("DUNEDAQ_PARTITION");
-    if (part) {
-      m_partition = std::string(part);
+    char* session = getenv("DUNEDAQ_SESSION");
+    if (session) {
+      m_session = std::string(session);
     } else {
-      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_PARTITION"));
+      session = getenv("DUNEDAQ_PARTITION");
+      if (session) {
+        m_session = std::string(session);
+      } else {
+        throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
+      }
     }
 
     Queues_t qCfg = queues;
@@ -90,8 +98,8 @@ public:
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
 
-    if (id.partition == "") {
-      id.partition = m_partition;
+    if (id.session == "") {
+      id.session = m_session;
     }
 
     static std::mutex dt_sender_mutex;
@@ -102,7 +110,8 @@ public:
         TLOG() << "Creating QueueSenderModel for uid " << id.uid << ", datatype " << id.data_type;
         m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(id);
       } else {
-        TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type << " in partition " << id.partition;
+        TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
+               << id.session;
         m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(id);
       }
     }
@@ -116,7 +125,7 @@ public:
     ConnectionId id;
     id.uid = uid;
     id.data_type = data_type;
-    id.partition = m_partition;
+    id.session = m_session;
     return get_sender<Datatype>(id);
   }
 
@@ -127,8 +136,8 @@ public:
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
     }
 
-    if (id.partition == "") {
-      id.partition = m_partition;
+    if (id.session == "") {
+      id.session = m_session;
     }
 
     static std::mutex dt_receiver_mutex;
@@ -139,8 +148,8 @@ public:
         TLOG() << "Creating QueueReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
         m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(id);
       } else {
-        TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type
-               << " in partition " << id.partition;
+        TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
+               << id.session;
         m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(id);
       }
     }
@@ -154,7 +163,7 @@ public:
     ConnectionId id;
     id.uid = uid;
     id.data_type = data_type;
-    id.partition = m_partition;
+    id.session = m_session;
     return get_receiver<Datatype>(id);
   }
 
@@ -203,7 +212,7 @@ private:
   using ReceiverMap = std::map<ConnectionId, std::shared_ptr<Receiver>>;
   SenderMap m_senders;
   ReceiverMap m_receivers;
-  std::string m_partition;
+  std::string m_session;
 
   static std::shared_ptr<IOManager> s_instance;
 };
