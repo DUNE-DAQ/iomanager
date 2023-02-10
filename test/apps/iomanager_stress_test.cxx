@@ -64,6 +64,7 @@ struct TestConfig
   int port = 5000;
   std::string server = "localhost";
   std::string info_file_base = "iom_stress_test";
+  std::string session_name = "iomanager_stress_test";
   size_t num_apps = 1;
   size_t num_connections = 1;
   size_t num_messages = 1;
@@ -88,7 +89,7 @@ struct TestConfig
 
   void configure_iomanager(bool is_receiver)
   {
-    setenv("DUNEDAQ_PARTITION", "iomanager_stress_test", 0);
+    setenv("DUNEDAQ_PARTITION", session_name.c_str(), 0);
     bool configure_connections = is_receiver || !use_connectivity_service;
 
     Queues_t queues;
@@ -452,6 +453,7 @@ main(int argc, char* argv[])
     "output_file_base,o",
     po::value<std::string>(&config.info_file_base),
     "Base name for output info file (will have _sender.csv or _receiver.csv appended)")(
+        "session", po::value<std::string>(&config.session_name), "Session name for this test")(
     "help,h", po::bool_switch(&help_requested), "Print this help message");
 
   try {

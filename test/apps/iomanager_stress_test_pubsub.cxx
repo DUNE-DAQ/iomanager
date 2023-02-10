@@ -70,6 +70,7 @@ struct TestConfig
   int port = 5000;
   std::string server = "localhost";
   std::string info_file_base = "iom_stress_test_pubsub";
+  std::string session_name = "iomanager_stress_test_pubsub";
   size_t num_apps = 1;
   size_t num_connections_per_group = 1;
   size_t num_groups = 1;
@@ -122,7 +123,7 @@ struct TestConfig
 
   void configure_iomanager(bool is_publisher)
   {
-    setenv("DUNEDAQ_PARTITION", "iomanager_stress_test", 0);
+    setenv("DUNEDAQ_PARTITION", session_name.c_str(), 0);
 
     Queues_t queues;
     Connections_t connections;
@@ -404,7 +405,7 @@ struct PublisherTest
     auto check_subscriber = [subscriber_pid]() {
       siginfo_t status;
       auto sts = waitid(P_PID, subscriber_pid, &status, WEXITED|WNOHANG);
-      return status.si_pid == 0;
+      return sts == 0 && status.si_pid == 0;
     };
 
     TLOG_DEBUG(7) << "Setting up PublisherInfo objects";
@@ -561,6 +562,7 @@ main(int argc, char* argv[])
     "output_file_base,o",
     po::value<std::string>(&config.info_file_base),
     "Base name for output info file (will have _sender.csv or _receiver.csv appended)")(
+        "session", po::value<std::string>(&config.session_name), "Name of this DAQ session")(
     "help,h", po::bool_switch(&help_requested), "Print this help message");
 
   try {
