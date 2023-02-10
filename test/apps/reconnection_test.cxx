@@ -14,7 +14,9 @@
 #include <algorithm>
 #include <execution>
 #include <fstream>
+#include <random>
 #include <sys/prctl.h>
+#include <sys/wait.h>
 
 namespace dunedaq {
 namespace iomanager {
@@ -42,13 +44,12 @@ struct Data
 
 struct TestConfig
 {
-  bool use_connectivity_service = false;
   int port = 5000;
   std::string server = "localhost";
   size_t num_apps = 10;
   size_t my_offset = 0;
   size_t message_size_kb = 10;
-  size_t message_interval_ms = 1000;
+  size_t message_interval_ms = 500;
   int publish_interval = 1000;
   bool verbose = false;
   static std::atomic<bool> test_running;
@@ -57,20 +58,6 @@ struct TestConfig
   {
     setenv("CONNECTION_SERVER", server.c_str(), 1);
     setenv("CONNECTION_PORT", std::to_string(port).c_str(), 1);
-  }
-
-  static std::string get_connection_uri(size_t conn_id)
-  {
-    size_t conn_ip = conn_id + 1;
-    int first_byte = (conn_ip << 1) & 0xFF;
-    if (first_byte == 0)
-      first_byte = 1;
-    int second_byte = (conn_ip >> 7) & 0xFF;
-    int third_byte = (conn_ip >> 15) & 0xFF;
-    std::string conn_addr = "tcp://127." + std::to_string(third_byte) + "." + std::to_string(second_byte) + "." +
-                            std::to_string(first_byte) + ":15500";
-
-    return conn_addr;
   }
 
   static std::string get_connection_name(size_t conn_id)
@@ -87,22 +74,27 @@ struct TestConfig
   {
     setenv("DUNEDAQ_PARTITION", "iomanager_stress_test", 0);
 
+    auto host = getenv("HOSTNAME");
+
     Queues_t queues;
     Connections_t connections;
 
     auto recv_conn = Connection{ ConnectionId{ get_connection_name(my_offset), "data_t" },
-                                 get_connection_uri(my_offset),
+                                 "tcp://" + std::string(host)+ ":*",
                                  ConnectionType::kSendRecv };
     connections.push_back(recv_conn);
 
-    if (!use_connectivity_service) {
-      auto send_conn = Connection{ ConnectionId{ get_connection_name(get_send_id()), "data_t" },
-                                   get_connection_uri(get_send_id()),
-                                   ConnectionType::kSendRecv };
-      connections.push_back(send_conn);
-    }
+    IOManager::get()->configure(queues, connections, true, std::chrono::milliseconds(publish_interval));
+  }
 
-    IOManager::get()->configure(queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
+  void send_message(uint8_t msg_idx)
+  {
+    TLOG_DEBUG(5) << "RCTApp" << my_offset << ": "
+                  << "Sending message " << static_cast<int>(msg_idx) << " to " << get_send_id();
+    Data msg(msg_idx, my_offset, message_size_kb * 1024);
+    IOManager::get()
+      ->get_sender<Data>(get_connection_name(get_send_id()))
+      ->try_send(std::move(msg), std::chrono::milliseconds(message_interval_ms));
   }
 };
 
@@ -114,30 +106,99 @@ DUNE_DAQ_SERIALIZABLE(iomanager::Data, "data_t");
 static void
 signal_handler(int signum)
 {
-  TLOG() << "Received signal of type " << signum << ", setting test_running to false!";
+  TLOG_DEBUG(3) << "Received signal of type " << signum << ", setting test_running to false!";
   dunedaq::iomanager::TestConfig::test_running = false;
 }
 
 std::atomic<bool> dunedaq::iomanager::TestConfig::test_running{ true };
+
+void
+run_test(dunedaq::iomanager::TestConfig config, uint8_t msg_idx = 0)
+{
+
+  std::string app_name = "recon_test_" + std::to_string(config.my_offset);
+  int s;
+  s = prctl(PR_SET_NAME, app_name.c_str(), NULL, NULL, NULL);
+  TLOG_DEBUG(3) << "RCTApp" << config.my_offset << ": "
+                << "Set app name to " << app_name << " had status " << s;
+
+  TLOG_DEBUG(3) << "RCTApp" << config.my_offset << ": "
+                << "Configuring IOManager";
+  config.configure_iomanager();
+
+  struct sigaction action;
+  action.sa_handler = signal_handler;
+  sigemptyset(&action.sa_mask);
+  sigaddset(&action.sa_mask, SIGINT);
+  action.sa_flags = 0;
+  sigaction(SIGINT, &action, nullptr);
+
+  // Send first message
+  if (config.my_offset == 0) {
+    config.send_message(msg_idx);
+  }
+
+  try {
+    while (dunedaq::iomanager::TestConfig::test_running.load()) {
+
+      auto msg = dunedaq::iomanager::IOManager::get()
+                   ->get_receiver<dunedaq::iomanager::Data>(config.get_connection_name(config.my_offset))
+                   ->try_receive(std::chrono::milliseconds(3 * config.message_interval_ms));
+      if (msg) {
+        msg_idx = msg->seq_number;
+        TLOG_DEBUG(5) << "RCTApp" << config.my_offset << ": "
+                      << "Received message " << static_cast<int>(msg_idx) << " from " << msg->sender_id << " with size "
+                      << msg->contents.size();
+
+        if (config.my_offset == 0) {
+          ++msg_idx;
+          std::this_thread::sleep_for(std::chrono::milliseconds(config.message_interval_ms));
+        }
+
+        config.send_message(msg_idx);
+
+      } else {
+        TLOG_DEBUG(4) << "RCTApp" << config.my_offset << ": "
+                      << "DID NOT RECEIVE message with expected index " << static_cast<int>(msg_idx + 1);
+
+        if (config.my_offset == 0) {
+          ++msg_idx;
+          std::this_thread::sleep_for(std::chrono::milliseconds(config.message_interval_ms));
+          config.send_message(msg_idx);
+        }
+      }
+    }
+  } catch (ers::Issue const& e) {
+    TLOG_DEBUG(2) << "RCTApp" << config.my_offset << ": Received exception " << e;
+  }
+
+  TLOG_DEBUG(3) << "RCTApp" << config.my_offset << ": "
+                << "Cleaning up";
+  dunedaq::iomanager::IOManager::get()->reset();
+  TLOG_DEBUG(3) << "RCTApp" << config.my_offset << ": "
+                << "DONE";
+
+  exit(msg_idx);
+}
 
 int
 main(int argc, char* argv[])
 {
   dunedaq::logging::Logging::setup();
   dunedaq::iomanager::TestConfig config;
-  size_t id = 0;
+
+  size_t duration = 30;
+  size_t kill_interval = 5000;
 
   namespace po = boost::program_options;
   po::options_description desc("Program to test IOManager load with many connections");
-  desc.add_options()("use_connectivity_service,c",
-                     po::bool_switch(&config.use_connectivity_service),
-                     "enable the ConnectivityService in IOManager")(
-    "num_apps,n", po::value<size_t>(&config.num_apps), "Number of applications in the ring")(
+  desc.add_options()("num_apps,n", po::value<size_t>(&config.num_apps), "Number of applications in the ring")(
     "port,p", po::value<int>(&config.port), "port to connect to on configuration server")(
     "server,s", po::value<std::string>(&config.server), "Configuration server to connect to")(
     "message_size_kb,z", po::value<size_t>(&config.message_size_kb), "Size of each message, in KB")(
     "message_interval_ms,r", po::value<size_t>(&config.message_interval_ms), "Time to wait between messages, in ms")(
-    "id", po::value<size_t>(&id), "Specific app ID to start (note that ID 0 will start num_apps)")(
+    "test_duration_s,D", po::value<size_t>(&duration), "Length of the test, in seconds")(
+    "kill_interval_ms,k", po::value<size_t>(&kill_interval), "Randomly kill one app in ring each interval")(
     "publish_interval,i",
     po::value<int>(&config.publish_interval),
     "Interval, in ms, for ConfigClient to re-publish connection info")(
@@ -153,79 +214,72 @@ main(int argc, char* argv[])
     return 0;
   }
 
-  if (config.use_connectivity_service) {
-    TLOG() << "Setting Connectivity Service Environment variables";
-    config.configure_connsvc();
-  }
+  TLOG() << "Setting Connectivity Service Environment variables";
+  config.configure_connsvc();
 
-  config.my_offset = id;
-  if (config.my_offset == 0) {
-    for (size_t ii = 1; ii < config.num_apps; ++ii) {
-      auto new_id = fork();
-      if (new_id == 0) {
-        config.my_offset = ii;
-        break;
-      }
+  TLOG() << "Starting test";
+  std::vector<pid_t> pids;
+  for (size_t ii = 0; ii < config.num_apps; ++ii) {
+    auto new_id = fork();
+    if (new_id == 0) {
+      config.my_offset = ii;
+      run_test(config);
+    } else {
+      pids.push_back(new_id);
     }
   }
 
-  std::string app_name = "recon_test_" + std::to_string(config.my_offset);
-  int s;
-  s = prctl(PR_SET_NAME, app_name.c_str(), NULL, NULL, NULL);
-  TLOG() << "Set app name to " << app_name << " had status " << s;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> distrib(0, config.num_apps - 1);
 
-  TLOG() << "Configuring IOManager";
-  config.configure_iomanager();
+  TLOG() << "Waiting " << kill_interval << " ms for things to get started";
+  std::this_thread::sleep_for(std::chrono::milliseconds(kill_interval));
 
-  struct sigaction action;
-  action.sa_handler = signal_handler;
-  sigemptyset(&action.sa_mask);
-  sigaddset(&action.sa_mask, SIGINT);
-  action.sa_flags = 0;
-  sigaction(SIGINT, &action, nullptr);
+  auto test_start = std::chrono::steady_clock::now();
+  while (std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(std::chrono::steady_clock::now() -
+                                                                                  test_start)
+           .count() < duration) {
+    auto app_to_kill = distrib(gen);
+    TLOG() << "Sending SIGINT to app " << app_to_kill << ", at PID " << pids[app_to_kill];
+    kill(pids[app_to_kill], SIGINT);
+    siginfo_t status;
+    auto sts = waitid(P_PID, pids[app_to_kill], &status, WEXITED);
+    TLOG_DEBUG(6) << "Forked process " << pids[app_to_kill] << " exited with status " << status.si_status
+                  << " (wait status " << sts << ")";
 
-  size_t msg_idx = 0;
+    TLOG() << "App exited, waiting for 2 message intervals";
+    std::this_thread::sleep_for(std::chrono::milliseconds(2 * config.message_interval_ms));
 
-  while (dunedaq::iomanager::TestConfig::test_running.load()) {
-    if (!(config.my_offset == 0 && msg_idx == 0)) {
-      auto msg = dunedaq::iomanager::IOManager::get()
-                   ->get_receiver<dunedaq::iomanager::Data>(config.get_connection_name(config.my_offset))
-                   ->try_receive(std::chrono::milliseconds(2 * config.message_interval_ms));
-      if (msg) {
-        msg_idx = msg->seq_number;
-        TLOG() << "Received message " << msg_idx << " from " << msg->sender_id << " with size " << msg->contents.size();
-      } else {
-        TLOG() << "DID NOT RECEIVE message with expected index " << (msg_idx + 1) << "! Continuing with send...";
-        if (config.my_offset != 0) {
-          msg_idx++;
-        }
-      }
+    TLOG() << "Starting replacement app";
+    auto new_id = fork();
+    if (new_id == 0) {
+      config.my_offset = app_to_kill;
+      run_test(config, sts);
+    } else {
+      pids[app_to_kill] = new_id;
     }
 
-    if (config.my_offset == 0) {
-      msg_idx++;
-    }
-
-    dunedaq::iomanager::Data msg(msg_idx, config.my_offset, config.message_size_kb * 1024);
-    dunedaq::iomanager::IOManager::get()
-      ->get_sender<dunedaq::iomanager::Data>(config.get_connection_name(config.get_send_id()))
-      ->send(std::move(msg), dunedaq::iomanager::Sender::s_block);
-
-    if (config.my_offset == 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(config.message_interval_ms));
-    }
+    TLOG() << "Waiting for another " << kill_interval << " ms";
+    std::this_thread::sleep_for(std::chrono::milliseconds(kill_interval));
   }
 
-  bool ret = true;
-  while (ret) {
-
-    auto msg = dunedaq::iomanager::IOManager::get()
-                 ->get_receiver<dunedaq::iomanager::Data>(config.get_connection_name(config.my_offset))
-                 ->try_receive(std::chrono::milliseconds(2 * config.message_interval_ms));
-    ret = msg.has_value();
+  TLOG() << "Reaping children";
+  for (size_t ii = 0; ii < config.num_apps; ++ii) {
+    TLOG() << "Sending SIGINT to app " << ii << ", at PID " << pids[ii];
+    kill(pids[ii], SIGINT);
   }
+  for (size_t ii = 0; ii < config.num_apps; ++ii) {
+    TLOG() << "Sending SIGINT to app " << ii << ", at PID " << pids[ii];
+    kill(pids[ii], SIGKILL);
+  }
+  for (size_t ii = 0; ii < config.num_apps; ++ii) {
+    TLOG() << "Waiting for app " << ii << " at pid " << pids[ii];
+    siginfo_t status;
+    auto sts = waitid(P_PID, pids[ii], &status, WEXITED);
 
-  TLOG() << "Cleaning up";
-  dunedaq::iomanager::IOManager::get()->reset();
+    TLOG() << "Forked process " << pids[ii] << " exited with status " << status.si_status << " (wait status "
+                  << sts << ")";
+  }
   TLOG() << "DONE";
-};
+}

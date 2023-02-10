@@ -48,6 +48,8 @@ public:
   std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
   std::shared_ptr<ipm::Sender> get_sender(ConnectionId const& conn_id);
 
+  void remove_sender(ConnectionId const& conn_id);
+
   bool is_pubsub_connection(ConnectionId const& conn_id) const;
 
   ConnectionResponse get_connections(ConnectionId const& conn_id, bool restrict_single = false) const;

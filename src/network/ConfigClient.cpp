@@ -194,7 +194,7 @@ ConfigClient::publish()
 void
 ConfigClient::retract()
 {
-  TLOG() << "retract() called, getting connection information";
+  TLOG_DEBUG(1) << "retract() called, getting connection information";
   json connections = json::array();
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -206,8 +206,8 @@ ConfigClient::retract()
     }
     m_registered_connections.clear();
   }
-  TLOG() << "retract(): Retracting " << connections.size() << " connections";
   if (connections.size() > 0) {
+  TLOG_DEBUG(1) << "retract(): Retracting " << connections.size() << " connections";
     http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
     req.set(http::field::content_type, "application/json");
     json body{ { "partition", m_partition } };
