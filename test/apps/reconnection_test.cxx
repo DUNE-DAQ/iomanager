@@ -80,7 +80,7 @@ struct TestConfig
     Connections_t connections;
 
     auto recv_conn = Connection{ ConnectionId{ get_connection_name(my_offset), "data_t" },
-                                 "tcp://" + std::string(host)+ ":*",
+                                 "tcp://" + std::string(host) + ":*",
                                  ConnectionType::kSendRecv };
     connections.push_back(recv_conn);
 
@@ -151,6 +151,7 @@ run_test(dunedaq::iomanager::TestConfig config, uint8_t msg_idx = 0)
                       << msg->contents.size();
 
         if (config.my_offset == 0) {
+          TLOG() << "Message " << static_cast<int>(msg_idx) << " successfully passed through the ring";
           ++msg_idx;
           std::this_thread::sleep_for(std::chrono::milliseconds(config.message_interval_ms));
         }
@@ -187,22 +188,34 @@ main(int argc, char* argv[])
   dunedaq::logging::Logging::setup();
   dunedaq::iomanager::TestConfig config;
 
-  size_t duration = 30;
+  size_t duration = 60;
   size_t kill_interval = 5000;
+  bool help_requested = false;
 
   namespace po = boost::program_options;
   po::options_description desc("Program to test IOManager load with many connections");
-  desc.add_options()("num_apps,n", po::value<size_t>(&config.num_apps), "Number of applications in the ring")(
-    "port,p", po::value<int>(&config.port), "port to connect to on configuration server")(
-    "server,s", po::value<std::string>(&config.server), "Configuration server to connect to")(
-    "message_size_kb,z", po::value<size_t>(&config.message_size_kb), "Size of each message, in KB")(
-    "message_interval_ms,r", po::value<size_t>(&config.message_interval_ms), "Time to wait between messages, in ms")(
-    "test_duration_s,D", po::value<size_t>(&duration), "Length of the test, in seconds")(
-    "kill_interval_ms,k", po::value<size_t>(&kill_interval), "Randomly kill one app in ring each interval")(
+  desc.add_options()("num_apps,n",
+                     po::value<size_t>(&config.num_apps)->default_value(config.num_apps),
+                     "Number of applications in the ring")(
+    "port,p", po::value<int>(&config.port)->default_value(config.port), "port to connect to on configuration server")(
+    "server,s",
+    po::value<std::string>(&config.server)->default_value(config.server),
+    "Configuration server to connect to")(
+    "message_size_kb,z",
+    po::value<size_t>(&config.message_size_kb)->default_value(config.message_size_kb),
+    "Size of each message, in KB")(
+    "message_interval_ms,r",
+    po::value<size_t>(&config.message_interval_ms)->default_value(config.message_interval_ms),
+    "Time to wait between messages, in ms")(
+    "test_duration_s,D", po::value<size_t>(&duration)->default_value(duration), "Length of the test, in seconds")(
+    "kill_interval_ms,k",
+    po::value<size_t>(&kill_interval)->default_value(kill_interval),
+    "Randomly kill one app in ring each interval, in ms")(
     "publish_interval,i",
-    po::value<int>(&config.publish_interval),
+    po::value<int>(&config.publish_interval)->default_value(config.publish_interval),
     "Interval, in ms, for ConfigClient to re-publish connection info")(
-    "verbose,v", po::bool_switch(&config.verbose), "print more verbose output");
+    "verbose,v", po::bool_switch(&config.verbose)->default_value(config.verbose), "print more verbose output")(
+    "help,h", po::bool_switch(&help_requested)->default_value(help_requested), "Print this help message");
 
   try {
     po::variables_map vm;
@@ -211,6 +224,11 @@ main(int argc, char* argv[])
   } catch (std::exception& ex) {
     std::cerr << "Error parsing command line " << ex.what() << std::endl;
     std::cerr << desc << std::endl;
+    return 1;
+  }
+
+  if (help_requested) {
+    std::cout << desc << std::endl;
     return 0;
   }
 
@@ -278,8 +296,8 @@ main(int argc, char* argv[])
     siginfo_t status;
     auto sts = waitid(P_PID, pids[ii], &status, WEXITED);
 
-    TLOG() << "Forked process " << pids[ii] << " exited with status " << status.si_status << " (wait status "
-                  << sts << ")";
+    TLOG() << "Forked process " << pids[ii] << " exited with status " << status.si_status << " (wait status " << sts
+           << ")";
   }
   TLOG() << "DONE";
 }
