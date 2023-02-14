@@ -111,8 +111,8 @@ private:
 
     try {
       m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic);
-    } catch (TimeoutExpired const& ex) {
-      TLOG_DEBUG(10) << "Timeout detected, removing sender to re-acquire connection";
+    } catch (ipm::SendTimeoutExpired const& ex) {
+       TLOG() << "Timeout detected, removing sender to re-acquire connection";
       NetworkManager::get().remove_sender(this->id());
       m_network_sender_ptr = nullptr;
       throw;
@@ -146,7 +146,7 @@ private:
     auto res =
       m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic, true);
     if (!res) {
-      TLOG_DEBUG(10) << "Timeout detected, removing sender to re-acquire connection";
+       TLOG() << "Timeout detected, removing sender to re-acquire connection";
       NetworkManager::get().remove_sender(this->id());
       m_network_sender_ptr = nullptr;
     }
@@ -179,8 +179,8 @@ private:
 
     try {
       m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), topic);
-    } catch (TimeoutExpired const& ex) {
-      TLOG_DEBUG(10) << "Timeout detected, removing sender to re-acquire connection";
+    } catch (ipm::SendTimeoutExpired const& ex) {
+      TLOG() << "Timeout detected, removing sender to re-acquire connection";
       NetworkManager::get().remove_sender(this->id());
       m_network_sender_ptr = nullptr;
       throw;
