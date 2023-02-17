@@ -87,7 +87,7 @@ ConfigClient::resolveConnection(const ConnectionRequest& query, std::string sess
     session = m_session;
   }
   TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in session " << session;
-  std::string target = "/getconnection/" + m_session;
+  std::string target = "/getconnection/" + session;
   http::request<http::string_body> req{ http::verb::post, target, 11 };
   req.set(http::field::content_type, "application/json");
   nlohmann::json jquery = query;
