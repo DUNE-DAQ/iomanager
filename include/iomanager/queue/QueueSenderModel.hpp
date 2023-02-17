@@ -64,12 +64,6 @@ public:
     return m_queue->try_push(std::move(data), timeout);
   }
 
-  void send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string) override // NOLINT
-  {
-    // Topics are not used for Queues
-    send(std::move(data), timeout);
-  }
-
 private:
   std::shared_ptr<Queue<Datatype>> m_queue;
 };
