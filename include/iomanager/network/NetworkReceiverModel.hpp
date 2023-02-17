@@ -84,19 +84,6 @@ public:
     // remove function.
   }
 
-  void subscribe(std::string topic) override
-  {
-    if (NetworkManager::get().is_pubsub_connection(this->m_conn)) {
-        std::dynamic_pointer_cast<ipm::Subscriber>(m_network_receiver_ptr)->subscribe(topic);
-    }
-  }
-  void unsubscribe(std::string topic) override
-  {
-    if (NetworkManager::get().is_pubsub_connection(this->m_conn)) {
-        std::dynamic_pointer_cast<ipm::Subscriber>(m_network_receiver_ptr)->unsubscribe(topic);
-    }
-  }
-
 private:
   void get_receiver(Receiver::timeout_t timeout)
   {
