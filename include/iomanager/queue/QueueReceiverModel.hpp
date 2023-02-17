@@ -126,6 +126,10 @@ public:
     // remove function.
   }
 
+  // Topics are not used for Queues
+  void subscribe(std::string) override {}
+  void unsubscribe(std::string) override {}
+
 private:
   std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
