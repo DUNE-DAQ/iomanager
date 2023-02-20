@@ -38,7 +38,6 @@ daq_add_unit_test(NetworkManager_test    LINK_LIBRARIES iomanager )
 daq_add_unit_test(Queue_test             LINK_LIBRARIES iomanager )
 daq_add_unit_test(QueueRegistry_test     LINK_LIBRARIES iomanager )
 daq_add_unit_test(StdDeQueue_test        LINK_LIBRARIES iomanager )
->>>>>>> develop
 
 daq_install()
 
