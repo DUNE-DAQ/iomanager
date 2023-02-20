@@ -1,9 +1,8 @@
 #include "iomanager/CommonIssues.hpp"
-#include "iomanager/FollyQueue.hpp"
+#include "iomanager/queue/FollyQueue.hpp"
 #include <chrono>
 #include <iostream>
 
-#include "iomanager/ConnectionId.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 
@@ -12,7 +11,7 @@
 using namespace std::chrono;
 
 // n_got here is an attempt to stop the optimizer turning things into no-ops
-void pop_thread(int n, int64_t& t, int& n_got)
+void pop_thread(int , int64_t& t, int& n_got)
 {
   folly::DMPMCQueue<int, true> q(1000);
 
@@ -54,7 +53,7 @@ double get_mean_pop_time(int n_threads)
   return sum/n_threads;
 }
 
-int main(int argc, char** argv)
+int main(int , char** )
 {
   std::vector<int> n_threadss{1, 10, 20, 30, 50, 100};
 
