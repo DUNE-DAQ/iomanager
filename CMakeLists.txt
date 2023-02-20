@@ -26,6 +26,10 @@ daq_add_application(iomanager_stress_test     iomanager_stress_test.cxx  TEST LI
 daq_add_application(iomanager_stress_test_pubsub     iomanager_stress_test_pubsub.cxx  TEST LINK_LIBRARIES iomanager pthread )
 daq_add_application(reconnection_test     reconnection_test.cxx  TEST LINK_LIBRARIES iomanager pthread )
 
+daq_add_application( queues_vs_threads_folly          queues_vs_threads_folly.cxx          TEST LINK_LIBRARIES iomanager )
+daq_add_application( queues_vs_threads_folly_throwing queues_vs_threads_folly_throwing.cxx TEST LINK_LIBRARIES iomanager )
+daq_add_application( queues_vs_threads_iomanager      queues_vs_threads_iomanager.cxx      TEST LINK_LIBRARIES iomanager )
+
 daq_add_unit_test(IOManager_test         LINK_LIBRARIES iomanager )
 daq_add_unit_test(performance_test       LINK_LIBRARIES iomanager )
 daq_add_unit_test(FollyQueue_test        LINK_LIBRARIES iomanager )
