@@ -14,7 +14,7 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
 
-#include "iomanager/QueueBase.hpp"
+#include "iomanager/queue/QueueBase.hpp"
 
 #include "opmonlib/InfoCollector.hpp"
 
@@ -86,6 +86,9 @@ public:
    * exception
    */
   virtual void pop(value_t& val, const duration_t& timeout) = 0;
+
+  virtual bool try_push(value_t&& val, const duration_t& timeout) = 0;
+  virtual bool try_pop(value_t& val, const duration_t& timeout) = 0;
 
 private:
   Queue(const Queue&) = delete;

@@ -12,7 +12,7 @@
  * received with this code.
  */
 
-#include "iomanager/Queue.hpp"
+#include "iomanager/queue/Queue.hpp"
 
 #include <atomic>
 #include <cassert>
@@ -28,8 +28,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 /**
  * @brief A Queue Implementation that uses a std::deque as its backend
  * @tparam T Data Type to be stored in the std::deque
@@ -49,9 +48,11 @@ public:
 
   bool can_pop() const noexcept override { return this->get_num_elements() > 0; }
   void pop(value_t& val, const duration_t&) override; // Throws QueueTimeoutExpired if a timeout occurs
+  bool try_pop(value_t& val, const duration_t&) override;
 
   bool can_push() const noexcept override { return this->get_num_elements() < this->get_capacity(); }
   void push(value_t&&, const duration_t&) override; // Throws QueueTimeoutExpired if a timeout occurs
+  bool try_push(value_t&&, const duration_t&) override;
 
   size_t get_capacity() const override { return m_capacity; }
 
@@ -77,9 +78,7 @@ private:
   std::condition_variable m_no_longer_empty;
 };
 
-} // namespace iomanager
-
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #include "detail/StdDeQueue.hxx"
 
