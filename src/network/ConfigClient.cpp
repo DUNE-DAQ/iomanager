@@ -72,11 +72,11 @@ ConfigClient::ConfigClient(const std::string& server,
 
 ConfigClient::~ConfigClient()
 {
-  m_connected = false;
   m_active = false;
   if (m_thread.joinable()) {
     m_thread.join();
   }
+  m_connected = false;
   retract();
 }
 
@@ -95,15 +95,15 @@ ConfigClient::resolveConnection(const ConnectionRequest& query, std::string sess
   req.prepare_payload();
 
   http::response<http::string_body> response;
-  try {
     boost::beast::tcp_stream stream(m_ioContext);
+    beast::error_code ec;
+  try {
     stream.connect(m_addr);
     http::write(stream, req);
 
     boost::beast::flat_buffer buffer;
     http::read(stream, buffer, response);
 
-    beast::error_code ec;
     stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     TLOG_DEBUG(25) << "get " << target << " response: " << response;
 
@@ -112,9 +112,11 @@ ConfigClient::resolveConnection(const ConnectionRequest& query, std::string sess
     }
   } catch (ers::Issue const&) {
     m_connected = false;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     throw;
   } catch (std::exception const& ex) {
     m_connected = false;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     ers::error(FailedLookup(ERS_HERE, query.uid_regex, target, ex.what()));
     return ConnectionResponse();
   }
@@ -174,24 +176,26 @@ ConfigClient::publish()
   req.body() = content.dump();
   req.prepare_payload();
 
-  try {
     boost::beast::tcp_stream stream(m_ioContext);
+    beast::error_code ec;
+  try {
     stream.connect(m_addr);
     http::write(stream, req);
 
     http::response<http::string_body> response;
     boost::beast::flat_buffer buffer;
     http::read(stream, buffer, response);
-    beast::error_code ec;
     stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     if (response.result_int() != 200) {
       throw(FailedPublish(ERS_HERE, std::string(response.reason())));
     }
   } catch (ers::Issue const&) {
     m_connected = false;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     throw;
   } catch (std::exception const& ex) {
     m_connected = false;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     throw(FailedPublish(ERS_HERE, ex.what(), ex));
   }
   m_connected = true;
@@ -221,23 +225,25 @@ ConfigClient::retract()
     req.body() = body.dump();
     req.prepare_payload();
 
-    try {
       boost::beast::tcp_stream stream(m_ioContext);
+      beast::error_code ec;
+    try {
       stream.connect(m_addr);
       http::write(stream, req);
       http::response<http::string_body> response;
       boost::beast::flat_buffer buffer;
       http::read(stream, buffer, response);
-      beast::error_code ec;
       stream.socket().shutdown(tcp::socket::shutdown_both, ec);
       if (response.result_int() != 200) {
         throw(FailedRetract(ERS_HERE, "connection Id vector", std::string(response.reason())));
       }
     } catch (ers::Issue const&) {
       m_connected = false;
+      stream.socket().shutdown(tcp::socket::shutdown_both, ec);
       throw;
     } catch (std::exception const& ex) {
       m_connected = false;
+      stream.socket().shutdown(tcp::socket::shutdown_both, ec);
       ers::error(FailedRetract(ERS_HERE, "connection Id vector", ex.what()));
     }
     m_connected = true;
@@ -282,23 +288,25 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
   req.body() = body.dump();
   req.prepare_payload();
 
-  try {
     boost::beast::tcp_stream stream(m_ioContext);
+    beast::error_code ec;
+  try {
     stream.connect(m_addr);
     http::write(stream, req);
     http::response<http::string_body> response;
     boost::beast::flat_buffer buffer;
     http::read(stream, buffer, response);
-    beast::error_code ec;
     stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     if (response.result_int() != 200) {
       throw(FailedRetract(ERS_HERE, "connection Id vector", std::string(response.reason())));
     }
   } catch (ers::Issue const&) {
     m_connected = false;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     throw;
   } catch (std::exception const& ex) {
     m_connected = false;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
     ers::error(FailedRetract(ERS_HERE, "connection Id vector", ex.what()));
   }
   m_connected = true;
