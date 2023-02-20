@@ -30,6 +30,10 @@ The Connectivity Service will have N_apps + N_apps * N_groups * N_connections co
 
 This test application checks the DUNE-DAQ queues for thread-safe behavior and ensures that the Queue API works correctly.
 
+## queues_vs_threads
+
+These test applications show the effect on timing of using multiple threads on reception from queues while using Folly Queues by themselves, by using timeout exceptions, and by using IOManager.
+
 ## reconnection_test
 
 This test application starts a "ring" of applications that pass messages. Each application is assigned an ID number, and when it receives a message from ID - 1, it sends it on to ID + 1. The apps are aware of the number of apps in the system, so the last app sends to ID 0, which then starts the next round of messages.
