@@ -196,6 +196,19 @@ private:
   {
     throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
   }
+  
+  Sender::timeout_t extend_first_timeout(Sender::timeout_t timeout)
+  {
+    if (m_first) {
+      m_first = false;
+      if (timeout > 1000ms) {
+        return timeout;
+      }
+      return 1000ms;
+    }
+
+    return timeout;
+  }
 
   std::shared_ptr<ipm::Sender> m_network_sender_ptr;
   std::mutex m_send_mutex;
