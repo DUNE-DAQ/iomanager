@@ -109,7 +109,11 @@ NetworkManager::reset()
 
   m_preconfigured_connections.clear();
   if (m_config_client != nullptr) {
-    m_config_client->retract();
+    try {
+      m_config_client->retract();
+    } catch (FailedRetract const& r) {
+      ers::error(r);
+    }
   }
   m_config_client.reset(nullptr);
 }
