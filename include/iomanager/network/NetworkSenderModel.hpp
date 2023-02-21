@@ -76,7 +76,8 @@ private:
   void get_sender(Sender::timeout_t const& timeout)
   {
     auto start = std::chrono::steady_clock::now();
-    do {
+    while (m_network_sender_ptr == nullptr &&
+             std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) <= timeout) {
       // get network resources
       try {
         m_network_sender_ptr = NetworkManager::get().get_sender(this->id());
@@ -89,8 +90,7 @@ private:
         m_network_sender_ptr = nullptr;
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
-    } while (m_network_sender_ptr == nullptr &&
-             std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) <= timeout);
+    }
   }
 
   template<typename MessageType>
