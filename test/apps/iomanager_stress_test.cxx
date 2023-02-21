@@ -438,23 +438,32 @@ main(int argc, char* argv[])
   desc.add_options()("use_connectivity_service,c",
                      po::bool_switch(&config.use_connectivity_service),
                      "enable the ConnectivityService in IOManager")(
-    "num_apps,N", po::value<size_t>(&config.num_apps), "Number of applications to start")(
+    "num_apps,N",
+    po::value<size_t>(&config.num_apps)->default_value(config.num_apps),
+    "Number of applications to start")(
     "num_connections,n",
-    po::value<size_t>(&config.num_connections),
+    po::value<size_t>(&config.num_connections)->default_value(config.num_connections),
     "Number of connections to register and use in each app pair")(
-    "port,p", po::value<int>(&config.port), "port to connect to on configuration server")(
-    "server,s", po::value<std::string>(&config.server), "Configuration server to connect to")(
-    "num_messages,m", po::value<size_t>(&config.num_messages), "Number of messages to send on each connection")(
-    "message_size_kb,z", po::value<size_t>(&config.message_size_kb), "Size of each message, in KB")(
-    "num_runs,r", po::value<size_t>(&config.num_runs), "Number of times to clear the sender and send all messages")(
+    "port,p", po::value<int>(&config.port)->default_value(config.port), "port to connect to on configuration server")(
+    "server,s",
+    po::value<std::string>(&config.server)->default_value(config.server),
+    "Configuration server to connect to")("num_messages,m",
+                                          po::value<size_t>(&config.num_messages)->default_value(config.num_messages),
+                                          "Number of messages to send on each connection")(
+    "message_size_kb,z",
+    po::value<size_t>(&config.message_size_kb)->default_value(config.message_size_kb),
+    "Size of each message, in KB")("num_runs,r",
+                                   po::value<size_t>(&config.num_runs)->default_value(config.num_runs),
+                                   "Number of times to clear the sender and send all messages")(
     "publish_interval,i",
-    po::value<int>(&config.publish_interval),
+    po::value<int>(&config.publish_interval)->default_value(config.publish_interval),
     "Interval, in ms, for ConfigClient to re-publish connection info")(
     "output_file_base,o",
-    po::value<std::string>(&config.info_file_base),
+    po::value<std::string>(&config.info_file_base)->default_value(config.info_file_base),
     "Base name for output info file (will have _sender.csv or _receiver.csv appended)")(
-        "session", po::value<std::string>(&config.session_name), "Session name for this test")(
-    "help,h", po::bool_switch(&help_requested), "Print this help message");
+    "session",
+    po::value<std::string>(&config.session_name)->default_value(config.session_name),
+    "Session name for this test")("help,h", po::bool_switch(&help_requested), "Print this help message");
 
   try {
     po::variables_map vm;
