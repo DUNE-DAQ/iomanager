@@ -67,10 +67,7 @@ private:
   void get_sender(Sender::timeout_t const& timeout)
   {
     auto start = std::chrono::steady_clock::now();
-
-    while (m_network_sender_ptr == nullptr &&
-           std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) <= timeout) {
-
+    do {
       // get network resources
       try {
         m_network_sender_ptr = NetworkManager::get().get_sender(this->id());
@@ -83,7 +80,8 @@ private:
         m_network_sender_ptr = nullptr;
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
-    }
+    } while (m_network_sender_ptr == nullptr &&
+             std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) <= timeout);
   }
 
   template<typename MessageType>
@@ -103,8 +101,10 @@ private:
     std::lock_guard<std::mutex> lk(m_send_mutex);
 
     try {
-      m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic);
-    } catch (TimeoutExpired const& ex) {
+      m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic);
+    } catch (ipm::SendTimeoutExpired const& ex) {
+       TLOG() << "Timeout detected, removing sender to re-acquire connection";
+      NetworkManager::get().remove_sender(this->id());
       m_network_sender_ptr = nullptr;
       throw;
     }
@@ -134,8 +134,11 @@ private:
     // ", this=" << (void*)this;
     std::lock_guard<std::mutex> lk(m_send_mutex);
 
-    auto res = m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, m_topic, true);
+    auto res =
+      m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic, true);
     if (!res) {
+       TLOG() << "Timeout detected, removing sender to re-acquire connection";
+      NetworkManager::get().remove_sender(this->id());
       m_network_sender_ptr = nullptr;
     }
     return res;
@@ -150,9 +153,23 @@ private:
     return false;
   }
 
+  Sender::timeout_t extend_first_timeout(Sender::timeout_t timeout)
+  {
+    if (m_first) {
+      m_first = false;
+      if (timeout > 1000ms) {
+        return timeout;
+      }
+      return 1000ms;
+    }
+
+    return timeout;
+  }
+
   std::shared_ptr<ipm::Sender> m_network_sender_ptr;
   std::mutex m_send_mutex;
   std::string m_topic{ "" };
+  std::atomic<bool> m_first{ true };
 };
 
 } // namespace dunedaq::iomanager
