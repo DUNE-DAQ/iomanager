@@ -9,8 +9,6 @@
 #include "iomanager/network/NetworkManager.hpp"
 #include "iomanager/SchemaUtils.hpp"
 
-#include "iomanager/connectioninfo/InfoNljs.hpp"
-
 #include "ipm/PluginInfo.hpp"
 #include "logging/Logging.hpp"
 
