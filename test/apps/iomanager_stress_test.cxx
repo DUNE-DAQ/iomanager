@@ -248,6 +248,7 @@ struct ReceiverTest
     NetworkManager::get().gather_stats(ic, 100);
     auto json = ic.get_collected_infos();
     auto config_client_time_us = static_cast<size_t>(json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_time"]);
+    auto config_client_count = static_cast<size_t>(json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_count"]);
 
     std::string info_file_name = config.info_file_base + "_receiver.csv";
 
@@ -259,7 +260,7 @@ struct ReceiverTest
     if (!file_exists) {
       of << "APP_TYPE,APP_ID,RUN,N_APPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTERS_MS,ADD_CALLBACKS_MS,"
             "RECV_COMPLETE_MS,RM_CALLBACKS_MS,SEND_COMPMSG_MS,RECV_MS,MIN_GET_RECVR_TIME,MAX_GET_RECVR_TIME,AVG_GET_"
-            "RECVR_TIME,MIN_ADD_CB_TIME,MAX_ADD_CB_TIME,AVG_ADD_CB_TIME,TOTAL_MS,CONNSVC_MS"
+            "RECVR_TIME,MIN_ADD_CB_TIME,MAX_ADD_CB_TIME,AVG_ADD_CB_TIME,TOTAL_MS,AVG_CONNSVC_MS"
          << std::endl;
     }
 
@@ -275,7 +276,7 @@ struct ReceiverTest
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - after_receives).count() << ","
        << min_get_time << "," << max_get_time << "," << average_get_time << "," << min_cb_time << "," << max_cb_time
        << "," << average_cb_time << ","
-       << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - start).count() << "," << (config_client_time_us/1000.0) << std::endl;
+       << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_send - start).count() << "," << (config_client_time_us/1000.0/config_client_count) << std::endl;
 
     receivers.clear();
   }
@@ -397,6 +398,7 @@ struct SenderTest
     NetworkManager::get().gather_stats(ic, 100);
     auto json = ic.get_collected_infos();
     auto config_client_time_us = static_cast<size_t>( json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_time"]);
+    auto config_client_count = static_cast<size_t>(json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_count"]);
 
     std::string info_file_name = config.info_file_base + "_sender.csv";
 
@@ -408,7 +410,7 @@ struct SenderTest
     if (!file_exists) {
       of << "APP_TYPE,APP_D,RUN,N_APPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTER_MS,DATA_MS,THREAD_MS,COMPLETE_MS,"
             "JOIN_MS,ACK_MS,"
-            "SEND_MS,TOTAL_MS,MIN_SENDER_MS,MAX_SENDER_MS,AVG_SENDER_MS,CONNSVC_MS"
+            "SEND_MS,TOTAL_MS,MIN_SENDER_MS,MAX_SENDER_MS,AVG_SENDER_MS,AVG_CONNSVC_MS"
          << std::endl;
     }
 
@@ -424,7 +426,7 @@ struct SenderTest
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_join).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_senders).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - start).count() << ","
-       << min_get_time << "," << max_get_time << "," << average_get_time << "," << (config_client_time_us/1000.0) << std::endl;
+       << min_get_time << "," << max_get_time << "," << average_get_time << "," << (config_client_time_us/1000.0/config_client_count) << std::endl;
 
     senders.clear();
   }

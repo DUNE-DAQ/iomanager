@@ -85,6 +85,7 @@ private:
 
   inline size_t get_elapsed_microseconds(std::chrono::steady_clock::time_point then) const { return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - then).count(); }
   mutable std::atomic<size_t> m_config_client_us = { 0 };
+  mutable std::atomic<size_t> m_config_client_count = { 0 };
 
   mutable std::mutex m_receiver_plugin_map_mutex;
   mutable std::mutex m_sender_plugin_map_mutex;

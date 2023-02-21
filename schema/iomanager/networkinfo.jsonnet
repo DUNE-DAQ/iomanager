@@ -11,7 +11,8 @@ local info = {
                      doc="An unsigned of 8 bytes used for counters"),
 
    info: s.record("Info", [
-       s.field("config_client_time",   self.uint8, 0, doc="Microseconds spent in ConfigClient calls" )
+       s.field("config_client_time",   self.uint8, 0, doc="Microseconds spent in ConfigClient calls" ),
+       s.field("config_client_count",   self.uint8, 0, doc="Number of ConfigClient calls" )
    ], doc="NetworkManager information")
 };
 
