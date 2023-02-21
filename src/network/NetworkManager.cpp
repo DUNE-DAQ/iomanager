@@ -50,7 +50,9 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 }
 
 void
-NetworkManager::configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval)
+NetworkManager::configure(const Connections_t& connections,
+                          bool use_config_client,
+                          std::chrono::milliseconds config_client_interval)
 {
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
@@ -107,8 +109,13 @@ NetworkManager::reset()
 
   m_preconfigured_connections.clear();
   if (m_config_client != nullptr) {
-    m_config_client->retract();
+    try {
+      m_config_client->retract();
+    } catch (FailedRetract const& r) {
+      ers::error(r);
+    }
   }
+  m_config_client.reset(nullptr);
 }
 
 std::shared_ptr<ipm::Receiver>
@@ -152,6 +159,15 @@ NetworkManager::get_sender(ConnectionId const& conn_id)
   return nullptr;
 }
 
+void
+NetworkManager::remove_sender(ConnectionId const& conn_id)
+{
+  TLOG_DEBUG(10) << "Removing sender for connection " << conn_id.uid;
+
+  std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
+  m_sender_plugins.erase(conn_id);
+}
+
 bool
 NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 {
@@ -171,8 +187,9 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
   }
   if (m_config_client != nullptr) {
     auto start_time = std::chrono::steady_clock::now();
-    while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
-           1000) {
+    while (
+      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
+      1000) {
       try {
         auto client_response = m_config_client->resolveConnection(conn_id, conn_id.session);
         if (restrict_single && client_response.connections.size() > 1) {
@@ -295,6 +312,7 @@ NetworkManager::create_sender(ConnectionInfo connection)
 
   return plugin;
 }
+
 void
 NetworkManager::update_subscribers()
 {

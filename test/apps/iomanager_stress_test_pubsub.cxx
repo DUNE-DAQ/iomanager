@@ -404,7 +404,7 @@ struct PublisherTest
 
     auto check_subscriber = [subscriber_pid]() {
       siginfo_t status;
-      auto sts = waitid(P_PID, subscriber_pid, &status, WEXITED|WNOHANG);
+      auto sts = waitid(P_PID, subscriber_pid, &status, WEXITED | WNOHANG);
       return sts == 0 && status.si_pid == 0;
     };
 
@@ -545,25 +545,37 @@ main(int argc, char* argv[])
   desc.add_options()("use_connectivity_service,c",
                      po::bool_switch(&config.use_connectivity_service),
                      "enable the ConnectivityService in IOManager")(
-    "num_apps,N", po::value<size_t>(&config.num_apps), "Number of applications to start")(
-    "num_groups,g", po::value<size_t>(&config.num_groups), "Number of connection groups")(
+    "num_apps,N",
+    po::value<size_t>(&config.num_apps)->default_value(config.num_apps),
+    "Number of applications to start")("num_groups,g",
+                                       po::value<size_t>(&config.num_groups)->default_value(config.num_groups),
+                                       "Number of connection groups")(
     "num_connections,n",
-    po::value<size_t>(&config.num_connections_per_group),
+    po::value<size_t>(&config.num_connections_per_group)->default_value(config.num_connections_per_group),
     "Number of connections to register and use in each group")(
-    "port,p", po::value<int>(&config.port), "port to connect to on configuration server")(
-    "server,s", po::value<std::string>(&config.server), "Configuration server to connect to")(
-    "num_messages,m", po::value<size_t>(&config.num_messages), "Number of messages to send on each connection")(
-    "message_size_kb,z", po::value<size_t>(&config.message_size_kb), "Size of each message, in KB")(
-    "num_runs,r", po::value<size_t>(&config.num_runs), "Number of times to clear the sender and send all messages")(
+    "port,p", po::value<int>(&config.port)->default_value(config.port), "port to connect to on configuration server")(
+    "server,s",
+    po::value<std::string>(&config.server)->default_value(config.server),
+    "Configuration server to connect to")("num_messages,m",
+                                          po::value<size_t>(&config.num_messages)->default_value(config.num_messages),
+                                          "Number of messages to send on each connection")(
+    "message_size_kb,z",
+    po::value<size_t>(&config.message_size_kb)->default_value(config.message_size_kb),
+    "Size of each message, in KB")("num_runs,r",
+                                   po::value<size_t>(&config.num_runs)->default_value(config.num_runs),
+                                   "Number of times to clear the sender and send all messages")(
     "publish_interval,i",
-    po::value<int>(&config.publish_interval),
+    po::value<int>(&config.publish_interval)->default_value(config.publish_interval),
     "Interval, in ms, for ConfigClient to re-publish connection info")(
-    "send_interval,I", po::value<size_t>(&config.send_interval_ms), "Interval, in ms, for Publishers to send messages")(
+    "send_interval,I",
+    po::value<size_t>(&config.send_interval_ms)->default_value(config.send_interval_ms),
+    "Interval, in ms, for Publishers to send messages")(
     "output_file_base,o",
-    po::value<std::string>(&config.info_file_base),
+    po::value<std::string>(&config.info_file_base)->default_value(config.info_file_base),
     "Base name for output info file (will have _sender.csv or _receiver.csv appended)")(
-        "session", po::value<std::string>(&config.session_name), "Name of this DAQ session")(
-    "help,h", po::bool_switch(&help_requested), "Print this help message");
+    "session",
+    po::value<std::string>(&config.session_name)->default_value(config.session_name),
+    "Name of this DAQ session")("help,h", po::bool_switch(&help_requested), "Print this help message");
 
   try {
     po::variables_map vm;
