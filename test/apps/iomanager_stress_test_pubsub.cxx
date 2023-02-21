@@ -323,6 +323,12 @@ struct SubscriberTest
     double average_get_time = static_cast<double>(sum_get_time) / static_cast<double>(subscribers.size());
     double average_cb_time = static_cast<double>(sum_cb_time) / static_cast<double>(subscribers.size());
 
+    dunedaq::opmonlib::InfoCollector ic;
+    NetworkManager::get().gather_stats(ic, 100);
+    auto json = ic.get_collected_infos();
+    auto config_client_time_us = static_cast<size_t>( json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_time"]);
+    auto config_client_count = static_cast<size_t>(json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_count"]);
+
     std::string info_file_name = config.info_file_base + "_receiver.csv";
 
     TLOG_DEBUG(5) << "Writing to output CSV file " << info_file_name;
@@ -334,7 +340,7 @@ struct SubscriberTest
     if (!file_exists) {
       of << "APP_TYPE,APP_ID,RUN,N_APPS,N_GROUPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTERS_MS,ADD_CALLBACKS_MS,"
             "RECV_COMPLETE_MS,RM_CALLBACKS_MS,TOTAL_MS,MIN_GET_RECVR_TIME,MAX_GET_RECVR_TIME,AVG_GET_"
-            "RECVR_TIME,MIN_ADD_CB_TIME,MAX_ADD_CB_TIME,AVG_ADD_CB_TIME"
+            "RECVR_TIME,MIN_ADD_CB_TIME,MAX_ADD_CB_TIME,AVG_ADD_CB_TIME,AVG_CONNSVC_MS"
          << std::endl;
     }
 
@@ -348,7 +354,7 @@ struct SubscriberTest
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_cleanup - after_receives).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_cleanup - start).count() << "," << min_get_time
        << "," << max_get_time << "," << average_get_time << "," << min_cb_time << "," << max_cb_time << ","
-       << average_cb_time << std::endl;
+       << average_cb_time<< "," << (config_client_time_us/1000.0/config_client_count) << std::endl;
 
     subscribers.clear();
     TLOG_DEBUG(5) << "receive() done";
@@ -494,6 +500,13 @@ struct PublisherTest
     }
     double average_get_time = static_cast<double>(sum_get_time) / static_cast<double>(publishers.size());
 
+    dunedaq::opmonlib::InfoCollector ic;
+    NetworkManager::get().gather_stats(ic, 100);
+    auto json = ic.get_collected_infos();
+    auto config_client_time_us = static_cast<size_t>( json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_time"]);
+    auto config_client_count = static_cast<size_t>(json[dunedaq::opmonlib::JSONTags::properties]["dunedaq.iomanager.networkinfo.Info"][dunedaq::opmonlib::JSONTags::data]["config_client_count"]);
+
+
     std::string info_file_name = config.info_file_base + "_sender.csv";
     TLOG_DEBUG(7) << "Writing to output CSV file " << info_file_name;
 
@@ -504,7 +517,7 @@ struct PublisherTest
 
     if (!file_exists) {
       of << "APP_TYPE,APP_D,RUN,N_APPS,N_GROUPS,N_CONN,N_MESS,MESS_SZ_KB,CONTROL_MS,COUNTER_MS,DATA_MS,THREAD_MS,"
-            "COMPLETE_MS,JOIN_MS,ACK_MS,SEND_MS,TOTAL_MS,MIN_SENDER_MS,MAX_SENDER_MS,AVG_SENDER_MS"
+            "COMPLETE_MS,JOIN_MS,ACK_MS,SEND_MS,TOTAL_MS,MIN_SENDER_MS,MAX_SENDER_MS,AVG_SENDER_MS,AVG_CONNSVC_TIME"
          << std::endl;
     }
 
@@ -519,7 +532,7 @@ struct PublisherTest
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_join).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - after_senders).count() << ","
        << std::chrono::duration_cast<std::chrono::milliseconds>(after_control_recvd - start).count() << ","
-       << min_get_time << "," << max_get_time << "," << average_get_time << std::endl;
+       << min_get_time << "," << max_get_time << "," << average_get_time << "," << (config_client_time_us/1000.0/config_client_count)<< std::endl;
 
     publishers.clear();
 
