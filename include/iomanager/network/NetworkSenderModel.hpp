@@ -31,8 +31,8 @@ class NetworkSenderModel : public SenderConcept<Datatype>
 public:
   using SenderConcept<Datatype>::send;
 
-  explicit NetworkSenderModel(std::string const& conn_uid)
-    : SenderConcept<Datatype>(conn_uid)
+  explicit NetworkSenderModel(ConnectionId const& conn_id)
+    : SenderConcept<Datatype>(conn_id)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     try {

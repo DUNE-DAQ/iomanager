@@ -27,11 +27,11 @@ template<typename Datatype>
 class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
-  explicit QueueSenderModel(std::string const& request)
+  explicit QueueSenderModel(ConnectionId const& request)
     : SenderConcept<Datatype>(request)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
-    m_queue = QueueRegistry::get().get_queue<Datatype>(request);
+    m_queue = QueueRegistry::get().get_queue<Datatype>(request.uid);
     TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
     // get queue ref from queueregistry based on conn_id
   }
