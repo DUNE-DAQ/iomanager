@@ -130,10 +130,10 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
   conn_res = NetworkManager::get().get_preconfigured_connections(id_notfound);
   BOOST_REQUIRE_EQUAL(conn_res.connections.size(), 0);
 
-  BOOST_REQUIRE(!NetworkManager::get().is_pubsub_connection(sendRecvConnId));
-  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(pubSubConnId1));
-  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(topicConnId));
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().is_pubsub_connection(id_notfound),
+  BOOST_REQUIRE(!NetworkManager::get().is_pubsub_connection(sendRecvConnId, get_session()));
+  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(pubSubConnId1, get_session()));
+  BOOST_REQUIRE(NetworkManager::get().is_pubsub_connection(topicConnId, get_session()));
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().is_pubsub_connection(id_notfound, get_session()),
                           ConnectionNotFound,
                           [](ConnectionNotFound const&) { return true; });
 

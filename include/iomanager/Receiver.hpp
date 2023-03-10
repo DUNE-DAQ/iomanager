@@ -27,18 +27,21 @@ public:
   static constexpr timeout_t s_block = timeout_t::max();
   static constexpr timeout_t s_no_block = timeout_t::zero();
 
-  explicit Receiver(ConnectionId const& this_conn)
+  explicit Receiver(ConnectionId const& this_conn, std::string const& session)
     : utilities::NamedObject(this_conn.uid)
     , m_conn(this_conn)
+      , m_session(session)
   {
   }
 
   virtual ~Receiver() = default;
 
   ConnectionId id() const { return m_conn; }
+  std::string session() const { return m_session; }
 
 protected:
   ConnectionId m_conn;
+  std::string m_session;
 };
 
 // Interface
@@ -46,8 +49,8 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
-  explicit ReceiverConcept(ConnectionId const& conn_id)
-    : Receiver(conn_id)
+  explicit ReceiverConcept(ConnectionId const& conn_id, std::string const& session)
+    : Receiver(conn_id, session)
   {
   }
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;

@@ -45,14 +45,14 @@ public:
   void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval);
   void reset();
 
-  std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
-  std::shared_ptr<ipm::Sender> get_sender(ConnectionId const& conn_id);
+  std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id, std::string const& session);
+  std::shared_ptr<ipm::Sender> get_sender(ConnectionId const& conn_id, std::string const& session);
 
   void remove_sender(ConnectionId const& conn_id);
 
-  bool is_pubsub_connection(ConnectionId const& conn_id) const;
+  bool is_pubsub_connection(ConnectionId const& conn_id, std::string const& session) const;
 
-  ConnectionResponse get_connections(ConnectionId const& conn_id, bool restrict_single = false) const;
+  ConnectionResponse get_connections(ConnectionId const& conn_id, std::string const& session, bool restrict_single = false) const;
   ConnectionResponse get_preconfigured_connections(ConnectionId const& conn_id) const;
 
   std::set<std::string> get_datatypes(std::string const& uid) const;
@@ -67,7 +67,7 @@ private:
   NetworkManager& operator=(NetworkManager const&) = delete;
   NetworkManager& operator=(NetworkManager&&) = delete;
 
-  std::shared_ptr<ipm::Receiver> create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id);
+  std::shared_ptr<ipm::Receiver> create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id, std::string const& session);
   std::shared_ptr<ipm::Sender> create_sender(ConnectionInfo connection);
 
   void update_subscribers();
@@ -76,7 +76,12 @@ private:
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   
-  std::unordered_map<ConnectionId, std::shared_ptr<ipm::Subscriber>> m_subscriber_plugins;
+  struct SubscriberInfo {
+  std::shared_ptr<ipm::Subscriber> plugin;
+    ConnectionId id;
+  std::string session;
+  };
+  std::vector<SubscriberInfo> m_subscriber_plugins;
   std::unique_ptr<std::thread> m_subscriber_update_thread;
   std::atomic<bool> m_subscriber_update_thread_running{ false };
 

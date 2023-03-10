@@ -119,17 +119,17 @@ NetworkManager::reset()
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::get_receiver(ConnectionId const& conn_id)
+NetworkManager::get_receiver(ConnectionId const& conn_id, std::string const& session)
 {
   TLOG_DEBUG(9) << "Getting receiver for connection " << conn_id.uid;
 
   std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
   if (!m_receiver_plugins.count(conn_id) || m_receiver_plugins.at(conn_id) == nullptr) {
 
-    auto response = get_connections(conn_id);
+    auto response = get_connections(conn_id, session);
 
     TLOG_DEBUG(9) << "Creating receiver for connection " << conn_id.uid;
-    auto receiver = create_receiver(response.connections, conn_id);
+    auto receiver = create_receiver(response.connections, conn_id, session);
 
     m_receiver_plugins[conn_id] = receiver;
   }
@@ -138,14 +138,14 @@ NetworkManager::get_receiver(ConnectionId const& conn_id)
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::get_sender(ConnectionId const& conn_id)
+NetworkManager::get_sender(ConnectionId const& conn_id, std::string const& session)
 {
   TLOG_DEBUG(10) << "Getting sender for connection " << conn_id.uid;
 
   std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
 
   if (!m_sender_plugins.count(conn_id) || m_sender_plugins.at(conn_id) == nullptr) {
-    auto response = get_connections(conn_id, true);
+    auto response = get_connections(conn_id, session, true);
 
     TLOG_DEBUG(10) << "Creating sender for connection " << conn_id.uid;
     auto sender = create_sender(response.connections[0]);
@@ -169,9 +169,9 @@ NetworkManager::remove_sender(ConnectionId const& conn_id)
 }
 
 bool
-NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
+NetworkManager::is_pubsub_connection(ConnectionId const& conn_id, std::string const& session) const
 {
-  auto response = get_connections(conn_id);
+  auto response = get_connections(conn_id, session);
   bool is_pubsub = response.connections[0].connection_type == ConnectionType::kPubSub;
 
   // TLOG() << "Returning " << std::boolalpha << is_pubsub << " for request " << request;
@@ -179,7 +179,7 @@ NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 }
 
 ConnectionResponse
-NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_single) const
+NetworkManager::get_connections(ConnectionId const& conn_id, std::string const& session, bool restrict_single) const
 {
   auto response = get_preconfigured_connections(conn_id);
   if (restrict_single && response.connections.size() > 1) {
@@ -191,7 +191,7 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
       std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
       1000) {
       try {
-        auto client_response = m_config_client->resolveConnection(conn_id, conn_id.session);
+        auto client_response = m_config_client->resolveConnection(conn_id, session);
         if (restrict_single && client_response.connections.size() > 1) {
           throw NameCollision(ERS_HERE, conn_id.uid);
         }
@@ -242,7 +242,7 @@ NetworkManager::get_datatypes(std::string const& uid) const
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id)
+NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id, std::string const& session)
 {
   TLOG_DEBUG(12) << "START";
   if (connections.size() == 0) {
@@ -278,7 +278,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(plugin);
     subscriber->subscribe(connections[0].data_type);
     std::lock_guard<std::mutex> lkk(m_subscriber_plugin_map_mutex);
-    m_subscriber_plugins[conn_id] = subscriber;
+    m_subscriber_plugins.push_back(SubscriberInfo{subscriber, conn_id, session});
     if (!m_subscriber_update_thread_running) {
       m_subscriber_update_thread_running = true;
       m_subscriber_update_thread.reset(new std::thread(&NetworkManager::update_subscribers, this));
@@ -319,9 +319,9 @@ NetworkManager::update_subscribers()
   while (m_subscriber_update_thread_running.load()) {
     {
       std::lock_guard<std::mutex> lk(m_subscriber_plugin_map_mutex);
-      for (auto& subscriber_pair : m_subscriber_plugins) {
+      for (auto& subscriber_info : m_subscriber_plugins) {
         try {
-          auto response = get_connections(subscriber_pair.first, false);
+          auto response = get_connections(subscriber_info.id, subscriber_info.session, false);
 
           nlohmann::json config_json;
           std::vector<std::string> uris;
@@ -329,7 +329,7 @@ NetworkManager::update_subscribers()
             uris.push_back(conn.uri);
           config_json["connection_strings"] = uris;
 
-          subscriber_pair.second->connect_for_receives(config_json);
+          subscriber_info.plugin->connect_for_receives(config_json);
         } catch (ers::Issue&) {
         }
       }

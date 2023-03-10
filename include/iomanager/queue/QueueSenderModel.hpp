@@ -27,13 +27,16 @@ template<typename Datatype>
 class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
-  explicit QueueSenderModel(ConnectionId const& request)
-    : SenderConcept<Datatype>(request)
+  explicit QueueSenderModel(ConnectionId const& request, std::string const& session)
+    : SenderConcept<Datatype>(request, session)
   {
     TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
     m_queue = QueueRegistry::get().get_queue<Datatype>(request.uid);
     TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
-    // get queue ref from queueregistry based on conn_id
+
+    if (session != "" && get_session() != session) {
+      throw CrossSessionQueue(ERS_HERE, get_session(), session, request.uid);
+    }
   }
 
   QueueSenderModel(QueueSenderModel&& other)

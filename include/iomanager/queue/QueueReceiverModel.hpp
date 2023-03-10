@@ -31,8 +31,8 @@ template<typename Datatype>
 class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit QueueReceiverModel(ConnectionId const& request)
-    : ReceiverConcept<Datatype>(request)
+  explicit QueueReceiverModel(ConnectionId const& request, std::string const& session)
+    : ReceiverConcept<Datatype>(request, session)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
     // get queue ref from queueregistry based on conn_id
@@ -40,6 +40,10 @@ public:
     // m_source = std::make_unique<appfwk::DAQSource<Datatype>>(sink_name);
     m_queue = QueueRegistry::get().get_queue<Datatype>(request.uid);
     TLOG() << "QueueReceiverModel m_queue=" << static_cast<void*>(m_queue.get());
+
+    if (session != "" && get_session() != session) {
+      throw CrossSessionQueue(ERS_HERE, get_session(), session, request.uid);
+    }
   }
 
   QueueReceiverModel(QueueReceiverModel&& other)

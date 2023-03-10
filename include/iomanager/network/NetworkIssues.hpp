@@ -28,8 +28,6 @@ ERS_DECLARE_ISSUE(iomanager, NameCollision, "Multiple instances of name " << nam
 
 ERS_DECLARE_ISSUE(iomanager, AlreadyConfigured, "The NetworkManager has already been configured", )
 
-ERS_DECLARE_ISSUE(iomanager, EnvNotFound, "Environment variable " << name << " not found", ((std::string)name))
-
 ERS_DECLARE_ISSUE(iomanager, FailedPublish, "Failed to publish configuration " << result, ((std::string)result))
 
 ERS_DECLARE_ISSUE(iomanager,

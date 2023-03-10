@@ -56,6 +56,12 @@ ERS_DECLARE_ISSUE(iomanager,
                   "QueueReceiverModel for uid " << conn_uid << " is equipped with callback! Ignoring receive call.",
                   ((std::string)conn_uid))
 
+ERS_DECLARE_ISSUE(iomanager,
+                  CrossSessionQueue,
+                  "This application is in session " << app_session << ", and cannot use a queue configured for session "
+                                                    << queue_session << "! Queue ID " << queue_id,
+                  ((std::string)app_session)((std::string)queue_session)((std::string)queue_id))
+
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq

@@ -29,6 +29,8 @@ ERS_DECLARE_ISSUE(iomanager,      // namespace
 
 ERS_DECLARE_ISSUE(iomanager, OperationFailed, message, ((std::string)message))
 
+ERS_DECLARE_ISSUE(iomanager, EnvNotFound, "Environment variable " << name << " not found", ((std::string)name))
+
 ERS_DECLARE_ISSUE(iomanager,
                   DatatypeMismatch,
                   "Declared datatype in ConnectionId for connection " << cuid << " is " << cid_dt

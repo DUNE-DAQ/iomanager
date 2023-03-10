@@ -59,18 +59,6 @@ public:
                  bool use_config_client,
                  std::chrono::milliseconds config_client_interval)
   {
-    char* session = getenv("DUNEDAQ_SESSION");
-    if (session) {
-      m_session = std::string(session);
-    } else {
-      session = getenv("DUNEDAQ_PARTITION");
-      if (session) {
-        m_session = std::string(session);
-      } else {
-        throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
-      }
-    }
-
     Queues_t qCfg = queues;
     Connections_t nwCfg;
 
@@ -92,14 +80,10 @@ public:
   }
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId id)
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId id, std::string session = "")
   {
     if (id.data_type != datatype_to_string<Datatype>()) {
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
-    }
-
-    if (id.session == "") {
-      id.session = m_session;
     }
 
     static std::mutex dt_sender_mutex;
@@ -108,36 +92,31 @@ public:
     if (!m_senders.count(id)) {
       if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
         TLOG() << "Creating QueueSenderModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(id);
+        m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(id, session);
       } else {
         TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
-               << id.session;
-        m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(id);
+               << session;
+        m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(id, session);
       }
     }
     return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[id]);
   }
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& uid)
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& uid, std::string const& session = "")
   {
     auto data_type = datatype_to_string<Datatype>();
     ConnectionId id;
     id.uid = uid;
     id.data_type = data_type;
-    id.session = m_session;
-    return get_sender<Datatype>(id);
+    return get_sender<Datatype>(id, session);
   }
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionId id)
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionId id, std::string session = "")
   {
     if (id.data_type != datatype_to_string<Datatype>()) {
       throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
-    }
-
-    if (id.session == "") {
-      id.session = m_session;
     }
 
     static std::mutex dt_receiver_mutex;
@@ -146,25 +125,24 @@ public:
     if (!m_receivers.count(id)) {
       if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
         TLOG() << "Creating QueueReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(id);
+        m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(id, session);
       } else {
         TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
-               << id.session;
-        m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(id);
+               << session;
+        m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(id, session);
       }
     }
     return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[id]); // NOLINT
   }
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& uid)
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& uid, std::string const& session = "")
   {
     auto data_type = datatype_to_string<Datatype>();
     ConnectionId id;
     id.uid = uid;
     id.data_type = data_type;
-    id.session = m_session;
-    return get_receiver<Datatype>(id);
+    return get_receiver<Datatype>(id, session);
   }
 
   template<typename Datatype>
@@ -212,7 +190,6 @@ private:
   using ReceiverMap = std::map<ConnectionId, std::shared_ptr<Receiver>>;
   SenderMap m_senders;
   ReceiverMap m_receivers;
-  std::string m_session;
 
   static std::shared_ptr<IOManager> s_instance;
 };

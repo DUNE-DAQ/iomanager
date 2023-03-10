@@ -35,8 +35,8 @@ template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit NetworkReceiverModel(ConnectionId const& conn_id)
-    : ReceiverConcept<Datatype>(conn_id)
+  explicit NetworkReceiverModel(ConnectionId const& conn_id, std::string const& session)
+    : ReceiverConcept<Datatype>(conn_id, session)
   {
     TLOG() << "NetworkReceiverModel created with DT! ID: " << conn_id.uid << " Addr: " << static_cast<void*>(this);
     try {
@@ -86,14 +86,14 @@ public:
 
   void subscribe(std::string topic) override
   {
-    if (NetworkManager::get().is_pubsub_connection(this->m_conn)) {
-        std::dynamic_pointer_cast<ipm::Subscriber>(m_network_receiver_ptr)->subscribe(topic);
+    if (NetworkManager::get().is_pubsub_connection(this->m_conn, this->session())) {
+      std::dynamic_pointer_cast<ipm::Subscriber>(m_network_receiver_ptr)->subscribe(topic);
     }
   }
   void unsubscribe(std::string topic) override
   {
-    if (NetworkManager::get().is_pubsub_connection(this->m_conn)) {
-        std::dynamic_pointer_cast<ipm::Subscriber>(m_network_receiver_ptr)->unsubscribe(topic);
+    if (NetworkManager::get().is_pubsub_connection(this->m_conn, this->session())) {
+      std::dynamic_pointer_cast<ipm::Subscriber>(m_network_receiver_ptr)->unsubscribe(topic);
     }
   }
 
@@ -106,7 +106,7 @@ private:
            std::chrono::duration_cast<Receiver::timeout_t>(std::chrono::steady_clock::now() - start) < timeout) {
 
       try {
-        m_network_receiver_ptr = NetworkManager::get().get_receiver(this->id());
+        m_network_receiver_ptr = NetworkManager::get().get_receiver(this->id(), this->session());
       } catch (ConnectionNotFound const& ex) {
         m_network_receiver_ptr = nullptr;
         std::this_thread::sleep_for(std::chrono::milliseconds(10));

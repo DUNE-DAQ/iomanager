@@ -31,8 +31,8 @@ class NetworkSenderModel : public SenderConcept<Datatype>
 public:
   using SenderConcept<Datatype>::send;
 
-  explicit NetworkSenderModel(ConnectionId const& conn_id)
-    : SenderConcept<Datatype>(conn_id)
+  explicit NetworkSenderModel(ConnectionId const& conn_id, std::string const& session)
+    : SenderConcept<Datatype>(conn_id, session)
   {
     TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
     try {
@@ -80,9 +80,9 @@ private:
              std::chrono::duration_cast<Sender::timeout_t>(std::chrono::steady_clock::now() - start) <= timeout) {
       // get network resources
       try {
-        m_network_sender_ptr = NetworkManager::get().get_sender(this->id());
+        m_network_sender_ptr = NetworkManager::get().get_sender(this->id(), this->session());
 
-        if (NetworkManager::get().is_pubsub_connection(this->id())) {
+        if (NetworkManager::get().is_pubsub_connection(this->id(), this->session())) {
           TLOG() << "Setting topic to " << this->id().data_type;
           m_topic = this->id().data_type;
         }
