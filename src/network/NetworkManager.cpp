@@ -82,6 +82,7 @@ NetworkManager::configure(const Connections_t& connections,
     if (env) {
       connectionPort = std::string(env);
     }
+    TLOG_DEBUG(17) << "ConnectionServer host and port are " << connectionServer << ":" << connectionPort;
     m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
     m_config_client_interval = config_client_interval;
   }
