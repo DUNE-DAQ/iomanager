@@ -28,7 +28,6 @@ ConfigClient::ConfigClient(const std::string& server,
                            const std::string& port,
                            std::chrono::milliseconds publish_interval)
 {
-  TLOG_DEBUG(24) << "Server and Port are " << server << ":" << port;
   char* session = getenv("DUNEDAQ_SESSION");
   if (session) {
     m_session = std::string(session);
