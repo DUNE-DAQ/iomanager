@@ -68,17 +68,19 @@ private:
   NetworkManager& operator=(NetworkManager&&) = delete;
 
   std::shared_ptr<ipm::Receiver> create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id);
-  std::shared_ptr<ipm::Sender> create_sender(ConnectionInfo connection);
+  std::shared_ptr<ipm::Sender> create_sender(ConnectionInfo connection, bool resolve_ips=true);
 
   void update_subscribers();
 
   std::unordered_map<ConnectionId, Connection> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
-  
+
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Subscriber>> m_subscriber_plugins;
   std::unique_ptr<std::thread> m_subscriber_update_thread;
   std::atomic<bool> m_subscriber_update_thread_running{ false };
+
+  std::atomic<bool> m_resolve_to_ips{ true };
 
   std::unique_ptr<ConfigClient> m_config_client;
   std::chrono::milliseconds m_config_client_interval;
