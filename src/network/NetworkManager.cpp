@@ -86,6 +86,7 @@ NetworkManager::configure(const Connections_t& connections,
     if (env) {
       connectionPort = std::string(env);
     }
+    TLOG_DEBUG(17) << "ConnectionServer host and port are " << connectionServer << ":" << connectionPort;
     m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
     m_config_client_interval = config_client_interval;
   }
@@ -196,7 +197,7 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
       1000) {
       try {
         auto client_start = std::chrono::steady_clock::now();
-        auto client_response = m_config_client->resolveConnection(conn_id);
+        auto client_response = m_config_client->resolveConnection(conn_id, conn_id.session);
         m_config_client_us += get_elapsed_microseconds(client_start);
         m_config_client_count += 1;
         if (restrict_single && client_response.connections.size() > 1) {

@@ -56,8 +56,9 @@ public:
    *
    * @param query Query string to send to the server. Query is a
    *    regular expression that can match with multiple connection ids
+   * @param session The session that the requested connection is part of
    */
-  ConnectionResponse resolveConnection(const ConnectionRequest& query);
+  ConnectionResponse resolveConnection(const ConnectionRequest& query, std::string session = "");
 
   /**
    * Publish information for a single connection
@@ -96,7 +97,7 @@ public:
 
   private:
   void publish();
-  std::string m_partition;
+  std::string m_session;
   net::io_context m_ioContext;
   net::ip::basic_resolver<net::ip::tcp>::results_type m_addr;
 

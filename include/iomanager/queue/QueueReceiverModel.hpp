@@ -31,14 +31,14 @@ template<typename Datatype>
 class QueueReceiverModel : public ReceiverConcept<Datatype>
 {
 public:
-  explicit QueueReceiverModel(std::string const& request)
+  explicit QueueReceiverModel(ConnectionId const& request)
     : ReceiverConcept<Datatype>(request)
   {
     TLOG() << "QueueReceiverModel created with DT! Addr: " << this;
     // get queue ref from queueregistry based on conn_id
     // std::string sink_name = conn_id to sink_name;
     // m_source = std::make_unique<appfwk::DAQSource<Datatype>>(sink_name);
-    m_queue = QueueRegistry::get().get_queue<Datatype>(request);
+    m_queue = QueueRegistry::get().get_queue<Datatype>(request.uid);
     TLOG() << "QueueReceiverModel m_queue=" << static_cast<void*>(m_queue.get());
   }
 

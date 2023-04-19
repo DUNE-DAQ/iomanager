@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(iomanager VERSION 1.1.0)
+project(iomanager VERSION 1.2.0)
 
 find_package(daq-cmake REQUIRED)
 
@@ -25,6 +25,14 @@ daq_add_application(config_client_test        config_client_test.cxx     TEST LI
 daq_add_application(iomanager_stress_test     iomanager_stress_test.cxx  TEST LINK_LIBRARIES iomanager pthread )
 daq_add_application(iomanager_stress_test_pubsub     iomanager_stress_test_pubsub.cxx  TEST LINK_LIBRARIES iomanager pthread )
 daq_add_application(reconnection_test     reconnection_test.cxx  TEST LINK_LIBRARIES iomanager pthread )
+
+# DPF-2023-Mar-17: No better way to replace tbb/task.h since Intel deprecated it.
+target_compile_options( iomanager_stress_test PRIVATE
+	$<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1>)
+target_compile_options( iomanager_stress_test_pubsub PRIVATE
+	$<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1>)
+target_compile_options( reconnection_test PRIVATE
+	$<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1>)
 
 daq_add_application( queues_vs_threads_folly          queues_vs_threads_folly.cxx          TEST LINK_LIBRARIES iomanager )
 daq_add_application( queues_vs_threads_folly_throwing queues_vs_threads_folly_throwing.cxx TEST LINK_LIBRARIES iomanager )

@@ -33,12 +33,6 @@ public:
   {
   }
 
-  Receiver(std::string const& conn_uid, std::string const& data_type)
-    : utilities::NamedObject(conn_uid)
-  {
-    m_conn.uid = conn_uid;
-    m_conn.data_type = data_type;
-  }
   virtual ~Receiver() = default;
 
   ConnectionId id() const { return m_conn; }
@@ -52,8 +46,8 @@ template<typename Datatype>
 class ReceiverConcept : public Receiver
 {
 public:
-  explicit ReceiverConcept(std::string const& conn_uid)
-    : Receiver(conn_uid, datatype_to_string<Datatype>())
+  explicit ReceiverConcept(ConnectionId const& conn_id)
+    : Receiver(conn_id)
   {
   }
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
