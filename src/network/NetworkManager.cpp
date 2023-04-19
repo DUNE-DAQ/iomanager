@@ -58,6 +58,20 @@ NetworkManager::configure(const Connections_t& connections,
     throw AlreadyConfigured(ERS_HERE);
   }
 
+  char* resolve = getenv("IOMANAGER_RESOLVE_CONNECTIONS");
+  if (resolve) {
+    try {
+      m_resolve_to_ips.store(true);
+      auto r = std::stoi(std::string(resolve));
+      if (r == 0) m_resolve_to_ips.store(false);
+    } catch (std::invalid_argument& e) {
+      ers::error(InvalidEnvVariable(ERS_HERE, "IOMANAGER_RESOLVE_CONNECTIONS", resolve));
+    }
+  } else {
+      ers::error(InvalidEnvVariable(ERS_HERE, "IOMANAGER_RESOLVE_CONNECTIONS", "<unset>"));
+      m_resolve_to_ips.store(true);
+  }
+
   for (auto& connection : connections) {
     auto name = connection.id.uid;
     TLOG_DEBUG(15) << "Adding connection " << name << " to connection map";
@@ -149,7 +163,7 @@ NetworkManager::get_sender(ConnectionId const& conn_id)
     auto response = get_connections(conn_id, true);
 
     TLOG_DEBUG(10) << "Creating sender for connection " << conn_id.uid;
-    auto sender = create_sender(response.connections[0]);
+    auto sender = create_sender(response.connections[0], m_resolve_to_ips.load());
     m_sender_plugins[conn_id] = sender;
   }
 
@@ -295,14 +309,14 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::create_sender(ConnectionInfo connection)
+NetworkManager::create_sender(ConnectionInfo connection, bool resolve_ips)
 {
   auto is_pubsub = connection.connection_type == ConnectionType::kPubSub;
   auto plugin_type =
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
   TLOG_DEBUG(11) << "Creating sender plugin of type " << plugin_type;
-  auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
+  auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type, resolve_ips);
   TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
   connection.uri = plugin->connect_for_sends({ { "connection_string", connection.uri } });
   TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << connection.uri;
