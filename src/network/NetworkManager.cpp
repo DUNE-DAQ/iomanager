@@ -11,6 +11,7 @@
 
 #include "iomanager/connectioninfo/InfoNljs.hpp"
 
+#include "utilities/Resolver.hpp"
 #include "ipm/PluginInfo.hpp"
 #include "logging/Logging.hpp"
 
@@ -84,8 +85,8 @@ NetworkManager::configure(const Connections_t& connections,
     }
     TLOG_DEBUG(17) << "ConnectionServer host and port are " << connectionServer << ":" << connectionPort;
     m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
-    m_config_client_interval = config_client_interval;
   }
+    m_config_client_interval = config_client_interval;
 }
 
 void
@@ -271,8 +272,21 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   } else {
     config_json["connection_string"] = connections[0].uri;
   }
-  connections[0].uri = plugin->connect_for_receives(config_json);
-  TLOG_DEBUG(12) << "Receiver reports connected to URI " << connections[0].uri;
+  auto newCs = plugin->connect_for_receives(config_json);
+  TLOG_DEBUG(12) << "Receiver reports connected to URI " << newCs;
+
+  // Replace with resolved if there are wildcards (host and/or port)
+  if(connections[0].uri.find("*") != std::string::npos) {
+    auto newUri = utilities::parse_connection_string(newCs);
+    auto oldUri = utilities::parse_connection_string(connections[0].uri);
+
+    if (oldUri.port == "*")
+      oldUri.port = newUri.port;
+    if (oldUri.host == "*")
+      oldUri.host = newUri.host;
+
+    connections[0].uri = oldUri.to_string();
+  }
 
   if (is_pubsub) {
     TLOG_DEBUG(12) << "Subscribing to topic " << connections[0].data_type << " after connect_for_receives";
@@ -304,8 +318,21 @@ NetworkManager::create_sender(ConnectionInfo connection)
   TLOG_DEBUG(11) << "Creating sender plugin of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
-  connection.uri = plugin->connect_for_sends({ { "connection_string", connection.uri } });
-  TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << connection.uri;
+  auto newCs = plugin->connect_for_sends({ { "connection_string", connection.uri } });
+  TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << newCs;
+  
+  // Replace with resolved if there are wildcards (host and/or port)
+  if(connection.uri.find("*") != std::string::npos) {
+    auto newUri = utilities::parse_connection_string(newCs);
+    auto oldUri = utilities::parse_connection_string(connection.uri);
+
+    if (oldUri.port == "*")
+      oldUri.port = newUri.port;
+    if (oldUri.host == "*")
+      oldUri.host = newUri.host;
+
+    connection.uri = oldUri.to_string();
+  }
 
   if (m_config_client != nullptr && is_pubsub) {
     m_config_client->publish(connection);
