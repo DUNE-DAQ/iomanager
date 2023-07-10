@@ -11,9 +11,9 @@
 
 #include "iomanager/connectioninfo/InfoNljs.hpp"
 
-#include "utilities/Resolver.hpp"
 #include "ipm/PluginInfo.hpp"
 #include "logging/Logging.hpp"
+#include "utilities/Resolver.hpp"
 
 #include <map>
 #include <memory>
@@ -86,7 +86,7 @@ NetworkManager::configure(const Connections_t& connections,
     TLOG_DEBUG(17) << "ConnectionServer host and port are " << connectionServer << ":" << connectionPort;
     m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
   }
-    m_config_client_interval = config_client_interval;
+  m_config_client_interval = config_client_interval;
 }
 
 void
@@ -266,8 +266,16 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   nlohmann::json config_json;
   if (is_pubsub) {
     std::vector<std::string> uris;
-    for (auto& conn : connections)
+    for (auto& conn : connections) {
+      // Check for case where both ends are in app and ConnectivityService hasn't received other end yet
+      if (conn.uri.find("*") != std::string::npos) {
+        continue;
+      }
       uris.push_back(conn.uri);
+    }
+    if (uris.size() == 0) {
+      return nullptr;
+    }
     config_json["connection_strings"] = uris;
   } else {
     config_json["connection_string"] = connections[0].uri;
@@ -276,7 +284,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   TLOG_DEBUG(12) << "Receiver reports connected to URI " << newCs;
 
   // Replace with resolved if there are wildcards (host and/or port)
-  if(connections[0].uri.find("*") != std::string::npos) {
+  if (connections[0].uri.find("*") != std::string::npos) {
     auto newUri = utilities::parse_connection_string(newCs);
     auto oldUri = utilities::parse_connection_string(connections[0].uri);
 
@@ -315,14 +323,19 @@ NetworkManager::create_sender(ConnectionInfo connection)
   auto plugin_type =
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
+  // Check for case where both ends are in app and ConnectivityService hasn't received other end yet
+  if (!is_pubsub && connection.uri.find("*") != std::string::npos) {
+    return nullptr;
+  }
+
   TLOG_DEBUG(11) << "Creating sender plugin of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
   auto newCs = plugin->connect_for_sends({ { "connection_string", connection.uri } });
   TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << newCs;
-  
+
   // Replace with resolved if there are wildcards (host and/or port)
-  if(connection.uri.find("*") != std::string::npos) {
+  if (connection.uri.find("*") != std::string::npos) {
     auto newUri = utilities::parse_connection_string(newCs);
     auto oldUri = utilities::parse_connection_string(connection.uri);
 

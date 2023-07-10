@@ -98,6 +98,7 @@ private:
     MessageType& message,
     Sender::timeout_t const& timeout)
   {
+    std::lock_guard<std::mutex> lk(m_send_mutex);
     get_sender(timeout);
     if (m_network_sender_ptr == nullptr) {
       throw TimeoutExpired(
@@ -107,7 +108,6 @@ private:
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic << ", this="
     //  << (void*)this;
-    std::lock_guard<std::mutex> lk(m_send_mutex);
 
     try {
       m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic);
@@ -132,6 +132,7 @@ private:
     MessageType& message,
     Sender::timeout_t const& timeout)
   {
+    std::lock_guard<std::mutex> lk(m_send_mutex);
     get_sender(timeout);
     if (m_network_sender_ptr == nullptr) {
       TLOG() << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
@@ -141,7 +142,6 @@ private:
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     // TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic <<
     // ", this=" << (void*)this;
-    std::lock_guard<std::mutex> lk(m_send_mutex);
 
     auto res =
       m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic, true);
@@ -168,6 +168,7 @@ private:
     Sender::timeout_t const& timeout,
     std::string topic)
   {
+    std::lock_guard<std::mutex> lk(m_send_mutex);
     get_sender(timeout);
     if (m_network_sender_ptr == nullptr) {
       throw TimeoutExpired(
@@ -177,7 +178,6 @@ private:
     auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
     //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" << m_topic << ", this="
     //  << (void*)this;
-    std::lock_guard<std::mutex> lk(m_send_mutex);
 
     try {
       m_network_sender_ptr->send(serialized.data(), serialized.size(), timeout, topic);
