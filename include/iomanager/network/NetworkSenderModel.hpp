@@ -37,7 +37,7 @@ public:
 
   void send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string topic) override;
 
-  bool is_ready_for_send(Sender::timeout_t timeout) override;
+  bool is_ready_for_sending(Sender::timeout_t timeout) override;
 
 private:
   void get_sender(Sender::timeout_t const& timeout);

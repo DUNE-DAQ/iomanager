@@ -48,7 +48,7 @@ QueueSenderModel<Datatype>::send(Datatype&& data, Sender::timeout_t timeout) // 
 
 template<typename Datatype>
 inline bool
-QueueSenderModel<Datatype>::is_ready_for_send(Sender::timeout_t timeout) // NOLINT
+QueueSenderModel<Datatype>::is_ready_for_sending(Sender::timeout_t /*timeout*/) // NOLINT
 {
   // Queues are always ready
   return true;

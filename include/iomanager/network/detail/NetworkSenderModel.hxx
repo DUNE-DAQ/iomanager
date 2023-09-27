@@ -64,7 +64,7 @@ NetworkSenderModel<Datatype>::send_with_topic(Datatype&& data, Sender::timeout_t
 
 template<typename Datatype>
 inline bool
-NetworkSenderModel<Datatype>::is_ready_for_send(Sender::timeout_t timeout) // NOLINT
+NetworkSenderModel<Datatype>::is_ready_for_sending(Sender::timeout_t timeout) // NOLINT
 {
   get_sender(timeout);
   return (m_network_sender_ptr != nullptr);
