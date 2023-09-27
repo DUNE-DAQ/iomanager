@@ -17,11 +17,11 @@ template<typename Datatype>
 inline NetworkSenderModel<Datatype>::NetworkSenderModel(ConnectionId const& conn_id)
   : SenderConcept<Datatype>(conn_id)
 {
-  TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this);
-  try {
-    get_sender(std::chrono::milliseconds(1000));
-  } catch (ConnectionNotFound const& ex) {
-    TLOG() << "Initial connection attempt failed: " << ex;
+  TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this)
+         << ", uid=" << conn_id.uid << ", data_type=" << conn_id.data_type;
+  get_sender(std::chrono::milliseconds(1000));
+  if (m_network_sender_ptr == nullptr) {
+    TLOG() << "Initial connection attempt failed for uid=" << conn_id.uid << ", data_type=" << conn_id.data_type;
   }
 }
 
@@ -60,6 +60,14 @@ NetworkSenderModel<Datatype>::send_with_topic(Datatype&& data, Sender::timeout_t
   } catch (ipm::SendTimeoutExpired& ex) {
     throw TimeoutExpired(ERS_HERE, this->id().uid, "send", timeout.count(), ex);
   }
+}
+
+template<typename Datatype>
+inline bool
+NetworkSenderModel<Datatype>::is_ready_for_send(Sender::timeout_t timeout) // NOLINT
+{
+  get_sender(timeout);
+  return (m_network_sender_ptr != nullptr);
 }
 
 template<typename Datatype>

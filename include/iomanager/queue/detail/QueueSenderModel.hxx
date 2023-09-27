@@ -47,6 +47,14 @@ QueueSenderModel<Datatype>::send(Datatype&& data, Sender::timeout_t timeout) // 
 }
 
 template<typename Datatype>
+inline bool
+QueueSenderModel<Datatype>::is_ready_for_send(Sender::timeout_t timeout) // NOLINT
+{
+  // Queues are always ready
+  return true;
+}
+
+template<typename Datatype>
 inline QueueSenderModel<Datatype>::QueueSenderModel(QueueSenderModel&& other)
   : SenderConcept<Datatype>(other.m_conn.uid)
   , m_queue(std::move(other.m_queue))
