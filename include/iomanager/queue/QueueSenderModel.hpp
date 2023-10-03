@@ -31,6 +31,8 @@ public:
 
   void send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string) override;
 
+  bool is_ready_for_sending(Sender::timeout_t timeout) override;
+
 private:
   std::shared_ptr<Queue<Datatype>> m_queue;
 };

@@ -49,6 +49,7 @@ public:
   virtual void send(Datatype&& data, Sender::timeout_t timeout) = 0;     // NOLINT
   virtual bool try_send(Datatype&& data, Sender::timeout_t timeout) = 0; // NOLINT
   virtual void send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string topic) = 0; // NOLINT
+  virtual bool is_ready_for_sending(Sender::timeout_t timeout) = 0;      // NOLINT
 };
 
 } // namespace dunedaq::iomanager
