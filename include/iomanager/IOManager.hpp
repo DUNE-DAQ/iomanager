@@ -9,21 +9,14 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 
+#include "iomanager/Receiver.hpp"
+#include "iomanager/Sender.hpp"
 #include "iomanager/connection/Structs.hpp"
-#include "iomanager/network/ConfigClient.hpp"
-#include "iomanager/network/NetworkManager.hpp"
-#include "iomanager/network/NetworkReceiverModel.hpp"
-#include "iomanager/network/NetworkSenderModel.hpp"
-#include "iomanager/queue/QueueReceiverModel.hpp"
-#include "iomanager/queue/QueueRegistry.hpp"
-#include "iomanager/queue/QueueSenderModel.hpp"
 
-#include "nlohmann/json.hpp"
-
-#include <cstdlib>
+#include <chrono>
+#include <functional>
 #include <map>
 #include <memory>
-#include <regex>
 #include <string>
 
 namespace dunedaq {
@@ -57,153 +50,35 @@ public:
   void configure(Queues_t queues,
                  Connections_t connections,
                  bool use_config_client,
-                 std::chrono::milliseconds config_client_interval)
-  {
-    char* session = getenv("DUNEDAQ_SESSION");
-    if (session) {
-      m_session = std::string(session);
-    } else {
-      session = getenv("DUNEDAQ_PARTITION");
-      if (session) {
-        m_session = std::string(session);
-      } else {
-        throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
-      }
-    }
+                 std::chrono::milliseconds config_client_interval);
 
-    Queues_t qCfg = queues;
-    Connections_t nwCfg;
-
-    for (auto& connection : connections) {
-      nwCfg.push_back(connection);
-    }
-
-    QueueRegistry::get().configure(qCfg);
-    NetworkManager::get().configure(nwCfg, use_config_client, config_client_interval);
-  }
-
-  void reset()
-  {
-    QueueRegistry::get().reset();
-    NetworkManager::get().reset();
-    m_senders.clear();
-    m_receivers.clear();
-    s_instance = nullptr;
-  }
+  void reset();
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId id)
-  {
-    if (id.data_type != datatype_to_string<Datatype>()) {
-      throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
-    }
-
-    if (id.session == "") {
-      id.session = m_session;
-    }
-
-    static std::mutex dt_sender_mutex;
-    std::lock_guard<std::mutex> lk(dt_sender_mutex);
-
-    if (!m_senders.count(id)) {
-      if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
-        TLOG() << "Creating QueueSenderModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(id);
-      } else {
-        TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
-               << id.session;
-        m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(id);
-      }
-    }
-    return std::dynamic_pointer_cast<SenderConcept<Datatype>>(m_senders[id]);
-  }
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId id);
 
   template<typename Datatype>
-  std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& uid)
-  {
-    auto data_type = datatype_to_string<Datatype>();
-    ConnectionId id;
-    id.uid = uid;
-    id.data_type = data_type;
-    id.session = m_session;
-    return get_sender<Datatype>(id);
-  }
+  std::shared_ptr<SenderConcept<Datatype>> get_sender(std::string const& uid);
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionId id)
-  {
-    if (id.data_type != datatype_to_string<Datatype>()) {
-      throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
-    }
-
-    if (id.session == "") {
-      id.session = m_session;
-    }
-
-    static std::mutex dt_receiver_mutex;
-    std::lock_guard<std::mutex> lk(dt_receiver_mutex);
-
-    if (!m_receivers.count(id)) {
-      if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
-        TLOG() << "Creating QueueReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
-        m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(id);
-      } else {
-        TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
-               << id.session;
-        m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(id);
-      }
-    }
-    return std::dynamic_pointer_cast<ReceiverConcept<Datatype>>(m_receivers[id]); // NOLINT
-  }
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(ConnectionId id);
 
   template<typename Datatype>
-  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& uid)
-  {
-    auto data_type = datatype_to_string<Datatype>();
-    ConnectionId id;
-    id.uid = uid;
-    id.data_type = data_type;
-    id.session = m_session;
-    return get_receiver<Datatype>(id);
-  }
+  std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& uid);
 
   template<typename Datatype>
-  void add_callback(ConnectionId const& id, std::function<void(Datatype&)> callback)
-  {
-    auto receiver = get_receiver<Datatype>(id);
-    receiver->add_callback(callback);
-  }
+  void add_callback(ConnectionId const& id, std::function<void(Datatype&)> callback);
 
   template<typename Datatype>
-  void add_callback(std::string const& uid, std::function<void(Datatype&)> callback)
-  {
-    auto receiver = get_receiver<Datatype>(uid);
-    receiver->add_callback(callback);
-  }
+  void add_callback(std::string const& uid, std::function<void(Datatype&)> callback);
 
   template<typename Datatype>
-  void remove_callback(ConnectionId const& id)
-  {
-    auto receiver = get_receiver<Datatype>(id);
-    receiver->remove_callback();
-  }
+  void remove_callback(ConnectionId const& id);
 
   template<typename Datatype>
-  void remove_callback(std::string const& uid)
-  {
-    auto receiver = get_receiver<Datatype>(uid);
-    receiver->remove_callback();
-  }
+  void remove_callback(std::string const& uid);
 
-  std::set<std::string> get_datatypes(std::string const& uid)
-  {
-    auto output = QueueRegistry::get().get_datatypes(uid);
-    auto networks = NetworkManager::get().get_datatypes(uid);
-    for (auto& dt : networks) {
-      output.insert(dt);
-    }
-    return output;
-  }
+  std::set<std::string> get_datatypes(std::string const& uid);
 
 private:
   IOManager() {}
@@ -219,41 +94,8 @@ private:
 
 } // namespace iomanager
 
-// Helper functions
-[[maybe_unused]] static std::shared_ptr<iomanager::IOManager> // NOLINT(build/namespaces)
-get_iomanager()
-{
-  return iomanager::IOManager::get();
-}
-
-template<typename Datatype>
-static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_sender(iomanager::ConnectionId const& id)
-{
-  return iomanager::IOManager::get()->get_sender<Datatype>(id);
-}
-
-template<typename Datatype>
-static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_receiver(iomanager::ConnectionId const& id)
-{
-  return iomanager::IOManager::get()->get_receiver<Datatype>(id);
-}
-
-template<typename Datatype>
-static std::shared_ptr<iomanager::SenderConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_sender(std::string const& uid)
-{
-  return iomanager::IOManager::get()->get_sender<Datatype>(uid);
-}
-
-template<typename Datatype>
-static std::shared_ptr<iomanager::ReceiverConcept<Datatype>> // NOLINT(build/namespaces)
-get_iom_receiver(std::string const& uid)
-{
-  return iomanager::IOManager::get()->get_receiver<Datatype>(uid);
-}
-
 } // namespace dunedaq
+
+#include "detail/IOManager.hxx"
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_

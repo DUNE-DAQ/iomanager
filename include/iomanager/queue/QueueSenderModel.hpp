@@ -10,15 +10,9 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_QSENDER_HPP_
 
 #include "iomanager/Sender.hpp"
-#include "iomanager/queue/QueueIssues.hpp"
-#include "iomanager/queue/QueueRegistry.hpp"
-
-#include "logging/Logging.hpp"
 
 #include <memory>
 #include <string>
-#include <typeinfo>
-#include <utility>
 
 namespace dunedaq::iomanager {
 
@@ -27,53 +21,24 @@ template<typename Datatype>
 class QueueSenderModel : public SenderConcept<Datatype>
 {
 public:
-  explicit QueueSenderModel(ConnectionId const& request)
-    : SenderConcept<Datatype>(request)
-  {
-    TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
-    m_queue = QueueRegistry::get().get_queue<Datatype>(request.uid);
-    TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
-    // get queue ref from queueregistry based on conn_id
-  }
+  explicit QueueSenderModel(ConnectionId const& request);
 
-  QueueSenderModel(QueueSenderModel&& other)
-    : SenderConcept<Datatype>(other.m_conn.uid)
-    , m_queue(std::move(other.m_queue))
-  {
-  }
+  QueueSenderModel(QueueSenderModel&& other);
 
-  void send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
-  {
-    if (m_queue == nullptr)
-      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
+  void send(Datatype&& data, Sender::timeout_t timeout) override;
 
-    try {
-      m_queue->push(std::move(data), timeout);
-    } catch (QueueTimeoutExpired& ex) {
-      throw TimeoutExpired(ERS_HERE, this->id().uid, "push", timeout.count(), ex);
-    }
-  }
+  bool try_send(Datatype&& data, Sender::timeout_t timeout) override;
 
-  bool try_send(Datatype&& data, Sender::timeout_t timeout) override // NOLINT
-  {
-    if (m_queue == nullptr) {
-      ers::error(ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
-      return false;
-    }
+  void send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string) override;
 
-    return m_queue->try_push(std::move(data), timeout);
-  }
-
-  void send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string) override // NOLINT
-  {
-    // Topics are not used for Queues
-    send(std::move(data), timeout);
-  }
+  bool is_ready_for_sending(Sender::timeout_t timeout) override;
 
 private:
   std::shared_ptr<Queue<Datatype>> m_queue;
 };
 
 } // namespace dunedaq::iomanager
+
+#include "detail/QueueSenderModel.hxx"
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
