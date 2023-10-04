@@ -9,6 +9,8 @@
 #include "iomanager/IOManager.hpp"
 
 #include <memory>
+#include <set>
+#include <string>
 
 std::shared_ptr<dunedaq::iomanager::IOManager> dunedaq::iomanager::IOManager::s_instance = nullptr;
 
@@ -49,6 +51,21 @@ dunedaq::iomanager::IOManager::reset()
   m_senders.clear();
   m_receivers.clear();
   s_instance = nullptr;
+}
+
+bool
+dunedaq::iomanager::IOManager::senders_are_ready()
+{
+  auto ready = true;
+
+  for (auto& sender_pair : m_senders) {
+    if (!sender_pair.second->is_ready_for_sending(Sender::timeout_t(1))) {
+      ready = false;
+      break;
+    }
+  }
+
+  return ready;
 }
 
 std::set<std::string>
