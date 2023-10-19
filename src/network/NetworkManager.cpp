@@ -9,7 +9,7 @@
 #include "iomanager/network/NetworkManager.hpp"
 #include "iomanager/SchemaUtils.hpp"
 
-#include "iomanager/connectioninfo/InfoNljs.hpp"
+#include "iomanager/networkinfo/InfoNljs.hpp"
 
 #include "ipm/PluginInfo.hpp"
 #include "logging/Logging.hpp"
@@ -36,6 +36,10 @@ NetworkManager::get()
 void
 NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 {
+    networkinfo::Info my_info;
+    my_info.config_client_time = m_config_client_us.exchange(0);
+    my_info.config_client_count = m_config_client_count.exchange(0);
+    ci.add(my_info);
 
   for (auto& sender : m_sender_plugins) {
     opmonlib::InfoCollector tmp_ic;
@@ -193,7 +197,10 @@ NetworkManager::get_connections(ConnectionId const& conn_id, bool restrict_singl
       std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() <
       1000) {
       try {
+        auto client_start = std::chrono::steady_clock::now();
         auto client_response = m_config_client->resolveConnection(conn_id, conn_id.session);
+        m_config_client_us += get_elapsed_microseconds(client_start);
+        m_config_client_count += 1;
         if (restrict_single && client_response.connections.size() > 1) {
           throw NameCollision(ERS_HERE, conn_id.uid);
         }
@@ -309,7 +316,10 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   }
 
   if (m_config_client != nullptr && !is_pubsub) {
+    auto start_time = std::chrono::steady_clock::now();
     m_config_client->publish(connections[0]);
+    m_config_client_us += get_elapsed_microseconds(start_time);
+        m_config_client_count += 1;
   }
 
   TLOG_DEBUG(12) << "END";
@@ -348,7 +358,10 @@ NetworkManager::create_sender(ConnectionInfo connection)
   }
 
   if (m_config_client != nullptr && is_pubsub) {
+    auto start_time = std::chrono::steady_clock::now();
     m_config_client->publish(connection);
+    m_config_client_us += get_elapsed_microseconds(start_time);
+        m_config_client_count += 1;
   }
 
   return plugin;
