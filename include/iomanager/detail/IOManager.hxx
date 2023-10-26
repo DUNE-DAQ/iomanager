@@ -58,11 +58,11 @@ IOManager::get_receiver(ConnectionId id)
 
   if (!m_receivers.count(id)) {
     if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
-      TLOG() << "Creating QueueReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
+      TLOG("IOManager") << "Creating QueueReceiverModel for uid " << id.uid << ", datatype " << id.data_type;
       m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(id);
     } else {
-      TLOG() << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
-             << id.session;
+      TLOG("IOManager") << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type
+                        << " in session " << id.session;
       m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(id);
     }
   }
@@ -98,11 +98,11 @@ IOManager::get_sender(ConnectionId id)
 
   if (!m_senders.count(id)) {
     if (QueueRegistry::get().has_queue(id.uid, id.data_type)) { // if queue
-      TLOG() << "Creating QueueSenderModel for uid " << id.uid << ", datatype " << id.data_type;
+      TLOG("IOManager") << "Creating QueueSenderModel for uid " << id.uid << ", datatype " << id.data_type;
       m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(id);
     } else {
-      TLOG() << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type << " in session "
-             << id.session;
+      TLOG("IOManager") << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type
+                        << " in session " << id.session;
       m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(id);
     }
   }
