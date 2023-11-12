@@ -1,4 +1,5 @@
 #include "iomanager/queue/FollyQueue.hpp"
+#include "iomanager/queue/SPSCFollyQueue.hpp"
 #include "iomanager/queue/StdDeQueue.hpp"
 
 #include <cxxabi.h>
@@ -57,7 +58,8 @@ QueueRegistry::create_queue(const QueueConfig& config)
       queue = std::make_shared<StdDeQueue<T>>(config.id.uid, config.capacity);
       break;
     case QueueType::kFollySPSCQueue:
-      queue = std::make_shared<FollySPSCQueue<T>>(config.id.uid, config.capacity);
+      // queue = std::make_shared<FollySPSCQueue<T>>(config.id.uid, config.capacity);
+      queue = std::make_shared<SPSCFollyQueue<T>>(config.id.uid, config.capacity);
       break;
     case QueueType::kFollyMPMCQueue:
       queue = std::make_shared<FollyMPMCQueue<T>>(config.id.uid, config.capacity);
