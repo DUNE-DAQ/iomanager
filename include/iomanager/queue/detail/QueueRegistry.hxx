@@ -58,13 +58,14 @@ QueueRegistry::create_queue(const QueueConfig& config)
       queue = std::make_shared<StdDeQueue<T>>(config.id.uid, config.capacity);
       break;
     case QueueType::kFollySPSCQueue:
-      // queue = std::make_shared<FollySPSCQueue<T>>(config.id.uid, config.capacity);
-      queue = std::make_shared<SPSCFollyQueue<T>>(config.id.uid, config.capacity);
+      queue = std::make_shared<FollySPSCQueue<T>>(config.id.uid, config.capacity);
       break;
     case QueueType::kFollyMPMCQueue:
       queue = std::make_shared<FollyMPMCQueue<T>>(config.id.uid, config.capacity);
       break;
-
+    case QueueType::kSPSCFollyQueue:
+      queue = std::make_shared<SPSCFollyQueue<T>>(config.id.uid, config.capacity);
+      break;
     default:
       throw QueueTypeUnknown(ERS_HERE, str(config.queue_type));
   }

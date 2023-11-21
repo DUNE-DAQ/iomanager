@@ -10,7 +10,7 @@ local c = {
     uid: s.string("Uid_t", doc="An identifier"),
     datatype: s.string("DataType_t", doc="Name of a data type"),
 
-    qtype: s.enum("QueueType", ["kUnknown", "kStdDeQueue", "kFollySPSCQueue", "kFollyMPMCQueue"], doc="The kinds (types/classes) of queues"),
+    qtype: s.enum("QueueType", ["kUnknown", "kStdDeQueue", "kFollySPSCQueue", "kFollyMPMCQueue", "kSPSCFollyQueue"], doc="The kinds (types/classes) of queues"),
     capacity: s.number("Capacity_t", dtype="u8", doc="Capacity of a queue"),
 
     uri: s.string("Uri_t", doc="Location of a resource"),
