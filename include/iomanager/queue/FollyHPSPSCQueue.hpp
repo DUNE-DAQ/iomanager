@@ -11,13 +11,13 @@ namespace iomanager {
 
 //
 template<class T>
-class SPSCFollyQueue : public Queue<T>
+class FollyHPSPSCQueue : public Queue<T>
 {
 public:
   using value_t = T;
   using duration_t = typename Queue<T>::duration_t;
 
-  explicit SPSCFollyQueue(const std::string& name, size_t capacity)
+  explicit FollyHPSPSCQueue(const std::string& name, size_t capacity)
     : Queue<T>(name)
     , m_queue(capacity)
     , m_capacity(capacity)
@@ -130,10 +130,10 @@ public:
   }
 
   // Delete the copy and move operations
-  SPSCFollyQueue(const SPSCFollyQueue&) = delete;
-  SPSCFollyQueue& operator=(const SPSCFollyQueue&) = delete;
-  SPSCFollyQueue(SPSCFollyQueue&&) = delete;
-  SPSCFollyQueue& operator=(SPSCFollyQueue&&) = delete;
+  FollyHPSPSCQueue(const FollyHPSPSCQueue&) = delete;
+  FollyHPSPSCQueue& operator=(const FollyHPSPSCQueue&) = delete;
+  FollyHPSPSCQueue(FollyHPSPSCQueue&&) = delete;
+  FollyHPSPSCQueue& operator=(FollyHPSPSCQueue&&) = delete;
 
 private:
   // The boolean argument is `MayBlock`, where "block" appears to mean

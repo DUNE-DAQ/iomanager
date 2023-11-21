@@ -1,5 +1,5 @@
 #include "iomanager/queue/FollyQueue.hpp"
-#include "iomanager/queue/SPSCFollyQueue.hpp"
+#include "iomanager/queue/FollyHPSPSCQueue.hpp"
 #include "iomanager/queue/StdDeQueue.hpp"
 
 #include <cxxabi.h>
@@ -63,8 +63,8 @@ QueueRegistry::create_queue(const QueueConfig& config)
     case QueueType::kFollyMPMCQueue:
       queue = std::make_shared<FollyMPMCQueue<T>>(config.id.uid, config.capacity);
       break;
-    case QueueType::kSPSCFollyQueue:
-      queue = std::make_shared<SPSCFollyQueue<T>>(config.id.uid, config.capacity);
+    case QueueType::kFollyHPSPSCQueue:
+      queue = std::make_shared<FollyHPSPSCQueue<T>>(config.id.uid, config.capacity);
       break;
     default:
       throw QueueTypeUnknown(ERS_HERE, str(config.queue_type));
