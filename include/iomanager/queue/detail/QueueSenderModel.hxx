@@ -65,9 +65,9 @@ template<typename Datatype>
 inline QueueSenderModel<Datatype>::QueueSenderModel(ConnectionId const& request)
   : SenderConcept<Datatype>(request)
 {
-  TLOG() << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
+  TLOG("QueueSenderModel") << "QueueSenderModel created with DT! Addr: " << static_cast<void*>(this);
   m_queue = QueueRegistry::get().get_queue<Datatype>(request.uid);
-  TLOG() << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
+  TLOG("QueueSenderModel") << "QueueSenderModel m_queue=" << static_cast<void*>(m_queue.get());
   // get queue ref from queueregistry based on conn_id
 }
 
