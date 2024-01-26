@@ -39,12 +39,14 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 
   for (auto& sender : m_sender_plugins) {
     opmonlib::InfoCollector tmp_ic;
+    if(sender.second == nullptr) continue;
     sender.second->get_info(tmp_ic, level);
     ci.add(sender.first.uid, tmp_ic);
   }
 
   for (auto& receiver : m_receiver_plugins) {
     opmonlib::InfoCollector tmp_ic;
+    if(receiver.second == nullptr) continue;
     receiver.second->get_info(tmp_ic, level);
     ci.add(receiver.first.uid, tmp_ic);
   }
