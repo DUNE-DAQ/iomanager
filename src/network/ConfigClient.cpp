@@ -46,9 +46,9 @@ ConfigClient::ConfigClient(const std::string& server,
   m_thread = std::thread([this, publish_interval]() {
     while (m_active) {
       try {
-        publish();
+        auto count = publish();
         m_connected = true;
-        TLOG_DEBUG(24) << "Automatic publish complete";
+        TLOG_DEBUG(24) << "Automatic publish of " << count << " connections complete";
       } catch (ers::Issue& ex) {
         if (m_connected)
           ers::error(ex);
@@ -86,7 +86,7 @@ ConfigClient::resolveConnection(const ConnectionRequest& query, std::string sess
   if (session == "") {
     session = m_session;
   }
-  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in session " << session;
+  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> of type " << query.data_type << " in session " << session;
   std::string target = "/getconnection/" + session;
   http::request<http::string_body> req{ http::verb::post, target, 11 };
   req.set(http::field::content_type, "application/json");
@@ -135,7 +135,8 @@ ConfigClient::publish(ConnectionRegistration const& connection)
 {
   {
     std::lock_guard<std::mutex> lock(m_mutex);
-    TLOG_DEBUG(26) << "Adding connection with UID " << connection.uid << " and URI " << connection.uri
+    TLOG_DEBUG(26) << "Adding connection with UID " << connection.uid << ", data type " << connection.data_type
+                   << " and URI " << connection.uri
                    << " to publish list";
 
     m_registered_connections.insert(connection);
@@ -148,16 +149,18 @@ ConfigClient::publish(const std::vector<ConnectionRegistration>& connections)
   {
     std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& entry : connections) {
-      TLOG_DEBUG(26) << "Adding connection with UID " << entry.uid << " and URI " << entry.uri << " to publish list";
+      TLOG_DEBUG(26) << "Adding connection with UID " << entry.uid << ", data type " << entry.data_type
+                     << " and URI " << entry.uri << " to publish list";
 
       m_registered_connections.insert(entry);
     }
   }
 }
 
-void
+size_t
 ConfigClient::publish()
 {
+  size_t count = 0;
   json content{ { "partition", m_session } };
   json connections = json::array();
   {
@@ -166,8 +169,9 @@ ConfigClient::publish()
       json item = entry;
       connections.push_back(item);
     }
+    count = connections.size();
     if (connections.size() == 0) {
-      return;
+      return count;
     }
   }
   content["connections"] = connections;
@@ -199,6 +203,7 @@ ConfigClient::publish()
     throw(FailedPublish(ERS_HERE, ex.what(), ex));
   }
   m_connected = true;
+  return count;
 }
 
 void

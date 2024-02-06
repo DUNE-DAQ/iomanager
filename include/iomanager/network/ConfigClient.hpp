@@ -96,7 +96,7 @@ public:
   bool is_connected() { return m_connected.load(); }
 
   private:
-  void publish();
+  size_t publish();
   std::string m_session;
   net::io_context m_ioContext;
   net::ip::basic_resolver<net::ip::tcp>::results_type m_addr;
