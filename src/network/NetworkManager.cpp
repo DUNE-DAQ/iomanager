@@ -292,7 +292,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
 
     if (oldUri.port == "*")
       oldUri.port = newUri.port;
-    if (oldUri.host == "*")
+    if (oldUri.host == "*" || oldUri.host == "0.0.0.0")
       oldUri.host = newUri.host;
 
     connections[0].uri = oldUri.to_string();
@@ -343,7 +343,7 @@ NetworkManager::create_sender(ConnectionInfo connection)
 
     if (oldUri.port == "*")
       oldUri.port = newUri.port;
-    if (oldUri.host == "*")
+    if (oldUri.host == "*" || oldUri.host == "0.0.0.0")
       oldUri.host = newUri.host;
 
     connection.uri = oldUri.to_string();
