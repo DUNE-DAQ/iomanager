@@ -270,7 +270,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     std::vector<std::string> uris;
     for (auto& conn : connections) {
       // Check for case where both ends are in app and ConnectivityService hasn't received other end yet
-      if (conn.uri.find("*") != std::string::npos) {
+      if (conn.uri.find("*") != std::string::npos || conn.uri.find("0.0.0.0") != std::string::npos) {
         continue;
       }
       uris.push_back(conn.uri);
@@ -286,7 +286,8 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   TLOG_DEBUG(12) << "Receiver reports connected to URI " << newCs;
 
   // Replace with resolved if there are wildcards (host and/or port)
-  if (connections[0].uri.find("*") != std::string::npos) {
+  if (connections[0].uri.find("*") != std::string::npos || connections[0].uri.find("0.0.0.0") != std::string::npos) {
+    TLOG_DEBUG(14) << "Wildcard found in connection URI " << connections[0].uri << ", adjusting before publish";
     auto newUri = utilities::parse_connection_string(newCs);
     auto oldUri = utilities::parse_connection_string(connections[0].uri);
 
@@ -296,6 +297,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
       oldUri.host = newUri.host;
 
     connections[0].uri = oldUri.to_string();
+    TLOG_DEBUG(14) << "Connection URI is now " << connections[0].uri;
   }
 
   if (is_pubsub) {
@@ -326,7 +328,7 @@ NetworkManager::create_sender(ConnectionInfo connection)
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
   // Check for case where both ends are in app and ConnectivityService hasn't received other end yet
-  if (!is_pubsub && connection.uri.find("*") != std::string::npos) {
+  if (!is_pubsub && (connection.uri.find("*") != std::string::npos || connection.uri.find("0.0.0.0") != std::string::npos)) {
     return nullptr;
   }
 
@@ -337,7 +339,8 @@ NetworkManager::create_sender(ConnectionInfo connection)
   TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << newCs;
 
   // Replace with resolved if there are wildcards (host and/or port)
-  if (connection.uri.find("*") != std::string::npos) {
+  if (connection.uri.find("*") != std::string::npos || connection.uri.find("0.0.0.0") != std::string::npos) {
+    TLOG_DEBUG(13) << "Wildcard found in connection URI " << connection.uri << ", adjusting before publish";
     auto newUri = utilities::parse_connection_string(newCs);
     auto oldUri = utilities::parse_connection_string(connection.uri);
 
@@ -347,6 +350,7 @@ NetworkManager::create_sender(ConnectionInfo connection)
       oldUri.host = newUri.host;
 
     connection.uri = oldUri.to_string();
+    TLOG_DEBUG(13) << "Connection URI is now " << connection.uri;
   }
 
   if (m_config_client != nullptr && is_pubsub) {
