@@ -6,7 +6,6 @@
  * received with this code.
  */
 
-#include "iomanager/connection/Structs.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 
 #include "logging/Logging.hpp"

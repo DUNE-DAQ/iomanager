@@ -11,7 +11,6 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
 
 #include "iomanager/network/NetworkIssues.hpp"
-#include "iomanager/connection/Structs.hpp"
 #include "iomanager/network/ConfigClient.hpp"
 
 #include "ipm/Receiver.hpp"

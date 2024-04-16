@@ -11,7 +11,6 @@
 
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
-#include "iomanager/connection/Structs.hpp"
 
 #include <chrono>
 #include <functional>

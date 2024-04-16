@@ -11,7 +11,6 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_SCHEMAUTILS_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_SCHEMAUTILS_HPP_
 
-#include "iomanager/connection/Structs.hpp"
 #include "serialization/Serialization.hpp"
 
 #include <functional>
@@ -22,6 +21,64 @@ namespace dunedaq {
 namespace iomanager {
 
 namespace connection {
+
+enum class QueueType
+{
+  kUnknown,
+  kStdDeQueue,
+  kFollySPSCQueue,
+  kFollyMPMCQueue
+};
+
+enum class ConnectionType
+{
+  kSendRecv,
+  kPubSub
+};
+
+struct ConnectionId
+{
+  std::string uid;
+  std::string data_type;
+  std::string session = "";
+};
+
+struct QueueConfig
+{
+  ConnectionId id;
+  QueueType queue_type;
+  uint32_t capacity;
+};
+typedef std::vector<QueueConfig> Queues_t;
+
+struct Connection
+{
+  ConnectionId id;
+  std::string uri;
+  ConnectionType connection_type;
+};
+typedef std::vector<Connection> Connections_t;
+
+inline QueueType
+parse_QueueType(std::string type_name)
+{
+  if (type_name == "kFollyMPMCQueue")
+    return QueueType::kFollyMPMCQueue;
+  if (type_name == "kFollySPSCQueue")
+    return QueueType::kFollySPSCQueue;
+  if (type_name == "kStdDeQueue")
+    return QueueType::kStdDeQueue;
+  return QueueType::kUnknown;
+}
+
+inline ConnectionType
+parse_ConnectionType(std::string type)
+{
+  if (type == "kPubSub")
+    return ConnectionType::kPubSub;
+ 
+  return ConnectionType::kSendRecv;
+}
 
 inline QueueType
 string_to_queue_type(std::string type_name)
@@ -41,6 +98,23 @@ string_to_queue_type(std::string type_name)
   return parse_QueueType("k" + type_name + "Queue");
 }
 
+inline std::string
+str(QueueType const& qtype)
+{
+  switch (qtype) {
+    case QueueType::kFollyMPMCQueue:
+      return "kFollyMPMCQueue";
+    case QueueType::kFollySPSCQueue:
+      return "kFollySPSCQueue";
+    case QueueType::kStdDeQueue:
+      return "kStdDeQueue";
+    default:
+    case QueueType::kUnknown:
+      return "kUnknown";
+  }
+  return "kUnknown";
+}
+
 inline bool
 operator<(ConnectionId const& l, ConnectionId const& r)
 {
@@ -55,8 +129,7 @@ operator<(ConnectionId const& l, ConnectionId const& r)
 inline bool
 operator==(ConnectionId const& l, ConnectionId const& r)
 {
-  return (l.session == "" || r.session == "" ||  l.session == r.session) && l.uid == r.uid &&
-         l.data_type == r.data_type;
+  return (l.session == "" || r.session == "" || l.session == r.session) && l.uid == r.uid && l.data_type == r.data_type;
 }
 
 inline bool

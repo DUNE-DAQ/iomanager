@@ -1,4 +1,3 @@
-#include "iomanager/connection/Structs.hpp"
 #include "iomanager/network/ConfigClient.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 #include "iomanager/network/NetworkReceiverModel.hpp"
