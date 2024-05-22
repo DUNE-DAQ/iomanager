@@ -19,6 +19,7 @@ local c = {
     ConnectionId: s.record("ConnectionId",[
         s.field("uid", self.uid, doc="Identifier for the Connection instance"),
         s.field("data_type", self.datatype, doc="Name of the expected data type"),
+        s.field("tag", self.uid, default="", doc="Tag to identify this connection endpoint (used for subscribers)"),
         s.field("session", self.uid, default="", doc="Name of the DAQ session this Connection lives in")
     ]),
 

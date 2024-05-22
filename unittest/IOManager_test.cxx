@@ -181,6 +181,7 @@ struct ConfigurationTestFixture
     pub2_id = ConnectionId{ "pub2", "data2_t" };
     pub3_id = ConnectionId{ "pub3", "data3_t" };
     sub1_id = ConnectionId{ "pub.*", "data2_t" };
+    sub1b_id = ConnectionId{ "pub.*", "data2_t", "b" };
     sub2_id = ConnectionId{ "pub2", "data2_t" };
     sub3_id = ConnectionId{ "pub.*", "data3_t" };
 
@@ -211,6 +212,7 @@ struct ConfigurationTestFixture
   ConnectionId pub2_id;
   ConnectionId pub3_id;
   ConnectionId sub1_id;
+  ConnectionId sub1b_id;
   ConnectionId sub2_id;
   ConnectionId sub3_id;
 };
@@ -310,6 +312,36 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
     sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
   auto ret3 = sub3_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret3.d1, 58);
+}
+
+BOOST_FIXTURE_TEST_CASE(MultipleReceiverPubSub, ConfigurationTestFixture)
+{
+  auto pub1_sender = IOManager::get()->get_sender<Data2>(pub1_id);
+  auto sub1a_receiver = IOManager::get()->get_receiver<Data2>(sub1_id);
+  auto sub1b_receiver = IOManager::get()->get_receiver<Data2>(sub1b_id);
+
+  // Sub1 is subscribed to all data_t publishers, two instances should both get all messages
+  Data2 sent_t1(56, 26.5);
+  pub1_sender->send(std::move(sent_t1), dunedaq::iomanager::Sender::s_no_block);
+
+  auto ret1a = sub1a_receiver->receive(std::chrono::milliseconds(10));
+  auto ret1b = sub1b_receiver->receive(std::chrono::milliseconds(10));
+  
+  BOOST_CHECK_EQUAL(ret1a.d1, 56);
+  BOOST_CHECK_EQUAL(ret1a.d2, 26.5);
+  BOOST_CHECK_EQUAL(ret1b.d1, 56);
+  BOOST_CHECK_EQUAL(ret1b.d2, 26.5);
+
+  Data2 sent_t2(57, 27.5);
+  pub1_sender->send(std::move(sent_t2), dunedaq::iomanager::Sender::s_no_block);
+
+  ret1a = sub1a_receiver->receive(std::chrono::milliseconds(10));
+  ret1b = sub1b_receiver->receive(std::chrono::milliseconds(10));
+  
+  BOOST_CHECK_EQUAL(ret1a.d1, 57);
+  BOOST_CHECK_EQUAL(ret1a.d2, 27.5);
+  BOOST_CHECK_EQUAL(ret1b.d1, 57);
+  BOOST_CHECK_EQUAL(ret1b.d2, 27.5);
 }
 
 BOOST_FIXTURE_TEST_CASE(PubSubWithTopic, ConfigurationTestFixture)
