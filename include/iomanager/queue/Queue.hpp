@@ -16,8 +16,6 @@
 
 #include "iomanager/queue/QueueBase.hpp"
 
-#include "opmonlib/InfoCollector.hpp"
-
 #include "ers/Issue.hpp"
 
 #include <chrono>

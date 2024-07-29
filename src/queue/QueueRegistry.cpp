@@ -38,18 +38,6 @@ QueueRegistry::configure(const std::vector<QueueConfig>& configs)
   m_configured = true;
 }
 
-void
-QueueRegistry::gather_stats(opmonlib::InfoCollector& ic, int level)
-{
-
-  for (const auto& [name, queue_entry] : m_queue_registry) {
-    opmonlib::InfoCollector tmp_ci;
-    queue_entry.m_instance->get_info(tmp_ci, level);
-    if (!tmp_ci.is_empty()) {
-      ic.add(name, tmp_ci);
-    }
-  }
-}
 
 bool
 QueueRegistry::has_queue(const std::string& uid, const std::string& data_type) const

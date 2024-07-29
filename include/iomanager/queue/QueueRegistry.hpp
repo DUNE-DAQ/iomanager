@@ -16,7 +16,6 @@
 #include "iomanager/queue/QueueIssues.hpp"
 
 #include "ers/Issue.hpp"
-#include "opmonlib/InfoCollector.hpp"
 
 #include <map>
 #include <memory>
@@ -57,9 +56,6 @@ public:
    * @param configs Queue configurations
    */
   void configure(const std::vector<QueueConfig>& configs);
-
-  // Gather statistics from queues
-  void gather_stats(opmonlib::InfoCollector& ic, int level);
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }

@@ -17,7 +17,7 @@
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
 #include "ipm/Subscriber.hpp"
-#include "opmonlib/InfoCollector.hpp"
+#include "opmonlib/MonitorableObject.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -41,7 +41,6 @@ public:
   static NetworkManager& get();
   ~NetworkManager() { reset(); }
 
-  void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
   void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval);
   void reset();
 

@@ -48,17 +48,6 @@ BOOST_AUTO_TEST_CASE(Configure)
                           [&](QueueRegistryConfigured const&) { return true; });
 }
 
-BOOST_AUTO_TEST_CASE(GatherStats)
-{
-  dunedaq::opmonlib::InfoCollector ic;
-  QueueRegistry::get().gather_stats(ic, 1);
-  BOOST_REQUIRE(ic.is_empty());
-
-  auto queue_ptr = QueueRegistry::get().get_queue<int>("test_queue_stddeque");
-  BOOST_REQUIRE(queue_ptr != nullptr);
-  QueueRegistry::get().gather_stats(ic, 1);
-  BOOST_REQUIRE(!ic.is_empty());
-}
 
 BOOST_AUTO_TEST_CASE(CreateQueue)
 {
