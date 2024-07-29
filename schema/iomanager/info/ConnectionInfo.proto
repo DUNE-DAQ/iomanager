@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+
+package dunedaq.iomanager.opmon;
+
+message ConnectionInfo {
+
+ uint64 sent_bytes = 1;
+ uint64 received_bytes = 2;
+
+ uint64 sent_messages = 11;
+ uint64 received_messages = 12;
+
+}
