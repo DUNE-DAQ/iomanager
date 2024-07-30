@@ -195,10 +195,9 @@ struct ConfigurationTestFixture
     connections.emplace_back(Connection{ pub2_id, "inproc://baz", ConnectionType::kPubSub });
     connections.emplace_back(Connection{ pub3_id, "inproc://qui", ConnectionType::kPubSub });
 
-    dunedaq::opmonlib::OpMonManager opmgr(nullptr);
     IOManager::get()->configure(queues, connections, false, 1000ms, opmgr); // Not using connectivity service
   }
-  ~ConfigurationTestFixture() { IOManager::get()->reset(); }
+  ~ConfigurationTestFixture() { IOManager::get()->reset(); opmgr.reset(); }
 
   ConfigurationTestFixture(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture(ConfigurationTestFixture&&) = default;
@@ -215,6 +214,8 @@ struct ConfigurationTestFixture
   ConnectionId sub1_id;
   ConnectionId sub2_id;
   ConnectionId sub3_id;
+
+  dunedaq::opmonlib::OpMonManager opmgr{nullptr};
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)

@@ -56,7 +56,6 @@ struct ConfigurationTestFixture
     dunedaq::iomanager::Connections_t connections;
     connections.emplace_back(Connection{ network_id, "inproc://foo", ConnectionType::kSendRecv });
 
-    dunedaq::opmonlib::OpMonManager opmgr(nullptr);
     IOManager::get()->configure(queues, connections, false, 0ms, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
@@ -66,6 +65,8 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = delete;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = delete;
 
+  dunedaq::opmonlib::OpMonManager opmgr{nullptr};
+  
   dunedaq::iomanager::ConnectionId network_id;
   dunedaq::iomanager::ConnectionId queue_id;
   const size_t n_sends = 10000;
@@ -82,7 +83,8 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistrationNetwork, ConfigurationTestFixture)
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < n_sends; ++i) {
     dunedaq::data_t temp(message_size, i % 200);
-    net_sender->send(std::move(temp), Sender::s_no_block);
+    //    net_sender->send(std::move(temp), Sender::s_no_block);
+    net_sender->send(std::move(temp), std::chrono::milliseconds(100000));
   }
   BOOST_TEST_MESSAGE("Messages sent, waiting for receives");
   while (received_count < n_sends) {

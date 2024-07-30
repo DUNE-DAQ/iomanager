@@ -299,8 +299,26 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     m_config_client->publish(connections[0]);
   }
 
-  m_opmon_link->register_child(conn_id.uid, plugin);
 
+  // MR: we need to check with Eric why we need this abomination
+  try {
+    m_opmon_link->register_child(conn_id.uid, plugin);
+  } catch (const ers::Issue & e) {
+    ers::error(e);
+    bool success = false;
+    size_t counter = 0;
+    do {
+      try {
+	auto name = conn_id.uid + '_' + std::to_string(0);
+	m_opmon_link->register_child(name, plugin);
+	success = true;
+      } catch ( const ers::Issue & err ) {
+	ers::error(err);
+	++counter;
+      }
+    } while (! success);
+  }
+  
   TLOG_DEBUG(12) << "END";
   return plugin;
 }
