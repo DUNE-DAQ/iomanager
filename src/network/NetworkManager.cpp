@@ -299,6 +299,8 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     m_config_client->publish(connections[0]);
   }
 
+  m_opmon_link->register_child(conn_id.uid, plugin);
+
   TLOG_DEBUG(12) << "END";
   return plugin;
 }
@@ -340,6 +342,8 @@ NetworkManager::create_sender(ConnectionInfo connection)
     m_config_client->publish(connection);
   }
 
+  m_opmon_link->register_child(connection.uid, plugin);
+  
   return plugin;
 }
 
