@@ -194,7 +194,9 @@ struct ConfigurationTestFixture
     connections.emplace_back(Connection{ pub1_id, "inproc://bar", ConnectionType::kPubSub });
     connections.emplace_back(Connection{ pub2_id, "inproc://baz", ConnectionType::kPubSub });
     connections.emplace_back(Connection{ pub3_id, "inproc://qui", ConnectionType::kPubSub });
-    IOManager::get()->configure(queues, connections, false, 1000ms); // Not using connectivity service
+
+    dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+    IOManager::get()->configure(queues, connections, false, 1000ms, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 

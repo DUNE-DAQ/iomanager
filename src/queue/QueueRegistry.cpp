@@ -28,13 +28,16 @@ QueueRegistry::get()
 }
 
 void
-QueueRegistry::configure(const std::vector<QueueConfig>& configs)
+QueueRegistry::configure(const std::vector<QueueConfig>& configs, opmonlib::OpMonManager & mgr)
 {
   if (m_configured) {
     throw QueueRegistryConfigured(ERS_HERE);
   }
 
   m_queue_configs = configs;
+
+  mgr.register_child("queues", m_opmon_link);
+  
   m_configured = true;
 }
 

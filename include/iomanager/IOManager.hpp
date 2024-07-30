@@ -12,6 +12,7 @@
 #include "iomanager/Receiver.hpp"
 #include "iomanager/Sender.hpp"
 #include "iomanager/connection/Structs.hpp"
+#include "opmonlib/OpMonManager.hpp"
 
 #include <chrono>
 #include <functional>
@@ -50,7 +51,8 @@ public:
   void configure(Queues_t queues,
                  Connections_t connections,
                  bool use_config_client,
-                 std::chrono::milliseconds config_client_interval);
+                 std::chrono::milliseconds config_client_interval,
+		 opmonlib::OpMonManager &);
 
   void reset();
 

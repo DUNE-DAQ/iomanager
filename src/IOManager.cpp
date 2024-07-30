@@ -16,7 +16,8 @@ void
 dunedaq::iomanager::IOManager::configure(Queues_t queues,
                                          Connections_t connections,
                                          bool use_config_client,
-                                         std::chrono::milliseconds config_client_interval)
+                                         std::chrono::milliseconds config_client_interval,
+					 dunedaq::opmonlib::OpMonManager & opmgr)
 {
   char* session = getenv("DUNEDAQ_SESSION");
   if (session) {
@@ -37,7 +38,7 @@ dunedaq::iomanager::IOManager::configure(Queues_t queues,
     nwCfg.push_back(connection);
   }
 
-  QueueRegistry::get().configure(qCfg);
+  QueueRegistry::get().configure(qCfg, opmgr);
   NetworkManager::get().configure(nwCfg, use_config_client, config_client_interval);
 }
 

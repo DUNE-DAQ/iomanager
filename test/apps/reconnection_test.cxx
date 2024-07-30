@@ -84,7 +84,8 @@ struct TestConfig
                                  ConnectionType::kSendRecv };
     connections.push_back(recv_conn);
 
-    IOManager::get()->configure(queues, connections, true, std::chrono::milliseconds(publish_interval));
+    dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+    IOManager::get()->configure(queues, connections, true, std::chrono::milliseconds(publish_interval), opmgr);
   }
 
   void send_message(uint8_t msg_idx)

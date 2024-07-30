@@ -162,8 +162,12 @@ struct TestConfig
       }
     }
 
-    IOManager::get()->configure(
-      queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
+    dunedaq::opmonlib::OpMonManager op_manager(nullptr);
+    IOManager::get()->configure( queues,
+				 connections,
+				 use_connectivity_service,
+				 std::chrono::milliseconds(publish_interval),
+				 op_manager);
   }
 };
 struct SubscriberTest

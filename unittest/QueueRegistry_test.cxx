@@ -41,9 +41,10 @@ BOOST_AUTO_TEST_CASE(Configure)
   qc.id.uid = "test_queue_fmpmc";
   queue_registry_config.push_back(qc);
 
-  QueueRegistry::get().configure(queue_registry_config);
+  dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+  QueueRegistry::get().configure(queue_registry_config, opmgr);
 
-  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(queue_registry_config),
+  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(queue_registry_config, opmgr),
                           QueueRegistryConfigured,
                           [&](QueueRegistryConfigured const&) { return true; });
 }

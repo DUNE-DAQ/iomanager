@@ -82,7 +82,9 @@ int main(int , char** )
 	for (int i = 0; i < max_n_threads; ++i) {
 		queues.emplace_back(dunedaq::iomanager::QueueConfig{ {"bar" + std::to_string(i),"int_t"}, dunedaq::iomanager::QueueType::kFollyMPMCQueue, 1000 });
 	}
-	dunedaq::get_iomanager()->configure(queues, connections, false, 1000ms);
+
+	dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+	dunedaq::get_iomanager()->configure(queues, connections, false, 1000ms, opmgr);
 
 	// Create all of the queues up front so the iomanager output is all in one place and not interspersed with the results
 	for (int i = 0; i < max_n_threads; ++i) {
