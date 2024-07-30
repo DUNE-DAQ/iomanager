@@ -39,7 +39,7 @@ dunedaq::iomanager::IOManager::configure(Queues_t queues,
   }
 
   QueueRegistry::get().configure(qCfg, opmgr);
-  NetworkManager::get().configure(nwCfg, use_config_client, config_client_interval);
+  NetworkManager::get().configure(nwCfg, use_config_client, config_client_interval, opmgr);
 }
 
 void

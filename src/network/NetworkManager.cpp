@@ -35,7 +35,8 @@ NetworkManager::get()
 void
 NetworkManager::configure(const Connections_t& connections,
                           bool use_config_client,
-                          std::chrono::milliseconds config_client_interval)
+                          std::chrono::milliseconds config_client_interval,
+			  dunedaq::opmonlib::OpMonManager & opmgr)
 {
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
@@ -69,6 +70,8 @@ NetworkManager::configure(const Connections_t& connections,
     m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
   }
   m_config_client_interval = config_client_interval;
+
+  opmgr.register_child( "connections", m_opmon_link);
 }
 
 void

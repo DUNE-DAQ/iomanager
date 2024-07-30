@@ -17,7 +17,7 @@
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
 #include "ipm/Subscriber.hpp"
-#include "opmonlib/MonitorableObject.hpp"
+#include "opmonlib/OpMonManager.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -41,7 +41,8 @@ public:
   static NetworkManager& get();
   ~NetworkManager() { reset(); }
 
-  void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval);
+  void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval,
+		 dunedaq::opmonlib::OpMonManager &);
   void reset();
 
   std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
@@ -74,6 +75,7 @@ private:
   std::unordered_map<ConnectionId, Connection> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
+  std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_opmon_link{ std::make_shared<dunedaq::opmonlib::OpMonLink>() };
   
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Subscriber>> m_subscriber_plugins;
   std::unique_ptr<std::thread> m_subscriber_update_thread;
