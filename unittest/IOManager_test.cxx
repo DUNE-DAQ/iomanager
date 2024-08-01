@@ -197,7 +197,7 @@ struct ConfigurationTestFixture
 
     IOManager::get()->configure(queues, connections, false, 1000ms, opmgr); // Not using connectivity service
   }
-  ~ConfigurationTestFixture() { IOManager::get()->reset(); opmgr.reset(); }
+  ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
   ConfigurationTestFixture(ConfigurationTestFixture const&) = default;
   ConfigurationTestFixture(ConfigurationTestFixture&&) = default;
