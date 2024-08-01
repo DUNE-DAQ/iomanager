@@ -360,7 +360,26 @@ NetworkManager::create_sender(ConnectionInfo connection)
     m_config_client->publish(connection);
   }
 
-  m_opmon_link->register_child(connection.uid, plugin);
+  // MR: we need to check with Eric why we need this abomination
+  try {
+    m_opmon_link->register_child(connection.uid, plugin);
+  } catch (const ers::Issue & e) {
+    ers::error(e);
+    bool success = false;
+    size_t counter = 0;
+    do {
+      try {
+	auto name = connection.uid + '_' + std::to_string(0);
+	m_opmon_link->register_child(name, plugin);
+	success = true;
+      } catch ( const ers::Issue & err ) {
+	ers::error(err);
+	++counter;
+      }
+    } while (! success);
+  }
+
+  //  m_opmon_link->register_child(connection.uid, plugin);
   
   return plugin;
 }

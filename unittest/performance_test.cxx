@@ -83,8 +83,7 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistrationNetwork, ConfigurationTestFixture)
   auto start_time = std::chrono::steady_clock::now();
   for (unsigned int i = 0; i < n_sends; ++i) {
     dunedaq::data_t temp(message_size, i % 200);
-    //    net_sender->send(std::move(temp), Sender::s_no_block);
-    net_sender->send(std::move(temp), std::chrono::milliseconds(100000));
+    net_sender->send(std::move(temp), Sender::s_no_block);
   }
   BOOST_TEST_MESSAGE("Messages sent, waiting for receives");
   while (received_count < n_sends) {
