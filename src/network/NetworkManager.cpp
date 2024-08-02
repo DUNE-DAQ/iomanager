@@ -106,6 +106,9 @@ NetworkManager::reset()
     }
   }
   m_config_client.reset(nullptr);
+
+  m_sender_opmon_link = std::make_shared<dunedaq::opmonlib::OpMonLink>();
+  m_receiver_opmon_link = std::make_shared<dunedaq::opmonlib::OpMonLink>();
 }
 
 std::shared_ptr<ipm::Receiver>
@@ -302,22 +305,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     m_config_client->publish(connections[0]);
   }
 
-  if ( is_pubsub ) {
-    bool success = false;
-    size_t counter = 0;
-    do {
-      auto name = fmt::format("{}--{}", conn_id.uid, counter);
-      try {
-	m_receiver_opmon_link->register_child(name, plugin);
-	success = true;
-      } catch ( const opmonlib::NonUniqueChildName & err ) {
-	++counter;
-      }
-    } while( ! success );
-  }
-  else {
-    m_receiver_opmon_link->register_child(conn_id.uid, plugin);
-  }
+  register_monitorable_node(plugin, m_receiver_opmon_link, conn_id.uid, is_pubsub);
   
   TLOG_DEBUG(12) << "END";
   return plugin;
@@ -360,23 +348,8 @@ NetworkManager::create_sender(ConnectionInfo connection)
     m_config_client->publish(connection);
   }
 
-  if ( is_pubsub ) {
-    bool success = false;
-    size_t counter = 0;
-    do {
-      auto name = fmt::format("{}--{}", connection.uid, counter);
-      try {
-	m_sender_opmon_link->register_child(name, plugin);
-	success = true;
-      } catch ( const opmonlib::NonUniqueChildName & err ) {
-	++counter;
-      }
-    } while( ! success );
-  }
-  else {
-    m_sender_opmon_link->register_child(connection.uid, plugin);
-  }
 
+  register_monitorable_node(plugin, m_sender_opmon_link, connection.uid, is_pubsub);
   
   return plugin;
 }
@@ -406,4 +379,28 @@ NetworkManager::update_subscribers()
   }
 }
 
+void
+NetworkManager::register_monitorable_node( std::shared_ptr<opmonlib::MonitorableObject> conn,
+					   std::shared_ptr<opmonlib::OpMonLink> link,
+					   const std::string & name, bool is_pubsub ) {
+  if ( is_pubsub ) {
+    bool success = false;
+    size_t counter = 0;
+    do {
+      auto fname = fmt::format("{}--{}", name, counter);
+      try {
+        link->register_child(fname, conn);
+        success = true;
+      } catch ( const opmonlib::NonUniqueChildName & err ) {
+        ++counter;
+      }
+    } while( ! success );
+  }
+  else {
+    link->register_child(name, conn);
+  }
+
+}
+
+  
 } // namespace dunedaq::iomanager
