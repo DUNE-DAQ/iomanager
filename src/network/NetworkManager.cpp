@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include <fmt/format.h>
+
 namespace dunedaq::iomanager {
 
 std::unique_ptr<NetworkManager> NetworkManager::s_instance = nullptr;
@@ -71,7 +73,8 @@ NetworkManager::configure(const Connections_t& connections,
   }
   m_config_client_interval = config_client_interval;
 
-  opmgr.register_child( "connections", m_opmon_link);
+  opmgr.register_child( "senders", m_sender_opmon_link);
+  opmgr.register_child( "receivers", m_receiver_opmon_link);
 }
 
 void
@@ -299,24 +302,21 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     m_config_client->publish(connections[0]);
   }
 
-
-  // MR: we need to check with Eric why we need this abomination
-  try {
-    m_opmon_link->register_child(conn_id.uid, plugin);
-  } catch (const ers::Issue & e) {
-    ers::error(e);
+  if ( is_pubsub ) {
     bool success = false;
     size_t counter = 0;
     do {
+      auto name = fmt::format("{}--{}", conn_id.uid, counter);
       try {
-	auto name = conn_id.uid + '_' + std::to_string(0);
-	m_opmon_link->register_child(name, plugin);
+	m_receiver_opmon_link->register_child(name, plugin);
 	success = true;
       } catch ( const ers::Issue & err ) {
-	ers::error(err);
 	++counter;
       }
-    } while (! success);
+    } while( ! success );
+  }
+  else {
+    m_receiver_opmon_link->register_child(conn_id.uid, plugin);
   }
   
   TLOG_DEBUG(12) << "END";
@@ -360,26 +360,23 @@ NetworkManager::create_sender(ConnectionInfo connection)
     m_config_client->publish(connection);
   }
 
-  // MR: we need to check with Eric why we need this abomination
-  try {
-    m_opmon_link->register_child(connection.uid, plugin);
-  } catch (const ers::Issue & e) {
-    ers::error(e);
+  if ( is_pubsub ) {
     bool success = false;
     size_t counter = 0;
     do {
+      auto name = fmt::format("{}--{}", connection.uid, counter);
       try {
-	auto name = connection.uid + '_' + std::to_string(0);
-	m_opmon_link->register_child(name, plugin);
+	m_sender_opmon_link->register_child(name, plugin);
 	success = true;
       } catch ( const ers::Issue & err ) {
-	ers::error(err);
 	++counter;
       }
-    } while (! success);
+    } while( ! success );
+  }
+  else {
+    m_sender_opmon_link->register_child(connection.uid, plugin);
   }
 
-  //  m_opmon_link->register_child(connection.uid, plugin);
   
   return plugin;
 }

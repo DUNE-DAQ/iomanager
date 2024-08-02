@@ -75,7 +75,8 @@ private:
   std::unordered_map<ConnectionId, Connection> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
-  std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_opmon_link{ std::make_shared<dunedaq::opmonlib::OpMonLink>() };
+  std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_sender_opmon_link{ std::make_shared<dunedaq::opmonlib::OpMonLink>() };
+  std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_receiver_opmon_link{ std::make_shared<dunedaq::opmonlib::OpMonLink>() };
   
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Subscriber>> m_subscriber_plugins;
   std::unique_ptr<std::thread> m_subscriber_update_thread;

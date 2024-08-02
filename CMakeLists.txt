@@ -11,9 +11,11 @@ find_package(opmonlib REQUIRED)
 find_package(folly REQUIRED)
 find_package(serialization REQUIRED)
 find_package(utilities REQUIRED)
+find_package(fmt REQUIRED)
+
 
 ##############################################################################
-set(IOMANAGER_DEPENDENCIES serialization::serialization Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm)
+set(IOMANAGER_DEPENDENCIES serialization::serialization Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm fmt::fmt)
 
 daq_codegen(connection.jsonnet TEMPLATES Structs.hpp.j2 Nljs.hpp.j2 )
 daq_protobuf_codegen( info/*.proto )
