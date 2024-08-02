@@ -310,7 +310,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
       try {
 	m_receiver_opmon_link->register_child(name, plugin);
 	success = true;
-      } catch ( const ers::Issue & err ) {
+      } catch ( const opmonlib::NonUniqueChildName & err ) {
 	++counter;
       }
     } while( ! success );
@@ -368,7 +368,7 @@ NetworkManager::create_sender(ConnectionInfo connection)
       try {
 	m_sender_opmon_link->register_child(name, plugin);
 	success = true;
-      } catch ( const ers::Issue & err ) {
+      } catch ( const opmonlib::NonUniqueChildName & err ) {
 	++counter;
       }
     } while( ! success );
