@@ -73,8 +73,8 @@ NetworkManager::configure(const Connections_t& connections,
   }
   m_config_client_interval = config_client_interval;
 
-  opmgr.register_child( "senders", m_sender_opmon_link);
-  opmgr.register_child( "receivers", m_receiver_opmon_link);
+  opmgr.register_node( "senders", m_sender_opmon_link);
+  opmgr.register_node( "receivers", m_receiver_opmon_link);
 }
 
 void
@@ -389,15 +389,15 @@ NetworkManager::register_monitorable_node( std::shared_ptr<opmonlib::Monitorable
     do {
       auto fname = fmt::format("{}--{}", name, counter);
       try {
-        link->register_child(fname, conn);
+        link->register_node(fname, conn);
         success = true;
-      } catch ( const opmonlib::NonUniqueChildName & err ) {
+      } catch ( const opmonlib::NonUniqueNodeName & err ) {
         ++counter;
       }
     } while( ! success );
   }
   else {
-    link->register_child(name, conn);
+    link->register_node(name, conn);
   }
 
 }

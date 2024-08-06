@@ -36,7 +36,7 @@ QueueRegistry::configure(const std::vector<QueueConfig>& configs, opmonlib::OpMo
 
   m_queue_configs = configs;
 
-  mgr.register_child("queues", m_opmon_link);
+  mgr.register_node("queues", m_opmon_link);
   
   m_configured = true;
 }

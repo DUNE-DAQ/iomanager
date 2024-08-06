@@ -67,7 +67,7 @@ QueueRegistry::create_queue(const QueueConfig& config)
       throw QueueTypeUnknown(ERS_HERE, str(config.queue_type));
   }
 
-  m_opmon_link->register_child(config.id.uid, queue);
+  m_opmon_link->register_node(config.id.uid, queue);
   
   return queue;
 }
