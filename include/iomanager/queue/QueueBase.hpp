@@ -18,7 +18,7 @@
 #include "utilities/NamedObject.hpp"
 
 #include "opmonlib/MonitorableObject.hpp"
-#include "iomanager/info/QueueInfo.pb.h"
+#include "iomanager/opmon/queue.pb.h"
 
 #include "ers/Issue.hpp"
 
