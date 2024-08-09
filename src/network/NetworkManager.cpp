@@ -382,10 +382,13 @@ NetworkManager::update_subscribers()
 void
 NetworkManager::register_monitorable_node( std::shared_ptr<opmonlib::MonitorableObject> conn,
 					   std::shared_ptr<opmonlib::OpMonLink> link,
-					   const std::string & name, bool is_pubsub ) {
-  if ( is_pubsub ) {
+					   const std::string & name, bool /*is_pubsub*/ ) {
+
+  try {
+    link->register_node(name, conn);
+  } catch  (const opmonlib::NonUniqueNodeName & err ) {
     bool success = false;
-    size_t counter = 0;
+    size_t counter = 1;
     do {
       auto fname = fmt::format("{}--{}", name, counter);
       try {
@@ -396,10 +399,6 @@ NetworkManager::register_monitorable_node( std::shared_ptr<opmonlib::Monitorable
       }
     } while( ! success );
   }
-  else {
-    link->register_node(name, conn);
-  }
-
 }
 
   
