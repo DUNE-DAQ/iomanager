@@ -8,6 +8,7 @@
 
 #include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #include "boost/program_options.hpp"
 
@@ -162,7 +163,7 @@ struct TestConfig
       }
     }
 
-    dunedaq::opmonlib::OpMonManager op_manager(nullptr);
+    dunedaq::opmonlib::TestOpMonManager op_manager;
     IOManager::get()->configure( queues,
 				 connections,
 				 use_connectivity_service,
