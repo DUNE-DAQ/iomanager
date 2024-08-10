@@ -7,7 +7,7 @@
  */
 
 #include "iomanager/queue/QueueRegistry.hpp"
-
+#include "opmonlib/TestOpMonManager.hpp"
 #define BOOST_TEST_MODULE QueueRegistry_test // NOLINT
 
 #include "boost/test/unit_test.hpp"
@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE(Configure)
   qc.id.uid = "test_queue_fmpmc";
   queue_registry_config.push_back(qc);
 
-  dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+  dunedaq::opmonlib::TestOpMonManager opmgr;
   QueueRegistry::get().configure(queue_registry_config, opmgr);
 
   BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(queue_registry_config, opmgr),

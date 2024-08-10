@@ -9,6 +9,7 @@
 #include "iomanager/IOManager.hpp"
 
 #include "serialization/Serialization.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #define BOOST_TEST_MODULE IOManager_test // NOLINT
 
@@ -215,7 +216,7 @@ struct ConfigurationTestFixture
   ConnectionId sub2_id;
   ConnectionId sub3_id;
 
-  dunedaq::opmonlib::OpMonManager opmgr{nullptr};
+  dunedaq::opmonlib::TestOpMonManager opmgr;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)

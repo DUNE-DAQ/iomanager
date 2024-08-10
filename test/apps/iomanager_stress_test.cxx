@@ -11,6 +11,8 @@
 
 #include "boost/program_options.hpp"
 
+#include "opmonlib/TestOpMonManager.hpp"
+
 #include <algorithm>
 #include <execution>
 #include <fstream>
@@ -122,7 +124,7 @@ struct TestConfig
                                            ConnectionType::kPubSub });
     }
 
-    dunedaq::opmonlib::OpMonManager op_manager(nullptr);
+    dunedaq::opmonlib::TestOpMonManager op_manager;
     IOManager::get()->configure( queues,
 				 connections,
 				 use_connectivity_service,

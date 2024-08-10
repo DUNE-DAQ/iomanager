@@ -12,6 +12,7 @@
 
 #define BOOST_TEST_MODULE performance_test // NOLINT
 
+#include "opmonlib/TestOpMonManager.hpp"
 #include "boost/test/unit_test.hpp"
 
 #include <atomic>
@@ -65,7 +66,7 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = delete;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = delete;
 
-  dunedaq::opmonlib::OpMonManager opmgr{nullptr};
+  dunedaq::opmonlib::TestOpMonManager opmgr;
   
   dunedaq::iomanager::ConnectionId network_id;
   dunedaq::iomanager::ConnectionId queue_id;

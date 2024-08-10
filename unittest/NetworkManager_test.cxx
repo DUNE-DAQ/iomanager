@@ -8,6 +8,7 @@
 
 #include "iomanager/connection/Structs.hpp"
 #include "iomanager/network/NetworkManager.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #include "logging/Logging.hpp"
 
@@ -64,7 +65,7 @@ struct NetworkManagerTestFixture
     testConn.uri = "inproc:/oof";
     testConfig.push_back(testConn);
 
-    dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+    dunedaq::opmonlib::TestOpMonManager opmgr;
     NetworkManager::get().configure(testConfig, false, 0ms, opmgr); // Not using ConfigClient
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
@@ -145,7 +146,7 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
   testConn.uri = "inproc://rab";
   testConn.connection_type = ConnectionType::kSendRecv;
   testConfig.push_back(testConn);
-  dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+  dunedaq::opmonlib::TestOpMonManager opmgr;
   BOOST_REQUIRE_EXCEPTION( NetworkManager::get().configure(testConfig,
 							   false,
 							   0ms,
@@ -167,7 +168,7 @@ BOOST_FIXTURE_TEST_CASE(NameCollisionInConfiguration, NetworkManagerTestFixture)
   Connections_t testConfig;
   testConfig.emplace_back(Connection{ sendRecvConnId, "inproc://foo", ConnectionType::kSendRecv });
   testConfig.emplace_back(Connection{ sendRecvConnId, "inproc://bar", ConnectionType::kSendRecv });
-  dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+  dunedaq::opmonlib::TestOpMonManager opmgr;
   BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure(testConfig,
 							  false,
 							  0ms, opmgr),

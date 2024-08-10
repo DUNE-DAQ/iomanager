@@ -5,6 +5,7 @@
 
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 using namespace std::chrono;
 
@@ -83,7 +84,7 @@ int main(int , char** )
 		queues.emplace_back(dunedaq::iomanager::QueueConfig{ {"bar" + std::to_string(i),"int_t"}, dunedaq::iomanager::QueueType::kFollyMPMCQueue, 1000 });
 	}
 
-	dunedaq::opmonlib::OpMonManager opmgr(nullptr);
+	dunedaq::opmonlib::TestOpMonManager opmgr;
 	dunedaq::get_iomanager()->configure(queues, connections, false, 1000ms, opmgr);
 
 	// Create all of the queues up front so the iomanager output is all in one place and not interspersed with the results
