@@ -14,9 +14,9 @@
 #include "iomanager/SchemaUtils.hpp"
 #include "iomanager/queue/Queue.hpp"
 #include "iomanager/queue/QueueIssues.hpp"
+#include "opmonlib/OpMonManager.hpp"
 
 #include "ers/Issue.hpp"
-#include "opmonlib/InfoCollector.hpp"
 
 #include <map>
 #include <memory>
@@ -56,10 +56,7 @@ public:
    * @brief Configure the QueueRegistry
    * @param configs Queue configurations
    */
-  void configure(const std::vector<QueueConfig>& configs);
-
-  // Gather statistics from queues
-  void gather_stats(opmonlib::InfoCollector& ic, int level);
+  void configure(const std::vector<QueueConfig>& configs, opmonlib::OpMonManager &);
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
@@ -83,7 +80,8 @@ private:
 
   std::map<std::string, QueueEntry> m_queue_registry;
   std::vector<QueueConfig> m_queue_configs;
-
+  std::shared_ptr<opmonlib::OpMonLink> m_opmon_link{ std::make_shared<opmonlib::OpMonLink>() };
+  
   bool m_configured{ false };
 
   static std::unique_ptr<QueueRegistry> s_instance;

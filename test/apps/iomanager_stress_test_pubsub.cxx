@@ -8,6 +8,7 @@
 
 #include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #include "boost/program_options.hpp"
 
@@ -162,8 +163,12 @@ struct TestConfig
       }
     }
 
-    IOManager::get()->configure(
-      queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
+    dunedaq::opmonlib::TestOpMonManager op_manager;
+    IOManager::get()->configure( queues,
+				 connections,
+				 use_connectivity_service,
+				 std::chrono::milliseconds(publish_interval),
+				 op_manager);
   }
 };
 struct SubscriberTest

@@ -11,6 +11,8 @@
 
 #include "boost/program_options.hpp"
 
+#include "opmonlib/TestOpMonManager.hpp"
+
 #include <algorithm>
 #include <execution>
 #include <fstream>
@@ -121,8 +123,13 @@ struct TestConfig
                                            conn_addr,
                                            ConnectionType::kPubSub });
     }
-    IOManager::get()->configure(
-      queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
+
+    dunedaq::opmonlib::TestOpMonManager op_manager;
+    IOManager::get()->configure( queues,
+				 connections,
+				 use_connectivity_service,
+				 std::chrono::milliseconds(publish_interval),
+				 op_manager);
   }
 };
 struct ReceiverTest

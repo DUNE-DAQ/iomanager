@@ -17,7 +17,7 @@
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
 #include "ipm/Subscriber.hpp"
-#include "opmonlib/InfoCollector.hpp"
+#include "opmonlib/OpMonManager.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -41,8 +41,8 @@ public:
   static NetworkManager& get();
   ~NetworkManager() { reset(); }
 
-  void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
-  void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval);
+  void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval,
+		 dunedaq::opmonlib::OpMonManager &);
   void reset();
 
   std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
@@ -75,6 +75,11 @@ private:
   std::unordered_map<ConnectionId, Connection> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
+  std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_sender_opmon_link{ std::make_shared<dunedaq::opmonlib::OpMonLink>() };
+  std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_receiver_opmon_link{ std::make_shared<dunedaq::opmonlib::OpMonLink>() };
+  static void register_monitorable_node( std::shared_ptr<opmonlib::MonitorableObject> conn,
+					 std::shared_ptr<opmonlib::OpMonLink> link,
+					 const std::string & name, bool is_pubsub );
   
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Subscriber>> m_subscriber_plugins;
   std::unique_ptr<std::thread> m_subscriber_update_thread;

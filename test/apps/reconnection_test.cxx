@@ -8,6 +8,7 @@
 
 #include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #include "boost/program_options.hpp"
 
@@ -84,7 +85,8 @@ struct TestConfig
                                  ConnectionType::kSendRecv };
     connections.push_back(recv_conn);
 
-    IOManager::get()->configure(queues, connections, true, std::chrono::milliseconds(publish_interval));
+    dunedaq::opmonlib::TestOpMonManager opmgr;
+    IOManager::get()->configure(queues, connections, true, std::chrono::milliseconds(publish_interval), opmgr);
   }
 
   void send_message(uint8_t msg_idx)

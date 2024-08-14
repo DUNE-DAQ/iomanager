@@ -12,6 +12,7 @@
 
 #define BOOST_TEST_MODULE performance_test // NOLINT
 
+#include "opmonlib/TestOpMonManager.hpp"
 #include "boost/test/unit_test.hpp"
 
 #include <atomic>
@@ -55,7 +56,8 @@ struct ConfigurationTestFixture
 
     dunedaq::iomanager::Connections_t connections;
     connections.emplace_back(Connection{ network_id, "inproc://foo", ConnectionType::kSendRecv });
-    IOManager::get()->configure(queues, connections, false, 0ms); // Not using connectivity service
+
+    IOManager::get()->configure(queues, connections, false, 0ms, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -64,6 +66,8 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = delete;
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = delete;
 
+  dunedaq::opmonlib::TestOpMonManager opmgr;
+  
   dunedaq::iomanager::ConnectionId network_id;
   dunedaq::iomanager::ConnectionId queue_id;
   const size_t n_sends = 10000;

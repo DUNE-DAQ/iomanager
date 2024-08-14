@@ -15,10 +15,10 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUEBASE_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_QUEUEBASE_HPP_
 
-#include "iomanager/queueinfo/InfoNljs.hpp"
 #include "utilities/NamedObject.hpp"
 
-#include "opmonlib/InfoCollector.hpp"
+#include "opmonlib/MonitorableObject.hpp"
+#include "iomanager/opmon/queue.pb.h"
 
 #include "ers/Issue.hpp"
 
@@ -35,7 +35,7 @@ namespace dunedaq::iomanager {
  * @brief The QueueBase class allows to address generic behavior of any Queue implementation
  *
  */
-class QueueBase : public utilities::NamedObject
+  class QueueBase : public utilities::NamedObject, public opmonlib::MonitorableObject
 {
 public:
   /**
@@ -46,17 +46,6 @@ public:
     : utilities::NamedObject(name)
   {}
 
-  /**
-   * @brief Method to retrieve information (occupancy) from
-   * queues.
-   */
-  void get_info(opmonlib::InfoCollector& ci, int /*level*/)
-  {
-    queueinfo::Info info;
-    info.capacity = this->get_capacity();
-    info.number_of_elements = this->get_num_elements();
-    ci.add(info);
-  }
 
   /**
    * @brief Get the capacity (max size) of the queue
@@ -65,6 +54,20 @@ public:
   virtual size_t get_capacity() const = 0;
 
   virtual size_t get_num_elements() const = 0;
+
+
+protected:
+  /**
+   * @brief Method to retrieve information (occupancy) from
+   * queues.
+   */
+  void generate_opmon_data() override
+  {
+    opmon::QueueInfo info;
+    info.set_capacity(this->get_capacity());
+    info.set_number_of_elements(this->get_num_elements());
+    publish(std::move(info));
+  }
 
 private:
   QueueBase(const QueueBase&) = delete;

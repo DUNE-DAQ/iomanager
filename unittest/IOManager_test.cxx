@@ -9,6 +9,7 @@
 #include "iomanager/IOManager.hpp"
 
 #include "serialization/Serialization.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #define BOOST_TEST_MODULE IOManager_test // NOLINT
 
@@ -194,7 +195,8 @@ struct ConfigurationTestFixture
     connections.emplace_back(Connection{ pub1_id, "inproc://bar", ConnectionType::kPubSub });
     connections.emplace_back(Connection{ pub2_id, "inproc://baz", ConnectionType::kPubSub });
     connections.emplace_back(Connection{ pub3_id, "inproc://qui", ConnectionType::kPubSub });
-    IOManager::get()->configure(queues, connections, false, 1000ms); // Not using connectivity service
+
+    IOManager::get()->configure(queues, connections, false, 1000ms, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -213,6 +215,8 @@ struct ConfigurationTestFixture
   ConnectionId sub1_id;
   ConnectionId sub2_id;
   ConnectionId sub3_id;
+
+  dunedaq::opmonlib::TestOpMonManager opmgr;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)

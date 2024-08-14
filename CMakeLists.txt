@@ -11,12 +11,14 @@ find_package(opmonlib REQUIRED)
 find_package(folly REQUIRED)
 find_package(serialization REQUIRED)
 find_package(utilities REQUIRED)
+find_package(fmt REQUIRED)
+
 
 ##############################################################################
-set(IOMANAGER_DEPENDENCIES serialization::serialization Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm)
+set(IOMANAGER_DEPENDENCIES serialization::serialization Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm fmt::fmt)
 
 daq_codegen(connection.jsonnet TEMPLATES Structs.hpp.j2 Nljs.hpp.j2 )
-daq_codegen(connectioninfo.jsonnet queueinfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.hpp.j2 opmonlib/InfoNljs.hpp.j2 )
+daq_protobuf_codegen( opmon/*.proto )
 
 daq_add_library(IOManager.cpp queue/QueueRegistry.cpp network/NetworkManager.cpp network/ConfigClient.cpp LINK_LIBRARIES ${IOMANAGER_DEPENDENCIES} )
 

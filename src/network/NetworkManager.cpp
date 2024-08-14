@@ -9,8 +9,6 @@
 #include "iomanager/network/NetworkManager.hpp"
 #include "iomanager/SchemaUtils.hpp"
 
-#include "iomanager/connectioninfo/InfoNljs.hpp"
-
 #include "ipm/PluginInfo.hpp"
 #include "logging/Logging.hpp"
 #include "utilities/Resolver.hpp"
@@ -19,6 +17,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <fmt/format.h>
 
 namespace dunedaq::iomanager {
 
@@ -33,29 +33,12 @@ NetworkManager::get()
   return *s_instance;
 }
 
-void
-NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
-{
-
-  for (auto& sender : m_sender_plugins) {
-    opmonlib::InfoCollector tmp_ic;
-    if(sender.second == nullptr) continue;
-    sender.second->get_info(tmp_ic, level);
-    ci.add(sender.first.uid, tmp_ic);
-  }
-
-  for (auto& receiver : m_receiver_plugins) {
-    opmonlib::InfoCollector tmp_ic;
-    if(receiver.second == nullptr) continue;
-    receiver.second->get_info(tmp_ic, level);
-    ci.add(receiver.first.uid, tmp_ic);
-  }
-}
 
 void
 NetworkManager::configure(const Connections_t& connections,
                           bool use_config_client,
-                          std::chrono::milliseconds config_client_interval)
+                          std::chrono::milliseconds config_client_interval,
+			  dunedaq::opmonlib::OpMonManager & opmgr)
 {
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
@@ -89,6 +72,9 @@ NetworkManager::configure(const Connections_t& connections,
     m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
   }
   m_config_client_interval = config_client_interval;
+
+  opmgr.register_node( "senders", m_sender_opmon_link);
+  opmgr.register_node( "receivers", m_receiver_opmon_link);
 }
 
 void
@@ -120,6 +106,9 @@ NetworkManager::reset()
     }
   }
   m_config_client.reset(nullptr);
+
+  m_sender_opmon_link = std::make_shared<dunedaq::opmonlib::OpMonLink>();
+  m_receiver_opmon_link = std::make_shared<dunedaq::opmonlib::OpMonLink>();
 }
 
 std::shared_ptr<ipm::Receiver>
@@ -316,6 +305,8 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     m_config_client->publish(connections[0]);
   }
 
+  register_monitorable_node(plugin, m_receiver_opmon_link, conn_id.uid, is_pubsub);
+  
   TLOG_DEBUG(12) << "END";
   return plugin;
 }
@@ -357,6 +348,9 @@ NetworkManager::create_sender(ConnectionInfo connection)
     m_config_client->publish(connection);
   }
 
+
+  register_monitorable_node(plugin, m_sender_opmon_link, connection.uid, is_pubsub);
+  
   return plugin;
 }
 
@@ -385,4 +379,27 @@ NetworkManager::update_subscribers()
   }
 }
 
+void
+NetworkManager::register_monitorable_node( std::shared_ptr<opmonlib::MonitorableObject> conn,
+					   std::shared_ptr<opmonlib::OpMonLink> link,
+					   const std::string & name, bool /*is_pubsub*/ ) {
+
+  try {
+    link->register_node(name, conn);
+  } catch  (const opmonlib::NonUniqueNodeName & err ) {
+    bool success = false;
+    size_t counter = 1;
+    do {
+      auto fname = fmt::format("{}--{}", name, counter);
+      try {
+        link->register_node(fname, conn);
+        success = true;
+      } catch ( const opmonlib::NonUniqueNodeName & err ) {
+        ++counter;
+      }
+    } while( ! success );
+  }
+}
+
+  
 } // namespace dunedaq::iomanager

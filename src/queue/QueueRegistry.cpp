@@ -28,28 +28,19 @@ QueueRegistry::get()
 }
 
 void
-QueueRegistry::configure(const std::vector<QueueConfig>& configs)
+QueueRegistry::configure(const std::vector<QueueConfig>& configs, opmonlib::OpMonManager & mgr)
 {
   if (m_configured) {
     throw QueueRegistryConfigured(ERS_HERE);
   }
 
   m_queue_configs = configs;
+
+  mgr.register_node("queues", m_opmon_link);
+  
   m_configured = true;
 }
 
-void
-QueueRegistry::gather_stats(opmonlib::InfoCollector& ic, int level)
-{
-
-  for (const auto& [name, queue_entry] : m_queue_registry) {
-    opmonlib::InfoCollector tmp_ci;
-    queue_entry.m_instance->get_info(tmp_ci, level);
-    if (!tmp_ci.is_empty()) {
-      ic.add(name, tmp_ci);
-    }
-  }
-}
 
 bool
 QueueRegistry::has_queue(const std::string& uid, const std::string& data_type) const
