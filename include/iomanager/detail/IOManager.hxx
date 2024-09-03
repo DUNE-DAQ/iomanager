@@ -40,6 +40,18 @@ IOManager::get_receiver(std::string const& uid)
   id.session = m_session;
   return get_receiver<Datatype>(id);
 }
+template<typename Datatype>
+inline std::shared_ptr<ReceiverConcept<Datatype>>
+IOManager::get_receiver(std::string const& uid, std::string const& tag)
+{
+  auto data_type = datatype_to_string<Datatype>();
+  ConnectionId id;
+  id.uid = uid;
+  id.data_type = data_type;
+  id.session = m_session;
+  id.tag = tag;
+  return get_receiver<Datatype>(id);
+}
 
 template<typename Datatype>
 inline std::shared_ptr<ReceiverConcept<Datatype>>
@@ -119,6 +131,14 @@ IOManager::add_callback(std::string const& uid, std::function<void(Datatype&)> c
 
 template<typename Datatype>
 inline void
+IOManager::add_callback(std::string const& uid, std::string const& tag, std::function<void(Datatype&)> callback)
+{
+  auto receiver = get_receiver<Datatype>(uid, tag);
+  receiver->add_callback(callback);
+}
+
+template<typename Datatype>
+inline void
 IOManager::remove_callback(ConnectionId const& id)
 {
   auto receiver = get_receiver<Datatype>(id);
@@ -130,6 +150,13 @@ inline void
 IOManager::remove_callback(std::string const& uid)
 {
   auto receiver = get_receiver<Datatype>(uid);
+  receiver->remove_callback();
+}
+template<typename Datatype>
+inline void
+IOManager::remove_callback(std::string const& uid, std::string const& tag)
+{
+  auto receiver = get_receiver<Datatype>(uid, tag);
   receiver->remove_callback();
 }
 
