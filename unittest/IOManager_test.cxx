@@ -255,6 +255,8 @@ BOOST_FIXTURE_TEST_CASE(SimpleSendReceive, ConfigurationTestFixture)
   auto q_sender = IOManager::get()->get_sender<Data>(queue_id);
   auto q_receiver = IOManager::get()->get_receiver<Data>(queue_id);
 
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
+
   Data sent_nw(56, 26.5, "test1");
   Data sent_q(57, 27.5, "test2");
   net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
@@ -280,6 +282,8 @@ BOOST_FIXTURE_TEST_CASE(SimplePubSub, ConfigurationTestFixture)
   auto sub1_receiver = IOManager::get()->get_receiver<Data2>(sub1_id);
   auto sub2_receiver = IOManager::get()->get_receiver<Data2>(sub2_id);
   auto sub3_receiver = IOManager::get()->get_receiver<Data3>(sub3_id);
+
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
 
   // Sub1 is subscribed to all data_t publishers, Sub2 only to pub2, Sub3 to all data2_t
   Data2 sent_t1(56, 26.5);
@@ -323,6 +327,8 @@ BOOST_FIXTURE_TEST_CASE(PubSubWithTopic, ConfigurationTestFixture)
   auto sub1_receiver = IOManager::get()->get_receiver<Data2>(sub1_id);
   auto sub2_receiver = IOManager::get()->get_receiver<Data2>(sub2_id);
 
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
+
   sub1_receiver->subscribe("sub1_topic");
   sub2_receiver->subscribe("sub2_topic");
 
@@ -350,7 +356,7 @@ BOOST_FIXTURE_TEST_CASE(PubSubWithTopic, ConfigurationTestFixture)
   BOOST_REQUIRE_EXCEPTION(
     sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
 
-  Data2 sent_t3{ 57, 27.5};
+  Data2 sent_t3{ 57, 27.5 };
   pub1_sender->send_with_topic(std::move(sent_t3), dunedaq::iomanager::Sender::s_no_block, "sub1_topic");
   ret1 = sub1_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret1.d1, 57);
@@ -381,6 +387,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)
   auto q_sender = IOManager::get()->get_sender<NonSerializableData>(queue_id);
   auto q_receiver = IOManager::get()->get_receiver<NonSerializableData>(queue_id);
 
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
+
   NonSerializableData sent_nw(56, 26.5, "test1");
   NonSerializableData sent_q(57, 27.5, "test2");
   BOOST_REQUIRE_EXCEPTION(net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block),
@@ -407,6 +415,8 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableSendReceive, ConfigurationTestFixture)
   auto q_sender = IOManager::get()->get_sender<NonCopyableData>(queue_id);
   auto q_receiver = IOManager::get()->get_receiver<NonCopyableData>(queue_id);
 
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
+
   NonCopyableData sent_nw(56, 26.5, "test1");
   NonCopyableData sent_q(57, 27.5, "test2");
   net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block);
@@ -431,6 +441,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableSendReceive, ConfigurationTest
   auto q_sender = IOManager::get()->get_sender<NonSerializableNonCopyable>(queue_id);
   auto q_receiver = IOManager::get()->get_receiver<NonSerializableNonCopyable>(queue_id);
 
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
+
   NonSerializableNonCopyable sent_nw(56, 26.5, "test1");
   NonSerializableNonCopyable sent_q(57, 27.5, "test2");
   BOOST_REQUIRE_EXCEPTION(net_sender->send(std::move(sent_nw), dunedaq::iomanager::Sender::s_no_block),
@@ -454,6 +466,8 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistration, ConfigurationTestFixture)
 {
   auto net_sender = IOManager::get()->get_sender<Data>(conn_id);
   auto q_sender = IOManager::get()->get_sender<Data>(queue_id);
+
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
 
   Data sent_data_nw(56, 26.5, "test1");
   Data sent_data_q(57, 27.5, "test2");
@@ -498,6 +512,8 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableCallbackRegistration, ConfigurationTestFixtur
   auto net_sender = IOManager::get()->get_sender<NonCopyableData>(conn_id);
   auto q_sender = IOManager::get()->get_sender<NonCopyableData>(queue_id);
 
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
+
   NonCopyableData sent_data_nw(56, 26.5, "test1");
   NonCopyableData sent_data_q(57, 27.5, "test2");
   NonCopyableData recv_data;
@@ -541,6 +557,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
   auto net_sender = IOManager::get()->get_sender<NonSerializableData>(conn_id);
   auto q_sender = IOManager::get()->get_sender<NonSerializableData>(queue_id);
 
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
+
   NonSerializableData sent_data_nw(56, 26.5, "test1");
   NonSerializableData sent_data_q(57, 27.5, "test2");
   NonSerializableData recv_data;
@@ -575,6 +593,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
 {
   auto net_sender = IOManager::get()->get_sender<NonSerializableNonCopyable>(conn_id);
   auto q_sender = IOManager::get()->get_sender<NonSerializableNonCopyable>(queue_id);
+
+  BOOST_REQUIRE(IOManager::get()->senders_are_ready());
 
   NonSerializableNonCopyable sent_data_nw(56, 26.5, "test1");
   NonSerializableNonCopyable sent_data_q(57, 27.5, "test2");

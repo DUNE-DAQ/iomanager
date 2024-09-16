@@ -56,6 +56,8 @@ public:
 
   void reset();
 
+  bool senders_are_ready();
+
   template<typename Datatype>
   std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId id);
 
