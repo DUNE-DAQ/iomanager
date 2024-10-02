@@ -44,6 +44,7 @@ public:
   void configure(const Connections_t& connections, bool use_config_client, std::chrono::milliseconds config_client_interval,
 		 dunedaq::opmonlib::OpMonManager &);
   void reset();
+  void shutdown();
 
   std::shared_ptr<ipm::Receiver> get_receiver(ConnectionId const& conn_id);
   std::shared_ptr<ipm::Sender> get_sender(ConnectionId const& conn_id);
