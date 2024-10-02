@@ -43,6 +43,15 @@ dunedaq::iomanager::IOManager::configure(Queues_t queues,
 }
 
 void
+dunedaq::iomanager::IOManager::shutdown()
+{
+  QueueRegistry::get().shutdown();
+  NetworkManager::get().shutdown();
+  m_senders.clear();
+  m_receivers.clear();
+}
+
+void
 dunedaq::iomanager::IOManager::reset()
 {
   QueueRegistry::get().reset();

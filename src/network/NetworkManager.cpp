@@ -80,6 +80,7 @@ NetworkManager::configure(const Connections_t& connections,
 void
 NetworkManager::reset()
 {
+  TLOG_DEBUG(5) << "reset() BEGIN";
   m_subscriber_update_thread_running = false;
   if (m_subscriber_update_thread && m_subscriber_update_thread->joinable()) {
     m_subscriber_update_thread->join();
@@ -109,6 +110,38 @@ NetworkManager::reset()
 
   m_sender_opmon_link = std::make_shared<dunedaq::opmonlib::OpMonLink>();
   m_receiver_opmon_link = std::make_shared<dunedaq::opmonlib::OpMonLink>();
+  TLOG_DEBUG(5) << "reset() END";
+}
+
+void
+NetworkManager::shutdown()
+{
+  TLOG_DEBUG(5) << "shutdown() BEGIN";
+  m_subscriber_update_thread_running = false;
+  if (m_subscriber_update_thread && m_subscriber_update_thread->joinable()) {
+    m_subscriber_update_thread->join();
+  }
+  {
+    std::lock_guard<std::mutex> lkk(m_subscriber_plugin_map_mutex);
+    m_subscriber_plugins.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
+    m_sender_plugins.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+    m_receiver_plugins.clear();
+  }
+
+  if (m_config_client != nullptr) {
+    try {
+      m_config_client->retract();
+    } catch (FailedRetract const& r) {
+      ers::error(r);
+    }
+  }
+  TLOG_DEBUG(5) << "shutdown() END";
 }
 
 std::shared_ptr<ipm::Receiver>
@@ -359,6 +392,7 @@ NetworkManager::update_subscribers()
 {
   while (m_subscriber_update_thread_running.load()) {
     {
+      TLOG_DEBUG(14) << "Updating registered subscribers";
       std::lock_guard<std::mutex> lk(m_subscriber_plugin_map_mutex);
       for (auto& subscriber_pair : m_subscriber_plugins) {
         try {

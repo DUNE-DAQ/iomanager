@@ -60,6 +60,7 @@ public:
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
+  void shutdown() { m_queue_registry.clear(); }
 
   bool has_queue(std::string const& uid, std::string const& data_type) const;
 

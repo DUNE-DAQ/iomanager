@@ -55,6 +55,7 @@ public:
 		 opmonlib::OpMonManager &);
 
   void reset();
+  void shutdown();
 
   template<typename Datatype>
   std::shared_ptr<SenderConcept<Datatype>> get_sender(ConnectionId id);
