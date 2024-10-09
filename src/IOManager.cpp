@@ -19,15 +19,15 @@ dunedaq::iomanager::IOManager::configure(Queues_t queues,
                                          std::chrono::milliseconds config_client_interval,
 					 dunedaq::opmonlib::OpMonManager & opmgr)
 {
-  char* session = getenv("DUNEDAQ_SESSION");
-  if (session) {
-    m_session = std::string(session);
+  char* system = getenv("DUNEDAQ_SYSTEM");
+  if (system) {
+    m_system = std::string(system);
   } else {
-    session = getenv("DUNEDAQ_PARTITION");
-    if (session) {
-      m_session = std::string(session);
+    system = getenv("DUNEDAQ_PARTITION");
+    if (system) {
+      m_system = std::string(system);
     } else {
-      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
+      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SYSTEM"));
     }
   }
 
