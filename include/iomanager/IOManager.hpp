@@ -10,9 +10,13 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_IOMANAGER_HPP_
 
 #include "iomanager/Receiver.hpp"
+#include "iomanager/SchemaUtils.hpp"
 #include "iomanager/Sender.hpp"
-#include "iomanager/connection/Structs.hpp"
 #include "opmonlib/OpMonManager.hpp"
+
+#include "confmodel/ConnectivityService.hpp"
+#include "confmodel/NetworkConnection.hpp"
+#include "confmodel/Queue.hpp"
 
 #include <chrono>
 #include <functional>
@@ -23,8 +27,6 @@
 namespace dunedaq {
 
 namespace iomanager {
-
-using namespace connection;
 
 /**
  * @class IOManager
@@ -48,11 +50,11 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  void configure(Queues_t queues,
-                 Connections_t connections,
-                 bool use_config_client,
-                 std::chrono::milliseconds config_client_interval,
-		 opmonlib::OpMonManager &);
+  void configure(std::string session,
+                 std::vector<const confmodel::Queue*> queues,
+                 std::vector<const confmodel::NetworkConnection*> connections,
+                 const confmodel::ConnectivityService* connection_service,
+                 opmonlib::OpMonManager&);
 
   void reset();
   void shutdown();

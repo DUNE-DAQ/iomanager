@@ -39,16 +39,16 @@ struct ConnectionInfo
   std::string uid;
   std::string data_type;
   std::string uri;
-  ConnectionType connection_type;
+  std::string connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
   ConnectionInfo() {}
 
-  // Implicit conversion
-  ConnectionInfo(Connection convert)
-    : uid(convert.id.uid)
-    , data_type(convert.id.data_type)
-    , uri(convert.uri)
-    , connection_type(convert.connection_type)
+  // Implicit Conversion
+  ConnectionInfo(const confmodel::NetworkConnection* convert)
+    : uid(convert->UID())
+    , data_type(convert->get_data_type())
+    , uri(get_uri_for_connection(convert))
+    , connection_type(convert->get_connection_type())
   {
   }
 
@@ -60,19 +60,20 @@ struct ConnectionRegistration
   std::string uid;
   std::string data_type;
   std::string uri;
-  ConnectionType connection_type;
+  std::string connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
   ConnectionRegistration() {}
 
-  // Implicit conversion
-  ConnectionRegistration(Connection convert)
-    : uid(convert.id.uid)
-    , data_type(convert.id.data_type)
-    , uri(convert.uri)
-    , connection_type(convert.connection_type)
+  // Implicit Conversion
+  ConnectionRegistration(const confmodel::NetworkConnection* convert)
+    : uid(convert->UID())
+    , data_type(convert->get_data_type())
+    , uri(get_uri_for_connection(convert))
+    , connection_type(convert->get_connection_type())
   {
   }
 
+  // Implicit Conversion
   ConnectionRegistration(ConnectionInfo convert)
     : uid(convert.uid)
     , data_type(convert.data_type)
@@ -101,7 +102,5 @@ operator<(ConnectionRegistration const& l, ConnectionRegistration const& r)
 }
 }
 }
-
-MSGPACK_ADD_ENUM(dunedaq::iomanager::ConnectionType)
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTSTRUCTS_HPP_

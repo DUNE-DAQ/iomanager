@@ -75,12 +75,6 @@ struct TestConfig
   size_t my_id = 0;
   int publish_interval = 1000;
 
-  void configure_connsvc()
-  {
-    setenv("CONNECTION_SERVER", server.c_str(), 1);
-    setenv("CONNECTION_PORT", std::to_string(port).c_str(), 1);
-  }
-
   std::string get_connection_name(size_t conn_id)
   {
     std::stringstream ss;
@@ -91,7 +85,6 @@ struct TestConfig
 
   void configure_iomanager(bool is_receiver)
   {
-    setenv("DUNEDAQ_PARTITION", session_name.c_str(), 0);
     bool configure_connections = is_receiver || !use_connectivity_service;
 
     Queues_t queues;
@@ -166,10 +159,10 @@ struct ReceiverTest
     std::for_each(std::execution::par_unseq,
                   std::begin(receivers),
                   std::end(receivers),
-                  [&](std::pair<size_t, std::shared_ptr<ReceiverInfo>> info_pair) {
+                  [&, this](std::pair<size_t, std::shared_ptr<ReceiverInfo>> info_pair) {
                     auto conn_id = info_pair.first;
                     auto info = info_pair.second;
-                    auto recv_proc = [=](Data& msg) {
+                    auto recv_proc = [=, this](Data& msg) {
                       TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
                                     << " bytes from connection " << config.get_connection_name(conn_id);
 
@@ -307,7 +300,7 @@ struct SenderTest
     auto control_receiver = dunedaq::get_iom_receiver<Control>("conn_" + std::to_string(config.my_id) + "_control");
     std::atomic<bool> ready_msg_received{ false };
     std::atomic<bool> end_msg_received{ false };
-    auto control_callback = [=, &end_msg_received, &ready_msg_received](Control& msg) {
+    auto control_callback = [=,this, &end_msg_received, &ready_msg_received](Control& msg) {
       TLOG_DEBUG(5) << "Received Control message Ready: " << std::boolalpha << msg.ready_to_receive
                     << ", Done: " << msg.done_receiving << " from ID " << msg.receiver_id << " for run "
                     << msg.run_number;
@@ -342,7 +335,7 @@ struct SenderTest
 
     for (size_t conn_id = 0; conn_id < config.num_connections; ++conn_id) {
       auto info = senders[conn_id];
-      info->send_thread.reset(new std::thread([=, &ready_msg_received]() {
+      info->send_thread.reset(new std::thread([=,this, &ready_msg_received]() {
         while (!ready_msg_received.load()) {
           std::this_thread::sleep_for(10ms);
         }

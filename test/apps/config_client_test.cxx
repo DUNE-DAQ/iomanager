@@ -10,6 +10,8 @@
 #include "iomanager/network/NetworkIssues.hpp"
 #include "logging/Logging.hpp"
 
+#include "confmodel/NetworkConnection.hpp"
+
 #include "boost/program_options.hpp"
 #include "nlohmann/json.hpp"
 
@@ -79,7 +81,7 @@ main(int argc, char* argv[])
     conn_reg.uid = connId;
     conn_reg.data_type = "TPSet";
     conn_reg.uri = uri;
-    conn_reg.connection_type = ConnectionType::kSendRecv;
+    conn_reg.connection_type = dunedaq::confmodel::NetworkConnection::Connection_type::KSendRecv;
     connections.push_back(conn_reg);
   }
 

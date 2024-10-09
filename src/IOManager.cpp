@@ -13,33 +13,16 @@
 std::shared_ptr<dunedaq::iomanager::IOManager> dunedaq::iomanager::IOManager::s_instance = nullptr;
 
 void
-dunedaq::iomanager::IOManager::configure(Queues_t queues,
-                                         Connections_t connections,
-                                         bool use_config_client,
-                                         std::chrono::milliseconds config_client_interval,
-					 dunedaq::opmonlib::OpMonManager & opmgr)
+dunedaq::iomanager::IOManager::configure(std::string session,
+                                         std::vector<const confmodel::Queue*> queues,
+                                         std::vector<const confmodel::NetworkConnection*> connections,
+                                         const confmodel::ConnectivityService* connection_service,
+                                         dunedaq::opmonlib::OpMonManager& opmgr)
 {
-  char* session = getenv("DUNEDAQ_SESSION");
-  if (session) {
-    m_session = std::string(session);
-  } else {
-    session = getenv("DUNEDAQ_PARTITION");
-    if (session) {
-      m_session = std::string(session);
-    } else {
-      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
-    }
-  }
+  m_session = session;
 
-  Queues_t qCfg = queues;
-  Connections_t nwCfg;
-
-  for (auto& connection : connections) {
-    nwCfg.push_back(connection);
-  }
-
-  QueueRegistry::get().configure(qCfg, opmgr);
-  NetworkManager::get().configure(nwCfg, use_config_client, config_client_interval, opmgr);
+  QueueRegistry::get().configure(queues, opmgr);
+  NetworkManager::get().configure(session, connections, connection_service, opmgr);
 }
 
 void

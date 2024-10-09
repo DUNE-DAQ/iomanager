@@ -40,9 +40,10 @@ public:
    *
    * @param server  Name/address of the connection server to publish to
    * @param port    Port on the connection server to connect to
+   * @param session_name Name of the current Session
    * @param publish_interval  Time to wait between connection republish (keep-alive)
    */
-  ConfigClient(const std::string& server, const std::string& port, std::chrono::milliseconds publish_interval);
+  ConfigClient(const std::string& server, const std::string& port, const std::string& session_name, std::chrono::milliseconds publish_interval);
 
   /**
    * Destructor: stops the publishing hread and retracts all published

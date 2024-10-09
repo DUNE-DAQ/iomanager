@@ -11,35 +11,34 @@
 #ifndef IOMANAGER_INCLUDE_IOMANAGER_SCHEMAUTILS_HPP_
 #define IOMANAGER_INCLUDE_IOMANAGER_SCHEMAUTILS_HPP_
 
-#include "iomanager/connection/Structs.hpp"
-#include "serialization/Serialization.hpp"
+#include "confmodel/Connection.hpp"
+#include "confmodel/NetworkConnection.hpp"
+#include "confmodel/Service.hpp"
 
 #include <functional>
 #include <regex>
 #include <sstream>
+#include <cerrno>
+#include <ifaddrs.h>
+#include <netdb.h>
 
 namespace dunedaq {
 namespace iomanager {
 
-namespace connection {
-
-inline QueueType
-string_to_queue_type(std::string type_name)
+struct ConnectionId
 {
-  auto parsed = parse_QueueType(type_name);
-  if (parsed != QueueType::kUnknown) {
-    return parsed;
-  }
+  std::string uid{ "" };
+  std::string data_type{ "" };
+  std::string session{ "" };
 
-  // StdDeQueue -> kStdDeQueue
-  parsed = parse_QueueType("k" + type_name);
-  if (parsed != QueueType::kUnknown) {
-    return parsed;
-  }
+  ConnectionId() {}
 
-  // FollySPSC -> kFollySPSCQueue (same for MPMC)
-  return parse_QueueType("k" + type_name + "Queue");
-}
+  explicit ConnectionId(const confmodel::Connection* cfg)
+    : uid(cfg->UID())
+    , data_type(cfg->get_data_type())
+  {
+  }
+};
 
 inline bool
 operator<(ConnectionId const& l, ConnectionId const& r)
@@ -55,8 +54,7 @@ operator<(ConnectionId const& l, ConnectionId const& r)
 inline bool
 operator==(ConnectionId const& l, ConnectionId const& r)
 {
-  return (l.session == "" || r.session == "" ||  l.session == r.session) && l.uid == r.uid &&
-         l.data_type == r.data_type;
+  return (l.session == "" || r.session == "" || l.session == r.session) && l.uid == r.uid && l.data_type == r.data_type;
 }
 
 inline bool
@@ -81,9 +79,46 @@ to_string(const ConnectionId& conn_id)
   return conn_id.uid + "@@" + conn_id.data_type;
 }
 
-} // namespace connection
+inline std::string get_uri_for_connection(const confmodel::NetworkConnection* netCon)
+{
+  if (netCon) {
+    TLOG() << "Getting URI for network connection " << netCon->UID();
+    auto service = netCon->get_associated_service();
+    std::string port = "*";
+    if (service->get_port()) {
+      port = std::to_string(service->get_port());
+    }
+    std::string ipaddr = "0.0.0.0";
+    char hostname[256];
+    if (gethostname(&hostname[0], 256) == 0) {
+      ipaddr = std::string(hostname);
+    }
+    auto iface = service->get_eth_device_name();
+    if (iface != "") {
+      // Work out which ip address goes with this device
+      struct ifaddrs* ifaddr;
+      getifaddrs(&ifaddr);
+      for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL) {
+          continue;
+        }
+        if (std::string(ifa->ifa_name) == iface) {
+          char ip[NI_MAXHOST];
+          int status = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+          if (status != 0) {
+            continue;
+          }
+          ipaddr = std::string(ip);
+          break;
+        }
+      }
+    }
+    std::string uri(service->get_protocol() + "://" + ipaddr + ":" + port);
+    return uri;
+  }
 
-using namespace connection;
+  return "";
+}
 
 } // namespace iomanager
 
@@ -92,9 +127,9 @@ using namespace connection;
 namespace std {
 
 template<>
-struct hash<dunedaq::iomanager::connection::ConnectionId>
+struct hash<dunedaq::iomanager::ConnectionId>
 {
-  std::size_t operator()(const dunedaq::iomanager::connection::ConnectionId& conn_id) const
+  std::size_t operator()(const dunedaq::iomanager::ConnectionId& conn_id) const
   {
     return std::hash<std::string>()(conn_id.session + conn_id.uid + conn_id.data_type);
   }
