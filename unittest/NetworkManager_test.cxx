@@ -25,47 +25,27 @@ using namespace dunedaq::iomanager;
 
 BOOST_AUTO_TEST_SUITE(NetworkManager_test)
 
+const std::string TEST_OKS_DB = "test/config/networkmanager_test.data.xml";
+
 struct NetworkManagerTestFixture
 {
   NetworkManagerTestFixture()
   {
-    setenv("DUNEDAQ_PARTITION", "NetworkManager_t", 0);
 
-    Connections_t testConfig;
-    Connection testConn;
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
 
     sendRecvConnId.uid = "sendRecv";
     sendRecvConnId.data_type = "data";
-    testConn.id = sendRecvConnId;
-    testConn.uri = "inproc://foo";
-    testConn.connection_type = ConnectionType::kSendRecv;
-    testConfig.push_back(testConn);
-
-    testConn.connection_type = ConnectionType::kPubSub;
     pubSubConnId1.uid = "pubsub1";
     pubSubConnId1.data_type = "String";
-    testConn.id = pubSubConnId1;
-    testConn.uri = "inproc://bar";
-    testConfig.push_back(testConn);
-
     pubSubConnId2.uid = "pubsub2";
     pubSubConnId2.data_type = "String";
-    testConn.id = pubSubConnId2;
-    testConn.uri = "inproc://rab";
-    testConfig.push_back(testConn);
-
     pubSubConnId3.uid = "pubsub3";
     pubSubConnId3.data_type = "String";
-    testConn.id = pubSubConnId3;
-    testConn.uri = "inproc://abr";
-    testConfig.push_back(testConn);
-
-    testConn.id.data_type = "words";
-    testConn.uri = "inproc:/oof";
-    testConfig.push_back(testConn);
 
     dunedaq::opmonlib::TestOpMonManager opmgr;
-    NetworkManager::get().configure(testConfig, false, 0ms, opmgr); // Not using ConfigClient
+    NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr); // Not using ConfigClient
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
 
@@ -75,6 +55,8 @@ struct NetworkManagerTestFixture
   NetworkManagerTestFixture& operator=(NetworkManagerTestFixture&&) = default;
 
   ConnectionId sendRecvConnId, pubSubConnId1, pubSubConnId2, pubSubConnId3;
+  std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
+  std::vector<const dunedaq::confmodel::NetworkConnection*> connections;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
@@ -139,39 +121,14 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
                           ConnectionNotFound,
                           [](ConnectionNotFound const&) { return true; });
 
-  Connections_t testConfig;
-  Connection testConn;
-  testConn.id = id_notfound;
-  testConn.uri = "inproc://rab";
-  testConn.connection_type = ConnectionType::kSendRecv;
-  testConfig.push_back(testConn);
   dunedaq::opmonlib::TestOpMonManager opmgr;
-  BOOST_REQUIRE_EXCEPTION( NetworkManager::get().configure(testConfig,
-							   false,
-							   0ms,
-							   opmgr),
-			   AlreadyConfigured, [&](AlreadyConfigured const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr),
+                          AlreadyConfigured,
+                          [&](AlreadyConfigured const&) { return true; });
 
   NetworkManager::get().reset();
 
-  NetworkManager::get().configure(testConfig, false, 0ms, opmgr);
-  conn_res = NetworkManager::get().get_preconfigured_connections(id_notfound);
-  BOOST_REQUIRE_EQUAL(conn_res.connections.size(), 1);
-  conn_res = NetworkManager::get().get_preconfigured_connections(sendRecvConnId);
-  BOOST_REQUIRE_EQUAL(conn_res.connections.size(), 0);
-}
-
-BOOST_FIXTURE_TEST_CASE(NameCollisionInConfiguration, NetworkManagerTestFixture)
-{
-  NetworkManager::get().reset();
-  Connections_t testConfig;
-  testConfig.emplace_back(Connection{ sendRecvConnId, "inproc://foo", ConnectionType::kSendRecv });
-  testConfig.emplace_back(Connection{ sendRecvConnId, "inproc://bar", ConnectionType::kSendRecv });
-  dunedaq::opmonlib::TestOpMonManager opmgr;
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure(testConfig,
-							  false,
-							  0ms, opmgr),
-			  NameCollision, [&](NameCollision const&) { return true; });
+  NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr);
 }
 
 BOOST_FIXTURE_TEST_CASE(GetDatatypes, NetworkManagerTestFixture)
@@ -181,9 +138,8 @@ BOOST_FIXTURE_TEST_CASE(GetDatatypes, NetworkManagerTestFixture)
   BOOST_REQUIRE_EQUAL(*sendRecvDataType.begin(), "data");
 
   auto pubsub3DataType = NetworkManager::get().get_datatypes("pubsub3");
-  BOOST_REQUIRE_EQUAL(pubsub3DataType.size(), 2);
-  BOOST_REQUIRE_EQUAL(pubsub3DataType.count("String"), 1);
-  BOOST_REQUIRE_EQUAL(pubsub3DataType.count("words"), 1);
+  BOOST_REQUIRE_EQUAL(pubsub3DataType.size(), 1);
+  BOOST_REQUIRE_EQUAL(*pubsub3DataType.begin(), "String");
 
   auto invalidDataType = NetworkManager::get().get_datatypes("NonExistentUID");
   BOOST_REQUIRE_EQUAL(invalidDataType.size(), 0);

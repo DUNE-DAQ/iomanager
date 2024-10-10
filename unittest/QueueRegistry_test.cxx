@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_SUITE(QueueRegistry_test)
 
 using namespace dunedaq::iomanager;
 
-const std::string TEST_OKS_DB = "test/config/iomanager.data.xml";
+const std::string TEST_OKS_DB = "test/config/queueregistry_test.data.xml";
 
 struct ConfigurationFixture
 {
@@ -31,6 +31,7 @@ struct ConfigurationFixture
   {
     confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
     confdb->get<dunedaq::confmodel::Queue>(queues);
+
   };
   static std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
   static std::vector<const dunedaq::confmodel::Queue*> queues;
@@ -52,13 +53,13 @@ BOOST_AUTO_TEST_CASE(Configure)
 BOOST_AUTO_TEST_CASE(CreateQueue)
 {
 
-  auto queue_ptr_deque = QueueRegistry::get().get_queue<int>("test_stddeque");
+  auto queue_ptr_deque = QueueRegistry::get().get_queue<int>("test_queue_stddeque");
   BOOST_REQUIRE(queue_ptr_deque != nullptr);
-  auto queue_ptr_fspsc = QueueRegistry::get().get_queue<int>("test_fspsc");
+  auto queue_ptr_fspsc = QueueRegistry::get().get_queue<int>("test_queue_fspsc");
   BOOST_REQUIRE(queue_ptr_fspsc != nullptr);
-  auto queue_ptr_fmpmc = QueueRegistry::get().get_queue<int>("test_fmpmc");
+  auto queue_ptr_fmpmc = QueueRegistry::get().get_queue<int>("test_queue_fmpmc");
   BOOST_REQUIRE(queue_ptr_fmpmc != nullptr);
-  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().get_queue<int>("test_unknown"),
+  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().get_queue<int>("test_queue_unknown"),
                           QueueTypeUnknown,
                           [&](QueueTypeUnknown const&) { return true; });
 }

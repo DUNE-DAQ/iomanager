@@ -15,12 +15,12 @@
 #include "confmodel/NetworkConnection.hpp"
 #include "confmodel/Service.hpp"
 
-#include <functional>
-#include <regex>
-#include <sstream>
 #include <cerrno>
+#include <functional>
 #include <ifaddrs.h>
 #include <netdb.h>
+#include <regex>
+#include <sstream>
 
 namespace dunedaq {
 namespace iomanager {
@@ -32,6 +32,13 @@ struct ConnectionId
   std::string session{ "" };
 
   ConnectionId() {}
+
+  ConnectionId(std::string uid, std::string data_type, std::string session = "")
+    : uid(uid)
+    , data_type(data_type)
+    , session(session)
+  {
+  }
 
   explicit ConnectionId(const confmodel::Connection* cfg)
     : uid(cfg->UID())
@@ -79,45 +86,51 @@ to_string(const ConnectionId& conn_id)
   return conn_id.uid + "@@" + conn_id.data_type;
 }
 
-inline std::string get_uri_for_connection(const confmodel::NetworkConnection* netCon)
+inline std::string
+get_uri_for_connection(const confmodel::NetworkConnection* netCon)
 {
+  std::string uri = "";
   if (netCon) {
     TLOG() << "Getting URI for network connection " << netCon->UID();
     auto service = netCon->get_associated_service();
-    std::string port = "*";
-    if (service->get_port()) {
-      port = std::to_string(service->get_port());
-    }
-    std::string ipaddr = "0.0.0.0";
-    char hostname[256];
-    if (gethostname(&hostname[0], 256) == 0) {
-      ipaddr = std::string(hostname);
-    }
-    auto iface = service->get_eth_device_name();
-    if (iface != "") {
-      // Work out which ip address goes with this device
-      struct ifaddrs* ifaddr;
-      getifaddrs(&ifaddr);
-      for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL) {
-          continue;
-        }
-        if (std::string(ifa->ifa_name) == iface) {
-          char ip[NI_MAXHOST];
-          int status = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-          if (status != 0) {
+    if (service->get_protocol() == "tcp") {
+
+      std::string port = "*";
+      if (service->get_port() && service->get_port() != 0) {
+        port = std::to_string(service->get_port());
+      }
+      std::string ipaddr = "0.0.0.0";
+      char hostname[256];
+      if (gethostname(&hostname[0], 256) == 0) {
+        ipaddr = std::string(hostname);
+      }
+      auto iface = service->get_eth_device_name();
+      if (iface != "") {
+        // Work out which ip address goes with this device
+        struct ifaddrs* ifaddr;
+        getifaddrs(&ifaddr);
+        for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+          if (ifa->ifa_addr == NULL) {
             continue;
           }
-          ipaddr = std::string(ip);
-          break;
+          if (std::string(ifa->ifa_name) == iface) {
+            char ip[NI_MAXHOST];
+            int status =
+              getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+            if (status != 0) {
+              continue;
+            }
+            ipaddr = std::string(ip);
+            break;
+          }
         }
       }
+      uri = std::string(service->get_protocol() + "://" + ipaddr + ":" + port);
+    } else if (service->get_protocol() == "inproc") {
+      uri = std::string(service->get_protocol() + "://" + service->get_path());
     }
-    std::string uri(service->get_protocol() + "://" + ipaddr + ":" + port);
-    return uri;
   }
-
-  return "";
+  return uri;
 }
 
 } // namespace iomanager
