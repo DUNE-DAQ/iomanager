@@ -61,10 +61,9 @@ NetworkManager::configure(const std::string& session_name,
 
   if (conn_svc != nullptr) {
 
-    auto physical_host = conn_svc->get_host();
     auto service = conn_svc->get_service();
 
-    auto connectionServer = physical_host->UID();
+    auto connectionServer = conn_svc->get_host();
     auto connectionPort = service->get_port();
     auto config_client_interval = std::chrono::milliseconds(conn_svc->get_interval_ms());
 
