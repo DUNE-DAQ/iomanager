@@ -17,6 +17,24 @@
 namespace dunedaq {
 namespace iomanager {
 
+enum class ConnectionType : int
+{
+kSendRecv = 0,
+kPubSub = 1,
+kInvalid = 2,
+};
+
+inline ConnectionType
+string_to_connection_type_enum(std::string type)
+{
+  if (type == confmodel::NetworkConnection::Connection_type::KPubSub)
+    return ConnectionType::kPubSub;
+  if (type == confmodel::NetworkConnection::Connection_type::KSendRecv)
+    return ConnectionType::kSendRecv;
+
+  return ConnectionType::kInvalid;
+}
+
 struct ConnectionRequest
 {
   std::string uid_regex;
@@ -39,7 +57,7 @@ struct ConnectionInfo
   std::string uid;
   std::string data_type;
   std::string uri;
-  std::string connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
+  ConnectionType connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
   ConnectionInfo() {}
 
@@ -48,7 +66,7 @@ struct ConnectionInfo
     : uid(convert->UID())
     , data_type(convert->get_data_type())
     , uri(get_uri_for_connection(convert))
-    , connection_type(convert->get_connection_type())
+    , connection_type(string_to_connection_type_enum(convert->get_connection_type()))
   {
   }
 
@@ -60,7 +78,7 @@ struct ConnectionRegistration
   std::string uid;
   std::string data_type;
   std::string uri;
-  std::string connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
+  ConnectionType connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
   ConnectionRegistration() {}
 
@@ -69,7 +87,7 @@ struct ConnectionRegistration
     : uid(convert->UID())
     , data_type(convert->get_data_type())
     , uri(get_uri_for_connection(convert))
-    , connection_type(convert->get_connection_type())
+    , connection_type(string_to_connection_type_enum(convert->get_connection_type()))
   {
   }
 
@@ -102,5 +120,7 @@ operator<(ConnectionRegistration const& l, ConnectionRegistration const& r)
 }
 }
 }
+
+MSGPACK_ADD_ENUM(dunedaq::iomanager::ConnectionType)
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTSTRUCTS_HPP_

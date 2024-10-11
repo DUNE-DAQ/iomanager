@@ -201,7 +201,7 @@ bool
 NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 {
   auto response = get_connections(conn_id);
-  bool is_pubsub = response.connections[0].connection_type == confmodel::NetworkConnection::Connection_type::KPubSub;
+  bool is_pubsub = response.connections[0].connection_type == ConnectionType::kPubSub;
 
   // TLOG() << "Returning " << std::boolalpha << is_pubsub << " for request " << request;
   return is_pubsub;
@@ -278,7 +278,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     return nullptr;
   }
 
-  bool is_pubsub = connections[0].connection_type == confmodel::NetworkConnection::Connection_type::KPubSub;
+  bool is_pubsub = connections[0].connection_type == ConnectionType::kPubSub;
   if (connections.size() > 1 && !is_pubsub) {
     throw OperationFailed(ERS_HERE,
                           "Trying to configure a kSendRecv receiver with multiple Connections is not allowed!");
@@ -350,7 +350,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
 std::shared_ptr<ipm::Sender>
 NetworkManager::create_sender(ConnectionInfo connection)
 {
-  auto is_pubsub = connection.connection_type == confmodel::NetworkConnection::Connection_type::KPubSub;
+  auto is_pubsub = connection.connection_type == ConnectionType::kPubSub;
   auto plugin_type =
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 

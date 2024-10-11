@@ -76,7 +76,7 @@ main(int argc, char* argv[])
     conn_reg.uid = connId;
     conn_reg.data_type = "TPSet";
     conn_reg.uri = uri;
-    conn_reg.connection_type = dunedaq::confmodel::NetworkConnection::Connection_type::KSendRecv;
+    conn_reg.connection_type = dunedaq::iomanager::ConnectionType::kSendRecv;
     connections.push_back(conn_reg);
   }
 
