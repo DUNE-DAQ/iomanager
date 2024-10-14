@@ -28,15 +28,15 @@ ConfigClient::ConfigClient(const std::string& server,
                            const std::string& port,
                            std::chrono::milliseconds publish_interval)
 {
-  char* session = getenv("DUNEDAQ_SESSION");
-  if (session) {
-    m_session = std::string(session);
+  char* system = getenv("DUNEDAQ_SYSTEM");
+  if (system) {
+    m_system = std::string(system);
   } else {
-    session = getenv("DUNEDAQ_PARTITION");
-    if (session) {
-      m_session = std::string(session);
+    system = getenv("DUNEDAQ_PARTITION");
+    if (system) {
+      m_system = std::string(system);
     } else {
-      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
+      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SYSTEM"));
     }
   }
 
@@ -81,13 +81,13 @@ ConfigClient::~ConfigClient()
 }
 
 ConnectionResponse
-ConfigClient::resolveConnection(const ConnectionRequest& query, std::string session)
+ConfigClient::resolveConnection(const ConnectionRequest& query, std::string system)
 {
-  if (session == "") {
-    session = m_session;
+  if (system == "") {
+    system = m_system;
   }
-  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in session " << session;
-  std::string target = "/getconnection/" + session;
+  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in system " << system;
+  std::string target = "/getconnection/" + system;
   http::request<http::string_body> req{ http::verb::post, target, 11 };
   req.set(http::field::content_type, "application/json");
   nlohmann::json jquery = query;
@@ -158,7 +158,7 @@ ConfigClient::publish(const std::vector<ConnectionRegistration>& connections)
 void
 ConfigClient::publish()
 {
-  json content{ { "partition", m_session } };
+  json content{ { "partition", m_system } };
   json connections = json::array();
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -220,7 +220,7 @@ ConfigClient::retract()
   TLOG_DEBUG(1) << "retract(): Retracting " << connections.size() << " connections";
     http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
     req.set(http::field::content_type, "application/json");
-    json body{ { "partition", m_session } };
+    json body{ { "partition", m_system } };
     body["connections"] = connections;
     req.body() = body.dump();
     req.prepare_payload();
@@ -283,7 +283,7 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
       }
     }
   }
-  json body{ { "partition", m_session } };
+  json body{ { "partition", m_system } };
   body["connections"] = connections;
   req.body() = body.dump();
   req.prepare_payload();

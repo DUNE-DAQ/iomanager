@@ -37,7 +37,7 @@ IOManager::get_receiver(std::string const& uid)
   ConnectionId id;
   id.uid = uid;
   id.data_type = data_type;
-  id.session = m_session;
+  id.system = m_system;
   return get_receiver<Datatype>(id);
 }
 
@@ -49,8 +49,8 @@ IOManager::get_receiver(ConnectionId id)
     throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
   }
 
-  if (id.session == "") {
-    id.session = m_session;
+  if (id.system == "") {
+    id.system = m_system;
   }
 
   static std::mutex dt_receiver_mutex;
@@ -62,7 +62,7 @@ IOManager::get_receiver(ConnectionId id)
       m_receivers[id] = std::make_shared<QueueReceiverModel<Datatype>>(id);
     } else {
       TLOG("IOManager") << "Creating NetworkReceiverModel for uid " << id.uid << ", datatype " << id.data_type
-                        << " in session " << id.session;
+                        << " in system " << id.system;
       m_receivers[id] = std::make_shared<NetworkReceiverModel<Datatype>>(id);
     }
   }
@@ -77,7 +77,7 @@ IOManager::get_sender(std::string const& uid)
   ConnectionId id;
   id.uid = uid;
   id.data_type = data_type;
-  id.session = m_session;
+  id.system = m_system;
   return get_sender<Datatype>(id);
 }
 
@@ -89,8 +89,8 @@ IOManager::get_sender(ConnectionId id)
     throw DatatypeMismatch(ERS_HERE, id.uid, id.data_type, datatype_to_string<Datatype>());
   }
 
-  if (id.session == "") {
-    id.session = m_session;
+  if (id.system == "") {
+    id.system = m_system;
   }
 
   static std::mutex dt_sender_mutex;
@@ -102,7 +102,7 @@ IOManager::get_sender(ConnectionId id)
       m_senders[id] = std::make_shared<QueueSenderModel<Datatype>>(id);
     } else {
       TLOG("IOManager") << "Creating NetworkSenderModel for uid " << id.uid << ", datatype " << id.data_type
-                        << " in session " << id.session;
+                        << " in system " << id.system;
       m_senders[id] = std::make_shared<NetworkSenderModel<Datatype>>(id);
     }
   }

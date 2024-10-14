@@ -6,7 +6,7 @@ This test application is a simple test of the ConfigClient functionality, and te
 
 ## iomanager_stress_test
 
-This test application tries to emulate the send/recv part of a large DAQ session. It does this by creating a number of Sender and Receiver pair applications, each with a number of connections between them. Configuration options include the number of app pairs to start, the number of connections for each app pair, the number of messages that they will send to one another, and the size of each message.
+This test application tries to emulate the send/recv part of a large DAQ system. It does this by creating a number of Sender and Receiver pair applications, each with a number of connections between them. Configuration options include the number of app pairs to start, the number of connections for each app pair, the number of messages that they will send to one another, and the size of each message.
 
 A "Control" channel is used by the Receiver app to notify the Sender that it is ready to start receiving messages and that it has completed reception of all expected messages. These control messages allow the separate proceeses to remain synchonized.
 

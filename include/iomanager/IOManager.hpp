@@ -90,7 +90,7 @@ private:
   using ReceiverMap = std::map<ConnectionId, std::shared_ptr<Receiver>>;
   SenderMap m_senders;
   ReceiverMap m_receivers;
-  std::string m_session;
+  std::string m_system;
 
   static std::shared_ptr<IOManager> s_instance;
 };
