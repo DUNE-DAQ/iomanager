@@ -28,7 +28,7 @@ QueueRegistry::get()
 }
 
 void
-QueueRegistry::configure(const std::vector<QueueConfig>& configs, opmonlib::OpMonManager & mgr)
+QueueRegistry::configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager & mgr)
 {
   if (m_configured) {
     throw QueueRegistryConfigured(ERS_HERE);
@@ -46,7 +46,7 @@ bool
 QueueRegistry::has_queue(const std::string& uid, const std::string& data_type) const
 {
   for (auto& config : m_queue_configs) {
-    if (config.id.uid == uid && config.id.data_type == data_type) {
+    if (config->UID() == uid && config->get_data_type() == data_type) {
       return true;
     }
   }
@@ -60,8 +60,8 @@ QueueRegistry::get_datatypes(const std::string& uid) const
   std::set<std::string> output;
 
   for (auto& config : m_queue_configs) {
-    if (config.id.uid == uid) {
-      output.insert(config.id.data_type);
+    if (config->UID() == uid) {
+      output.insert(config->get_data_type());
     }
   }
 

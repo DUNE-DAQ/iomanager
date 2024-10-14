@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="ASCII"?>
+
+<!-- oks-data version 2.2 -->
+
+
+<!DOCTYPE oks-data [
+  <!ELEMENT oks-data (info, (include)?, (comments)?, (obj)+)>
+  <!ELEMENT info EMPTY>
+  <!ATTLIST info
+      name CDATA #IMPLIED
+      type CDATA #IMPLIED
+      num-of-items CDATA #REQUIRED
+      oks-format CDATA #FIXED "data"
+      oks-version CDATA #REQUIRED
+      created-by CDATA #IMPLIED
+      created-on CDATA #IMPLIED
+      creation-time CDATA #IMPLIED
+      last-modified-by CDATA #IMPLIED
+      last-modified-on CDATA #IMPLIED
+      last-modification-time CDATA #IMPLIED
+  >
+  <!ELEMENT include (file)*>
+  <!ELEMENT file EMPTY>
+  <!ATTLIST file
+      path CDATA #REQUIRED
+  >
+  <!ELEMENT comments (comment)*>
+  <!ELEMENT comment EMPTY>
+  <!ATTLIST comment
+      creation-time CDATA #REQUIRED
+      created-by CDATA #REQUIRED
+      created-on CDATA #REQUIRED
+      author CDATA #REQUIRED
+      text CDATA #REQUIRED
+  >
+  <!ELEMENT obj (attr | rel)*>
+  <!ATTLIST obj
+      class CDATA #REQUIRED
+      id CDATA #REQUIRED
+  >
+  <!ELEMENT attr (data)*>
+  <!ATTLIST attr
+      name CDATA #REQUIRED
+      type (bool|s8|u8|s16|u16|s32|u32|s64|u64|float|double|date|time|string|uid|enum|class|-) "-"
+      val CDATA ""
+  >
+  <!ELEMENT data EMPTY>
+  <!ATTLIST data
+      val CDATA #REQUIRED
+  >
+  <!ELEMENT rel (ref)*>
+  <!ATTLIST rel
+      name CDATA #REQUIRED
+      class CDATA ""
+      id CDATA ""
+  >
+  <!ELEMENT ref EMPTY>
+  <!ATTLIST ref
+      class CDATA #REQUIRED
+      id CDATA #REQUIRED
+  >
+]>
+
+<oks-data>
+
+<info name="" type="" num-of-items="11" oks-format="data" oks-version="862f2957270" created-by="gjc" created-on="thinkpad" creation-time="20231110T143339" last-modified-by="eflumerf" last-modified-on="ironvirt9.mshome.net" last-modification-time="20241010T181349"/>
+
+<include>
+ <file path="schema/confmodel/dunedaq.schema.xml"/>
+</include>
+
+<comments>
+ <comment creation-time="20240327T161636" created-by="eflumerf" created-on="ironvirt9.mshome.net" author="eflumerf" text="Reformat"/>
+ <comment creation-time="20241009T203950" created-by="eflumerf" created-on="ironvirt9.mshome.net" author="eflumerf" text="Add test queues"/>
+ <comment creation-time="20241010T170002" created-by="eflumerf" created-on="ironvirt9.mshome.net" author="eflumerf" text="testt"/>
+</comments>
+
+
+<obj class="NetworkConnection" id="network">
+ <attr name="data_type" type="string" val="data_t"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="connection_type" type="enum" val="kSendRecv"/>
+ <rel name="associated_service" class="Service" id="foo"/>
+</obj>
+
+<obj class="NetworkConnection" id="pub1">
+ <attr name="data_type" type="string" val="data2_t"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="connection_type" type="enum" val="kPubSub"/>
+ <rel name="associated_service" class="Service" id="bar"/>
+</obj>
+
+<obj class="NetworkConnection" id="pub2">
+ <attr name="data_type" type="string" val="data2_t"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="connection_type" type="enum" val="kPubSub"/>
+ <rel name="associated_service" class="Service" id="baz"/>
+</obj>
+
+<obj class="NetworkConnection" id="pub3">
+ <attr name="data_type" type="string" val="data3_t"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="connection_type" type="enum" val="kPubSub"/>
+ <rel name="associated_service" class="Service" id="qui"/>
+</obj>
+
+<obj class="NetworkConnection" id="test">
+ <attr name="data_type" type="string" val="data2_t"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="connection_type" type="enum" val="kSendRecv"/>
+ <rel name="associated_service" class="Service" id="foo"/>
+</obj>
+
+<obj class="Queue" id="queue">
+ <attr name="data_type" type="string" val="data_t"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="capacity" type="u32" val="50"/>
+ <attr name="queue_type" type="enum" val="kFollySPSCQueue"/>
+</obj>
+
+<obj class="Queue" id="test">
+ <attr name="data_type" type="string" val="data3_t"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="capacity" type="u32" val="50"/>
+ <attr name="queue_type" type="enum" val="kFollySPSCQueue"/>
+</obj>
+
+<obj class="Service" id="bar">
+ <attr name="protocol" type="string" val="inproc"/>
+ <attr name="port" type="u16" val="0"/>
+ <attr name="path" type="string" val="bar"/>
+</obj>
+
+<obj class="Service" id="baz">
+ <attr name="protocol" type="string" val="inproc"/>
+ <attr name="port" type="u16" val="0"/>
+ <attr name="path" type="string" val="baz"/>
+</obj>
+
+<obj class="Service" id="foo">
+ <attr name="protocol" type="string" val="inproc"/>
+ <attr name="port" type="u16" val="0"/>
+ <attr name="path" type="string" val="foo"/>
+</obj>
+
+<obj class="Service" id="qui">
+ <attr name="protocol" type="string" val="inproc"/>
+ <attr name="port" type="u16" val="0"/>
+ <attr name="path" type="string" val="qui"/>
+</obj>
+
+</oks-data>

@@ -28,14 +28,15 @@ QueueRegistry::get_queue(const std::string& name)
     return queuePtr;
   }
 
-  auto config_it = this->m_queue_configs.begin();
-  while (config_it != m_queue_configs.end()) {
-    if (config_it->id.uid == name)
+  const confmodel::Queue* qptr = nullptr;
+  for(auto& qcfg : m_queue_configs) {
+    if (qcfg->UID() == name) {
+      qptr = qcfg;
       break;
-    ++config_it;
+    }
   }
-  if (config_it != m_queue_configs.end()) {
-    QueueEntry entry = { *config_it, &typeid(T), create_queue<T>(*config_it) };
+  if (qptr != nullptr) {
+    QueueEntry entry = { qptr, &typeid(T), create_queue<T>(qptr) };
     m_queue_registry[name] = entry;
     return std::dynamic_pointer_cast<Queue<T>>(entry.m_instance);
 
@@ -49,26 +50,22 @@ QueueRegistry::get_queue(const std::string& name)
 
 template<typename T>
 std::shared_ptr<QueueBase>
-QueueRegistry::create_queue(const QueueConfig& config)
+QueueRegistry::create_queue(const confmodel::Queue* config)
 {
   std::shared_ptr<QueueBase> queue;
-  switch (config.queue_type) {
-    case QueueType::kStdDeQueue:
-      queue = std::make_shared<StdDeQueue<T>>(config.id.uid, config.capacity);
-      break;
-    case QueueType::kFollySPSCQueue:
-      queue = std::make_shared<FollySPSCQueue<T>>(config.id.uid, config.capacity);
-      break;
-    case QueueType::kFollyMPMCQueue:
-      queue = std::make_shared<FollyMPMCQueue<T>>(config.id.uid, config.capacity);
-      break;
-
-    default:
-      throw QueueTypeUnknown(ERS_HERE, str(config.queue_type));
+  auto type = config->get_queue_type();
+  if (type == confmodel::Queue::Queue_type::KStdDeQueue) {
+    queue = std::make_shared<StdDeQueue<T>>(config->UID(), config->get_capacity());
+  } else if (type == confmodel::Queue::Queue_type::KFollySPSCQueue) {
+    queue = std::make_shared<FollySPSCQueue<T>>(config->UID(), config->get_capacity());
+  } else if (type == confmodel::Queue::Queue_type::KFollyMPMCQueue) {
+    queue = std::make_shared<FollyMPMCQueue<T>>(config->UID(), config->get_capacity());
+  } else {
+    throw QueueTypeUnknown(ERS_HERE, config->get_queue_type());
   }
 
-  m_opmon_link->register_node(config.id.uid, queue);
-  
+  m_opmon_link->register_node(config->UID(), queue);
+
   return queue;
 }
 

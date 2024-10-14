@@ -15,6 +15,8 @@
 #include "logging/Logging.hpp"
 #include "utilities/NamedObject.hpp"
 
+#include <optional>
+
 namespace dunedaq {
 
 namespace iomanager {

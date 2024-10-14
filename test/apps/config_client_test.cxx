@@ -10,6 +10,8 @@
 #include "iomanager/network/NetworkIssues.hpp"
 #include "logging/Logging.hpp"
 
+#include "confmodel/NetworkConnection.hpp"
+
 #include "boost/program_options.hpp"
 #include "nlohmann/json.hpp"
 
@@ -26,7 +28,6 @@ using namespace std::chrono;
 int
 main(int argc, char* argv[])
 {
-  dunedaq::logging::Logging::setup();
 
   std::string name("ccTest");
   std::string server("localhost");
@@ -40,7 +41,7 @@ main(int argc, char* argv[])
   po::options_description desc("Simple test program for ConfigClient class");
   desc.add_options()(
     //"file,f", po::value<std::string>(&file), "file to publish as our configuration")(
-    "name,n", po::value<std::string>(&name), "name of partition to publish our config under")(
+    "name,n", po::value<std::string>(&name), "name of session to publish our config under")(
     "count,c", po::value<int>(&connectionCount), "number of connections to publish")(
     "port,p", po::value<std::string>(&port), "port to connect to on configuration server")(
     "server,s", po::value<std::string>(&server), "Configuration server to connect to")(
@@ -58,13 +59,9 @@ main(int argc, char* argv[])
     return 0;
   }
 
-  std::string part="DUNEDAQ_PARTITION="+name;
-  try {
-    ConfigClient dummyclient(server, port, 1000ms);
-  } catch (EnvNotFound& ex) {
-    putenv(const_cast<char*>(part.c_str())); // NOLINT
-  }
-  ConfigClient client(server, port, 1000ms);
+  dunedaq::logging::Logging::setup(name, "config_client_test");
+
+  ConfigClient client(server, port,name, 1000ms);
 
   std::vector<ConnectionRegistration> connections;
   std::ostringstream numStr;
@@ -79,7 +76,7 @@ main(int argc, char* argv[])
     conn_reg.uid = connId;
     conn_reg.data_type = "TPSet";
     conn_reg.uri = uri;
-    conn_reg.connection_type = ConnectionType::kSendRecv;
+    conn_reg.connection_type = dunedaq::iomanager::ConnectionType::kSendRecv;
     connections.push_back(conn_reg);
   }
 

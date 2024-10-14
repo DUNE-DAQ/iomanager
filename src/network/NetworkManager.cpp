@@ -13,6 +13,9 @@
 #include "logging/Logging.hpp"
 #include "utilities/Resolver.hpp"
 
+#include "confmodel/PhysicalHost.hpp"
+#include "confmodel/Service.hpp"
+
 #include <map>
 #include <memory>
 #include <string>
@@ -33,48 +36,47 @@ NetworkManager::get()
   return *s_instance;
 }
 
-
 void
-NetworkManager::configure(const Connections_t& connections,
-                          bool use_config_client,
-                          std::chrono::milliseconds config_client_interval,
-			  dunedaq::opmonlib::OpMonManager & opmgr)
+NetworkManager::configure(const std::string& session_name,
+                          const std::vector<const confmodel::NetworkConnection*>& connections,
+                          const confmodel::ConnectivityService* conn_svc,
+                          dunedaq::opmonlib::OpMonManager& opmgr)
 {
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
   }
 
   for (auto& connection : connections) {
-    auto name = connection.id.uid;
+    auto name = connection->UID();
     TLOG_DEBUG(15) << "Adding connection " << name << " to connection map";
-    if (m_preconfigured_connections.count(connection.id)) {
-      TLOG_DEBUG(15) << "Name collision for connection " << name << ", DT " << connection.id.data_type
-                     << " connection_map.count: " << m_preconfigured_connections.count(connection.id);
+    ConnectionId id(connection);
+    if (m_preconfigured_connections.count(id)) {
+      TLOG_DEBUG(15) << "Name collision for connection " << name << ", DT " << connection->get_data_type()
+                     << " connection_map.count: " << m_preconfigured_connections.count(id);
       reset();
-      throw NameCollision(ERS_HERE, connection.id.uid);
+      throw NameCollision(ERS_HERE, connection->UID());
     }
-    m_preconfigured_connections[connection.id] = connection;
+    m_preconfigured_connections[id] = connection;
   }
 
-  if (use_config_client && m_config_client == nullptr) {
+  if (conn_svc != nullptr) {
 
-    std::string connectionServer = "localhost";
-    char* env = getenv("CONNECTION_SERVER");
-    if (env) {
-      connectionServer = std::string(env);
-    }
-    std::string connectionPort = "5000";
-    env = getenv("CONNECTION_PORT");
-    if (env) {
-      connectionPort = std::string(env);
-    }
+    auto service = conn_svc->get_service();
+
+    auto connectionServer = conn_svc->get_host();
+    auto connectionPort = service->get_port();
+    auto config_client_interval = std::chrono::milliseconds(conn_svc->get_interval_ms());
+
     TLOG_DEBUG(17) << "ConnectionServer host and port are " << connectionServer << ":" << connectionPort;
-    m_config_client = std::make_unique<ConfigClient>(connectionServer, connectionPort, config_client_interval);
+    if (m_config_client == nullptr) {
+      m_config_client =
+        std::make_unique<ConfigClient>(connectionServer, std::to_string(connectionPort),session_name, config_client_interval);
+    }
+    m_config_client_interval = config_client_interval;
   }
-  m_config_client_interval = config_client_interval;
 
-  opmgr.register_node( "senders", m_sender_opmon_link);
-  opmgr.register_node( "receivers", m_receiver_opmon_link);
+  opmgr.register_node("senders", m_sender_opmon_link);
+  opmgr.register_node("receivers", m_receiver_opmon_link);
 }
 
 void
@@ -194,6 +196,7 @@ NetworkManager::remove_sender(ConnectionId const& conn_id)
   m_sender_plugins.erase(conn_id);
 }
 
+
 bool
 NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 {
@@ -247,7 +250,7 @@ NetworkManager::get_preconfigured_connections(ConnectionId const& conn_id) const
 {
   ConnectionResponse matching_connections;
   for (auto& conn : m_preconfigured_connections) {
-    if (is_match(conn_id, conn.second.id)) {
+    if (is_match(conn_id, conn.first)) {
       matching_connections.connections.push_back(conn.second);
     }
   }
@@ -260,8 +263,8 @@ NetworkManager::get_datatypes(std::string const& uid) const
 {
   std::set<std::string> output;
   for (auto& conn : m_preconfigured_connections) {
-    if (conn.second.id.uid == uid)
-      output.insert(conn.second.id.data_type);
+    if (conn.second->UID() == uid)
+      output.insert(conn.second->get_data_type());
   }
 
   return output;
@@ -328,7 +331,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     subscriber->subscribe(connections[0].data_type);
     std::lock_guard<std::mutex> lkk(m_subscriber_plugin_map_mutex);
     m_subscriber_plugins[conn_id] = subscriber;
-    if (!m_subscriber_update_thread_running) {
+    if (!m_subscriber_update_thread_running && m_config_client != nullptr) {
       m_subscriber_update_thread_running = true;
       m_subscriber_update_thread.reset(new std::thread(&NetworkManager::update_subscribers, this));
     }
@@ -339,7 +342,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   }
 
   register_monitorable_node(plugin, m_receiver_opmon_link, conn_id.uid, is_pubsub);
-  
+
   TLOG_DEBUG(12) << "END";
   return plugin;
 }
@@ -352,7 +355,8 @@ NetworkManager::create_sender(ConnectionInfo connection)
     ipm::get_recommended_plugin_name(is_pubsub ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
   // Check for case where both ends are in app and ConnectivityService hasn't received other end yet
-  if (!is_pubsub && (connection.uri.find("*") != std::string::npos || connection.uri.find("0.0.0.0") != std::string::npos)) {
+  if (!is_pubsub &&
+      (connection.uri.find("*") != std::string::npos || connection.uri.find("0.0.0.0") != std::string::npos)) {
     return nullptr;
   }
 
@@ -381,9 +385,8 @@ NetworkManager::create_sender(ConnectionInfo connection)
     m_config_client->publish(connection);
   }
 
-
   register_monitorable_node(plugin, m_sender_opmon_link, connection.uid, is_pubsub);
-  
+
   return plugin;
 }
 
@@ -414,13 +417,15 @@ NetworkManager::update_subscribers()
 }
 
 void
-NetworkManager::register_monitorable_node( std::shared_ptr<opmonlib::MonitorableObject> conn,
-					   std::shared_ptr<opmonlib::OpMonLink> link,
-					   const std::string & name, bool /*is_pubsub*/ ) {
+NetworkManager::register_monitorable_node(std::shared_ptr<opmonlib::MonitorableObject> conn,
+                                          std::shared_ptr<opmonlib::OpMonLink> link,
+                                          const std::string& name,
+                                          bool /*is_pubsub*/)
+{
 
   try {
     link->register_node(name, conn);
-  } catch  (const opmonlib::NonUniqueNodeName & err ) {
+  } catch (const opmonlib::NonUniqueNodeName& err) {
     bool success = false;
     size_t counter = 1;
     do {
@@ -428,12 +433,11 @@ NetworkManager::register_monitorable_node( std::shared_ptr<opmonlib::Monitorable
       try {
         link->register_node(fname, conn);
         success = true;
-      } catch ( const opmonlib::NonUniqueNodeName & err ) {
+      } catch (const opmonlib::NonUniqueNodeName& err) {
         ++counter;
       }
-    } while( ! success );
+    } while (!success);
   }
 }
 
-  
 } // namespace dunedaq::iomanager

@@ -55,12 +55,6 @@ struct TestConfig
   bool verbose = false;
   static std::atomic<bool> test_running;
 
-  void configure_connsvc()
-  {
-    setenv("CONNECTION_SERVER", server.c_str(), 1);
-    setenv("CONNECTION_PORT", std::to_string(port).c_str(), 1);
-  }
-
   static std::string get_connection_name(size_t conn_id)
   {
     std::stringstream ss;
@@ -73,10 +67,6 @@ struct TestConfig
 
   void configure_iomanager()
   {
-    setenv("DUNEDAQ_PARTITION", "iomanager_stress_test", 0);
-
-    auto host = getenv("HOSTNAME");
-
     Queues_t queues;
     Connections_t connections;
 

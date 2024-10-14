@@ -168,16 +168,19 @@ datatype_to_string<NonSerializableNonCopyable>()
 
 BOOST_AUTO_TEST_SUITE(IOManager_test)
 
+const std::string TEST_OKS_DB = "test/config/iomanager_test.data.xml";
+
 struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    setenv("DUNEDAQ_PARTITION", "IOManager_t", 0);
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb->get<dunedaq::confmodel::Queue>(queues);
+    confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
 
     conn_id = ConnectionId{ "network", "data_t" };
     queue_id = ConnectionId{ "queue", "data_t" };
-    conn_id2 = ConnectionId{ "test", "data2_t" };
-    queue_id2 = ConnectionId{ "test", "data3_t" };
+
     pub1_id = ConnectionId{ "pub1", "data2_t" };
     pub2_id = ConnectionId{ "pub2", "data2_t" };
     pub3_id = ConnectionId{ "pub3", "data3_t" };
@@ -185,18 +188,7 @@ struct ConfigurationTestFixture
     sub2_id = ConnectionId{ "pub2", "data2_t" };
     sub3_id = ConnectionId{ "pub.*", "data3_t" };
 
-    dunedaq::iomanager::Queues_t queues;
-    queues.emplace_back(QueueConfig{ queue_id, QueueType::kFollySPSCQueue, 50 });
-    queues.emplace_back(QueueConfig{ queue_id2, QueueType::kFollySPSCQueue, 50 });
-
-    dunedaq::iomanager::Connections_t connections;
-    connections.emplace_back(Connection{ conn_id, "inproc://foo", ConnectionType::kSendRecv });
-    connections.emplace_back(Connection{ conn_id2, "inproc://oof", ConnectionType::kSendRecv });
-    connections.emplace_back(Connection{ pub1_id, "inproc://bar", ConnectionType::kPubSub });
-    connections.emplace_back(Connection{ pub2_id, "inproc://baz", ConnectionType::kPubSub });
-    connections.emplace_back(Connection{ pub3_id, "inproc://qui", ConnectionType::kPubSub });
-
-    IOManager::get()->configure(queues, connections, false, 1000ms, opmgr); // Not using connectivity service
+    IOManager::get()->configure("IOManager_t", queues, connections, nullptr, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -206,15 +198,17 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
 
   ConnectionId conn_id;
-  ConnectionId conn_id2;
   ConnectionId queue_id;
-  ConnectionId queue_id2;
   ConnectionId pub1_id;
   ConnectionId pub2_id;
   ConnectionId pub3_id;
   ConnectionId sub1_id;
   ConnectionId sub2_id;
   ConnectionId sub3_id;
+
+  std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
+  std::vector<const dunedaq::confmodel::Queue*> queues;
+  std::vector<const dunedaq::confmodel::NetworkConnection*> connections;
 
   dunedaq::opmonlib::TestOpMonManager opmgr;
 };
@@ -237,7 +231,7 @@ BOOST_AUTO_TEST_CASE(Singleton)
 
 BOOST_FIXTURE_TEST_CASE(DatatypeMismatchException, ConfigurationTestFixture)
 {
-  ConnectionId bad_id{ "network", "baddata_t" };
+  ConnectionId bad_id{ "iomanager_test_network", "baddata_t" };
 
   auto sender = IOManager::get()->get_sender<Data>(conn_id);
   BOOST_REQUIRE_EXCEPTION(

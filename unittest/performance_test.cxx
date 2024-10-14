@@ -42,22 +42,17 @@ DUNE_DAQ_SERIALIZABLE(data_t, "data_t");
 
 BOOST_AUTO_TEST_SUITE(performance_test)
 
+const std::string TEST_OKS_DB = "test/config/iomanager_test.data.xml";
+
 struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    setenv("DUNEDAQ_PARTITION", "performance_t", 0);
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb->get<dunedaq::confmodel::Queue>(queues);
+    confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
 
-    network_id = ConnectionId{ "network", "data_t" };
-    queue_id = ConnectionId{ "queue", "data_t" };
-
-    dunedaq::iomanager::Queues_t queues;
-    queues.emplace_back(QueueConfig{queue_id, QueueType::kFollySPSCQueue, 50 });
-
-    dunedaq::iomanager::Connections_t connections;
-    connections.emplace_back(Connection{ network_id, "inproc://foo", ConnectionType::kSendRecv });
-
-    IOManager::get()->configure(queues, connections, false, 0ms, opmgr); // Not using connectivity service
+    IOManager::get()->configure("performance_t", queues, connections, nullptr, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -70,6 +65,9 @@ struct ConfigurationTestFixture
   
   dunedaq::iomanager::ConnectionId network_id;
   dunedaq::iomanager::ConnectionId queue_id;
+  std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
+  std::vector<const dunedaq::confmodel::Queue*> queues;
+  std::vector<const dunedaq::confmodel::NetworkConnection*> connections;
   const size_t n_sends = 10000;
   const size_t message_size = 55680;
 };
