@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="us-ascii"?>
+<?xml version="1.0" encoding="ASCII"?>
 
 <!-- oks-data version 2.2 -->
 
@@ -63,7 +63,7 @@
 
 <oks-data>
 
-<info name="" type="" num-of-items="13" oks-format="data" oks-version="862f2957270" created-by="gjc" created-on="thinkpad" creation-time="20231110T143339" last-modified-by="eflumerf" last-modified-on="ironvirt9.mshome.net" last-modification-time="20241010T181349"/>
+<info name="" type="" num-of-items="8" oks-format="data" oks-version="862f2957270" created-by="gjc" created-on="thinkpad" creation-time="20231110T143339" last-modified-by="eflumerf" last-modified-on="ironvirt9.IRONDOMAIN.local" last-modification-time="20241023T204410"/>
 
 <include>
  <file path="schema/confmodel/dunedaq.schema.xml"/>
@@ -75,14 +75,6 @@
  <comment creation-time="20241010T170002" created-by="eflumerf" created-on="ironvirt9.mshome.net" author="eflumerf" text="testt"/>
 </comments>
 
-
-<obj class="NetworkConnection" id="sendRecv">
- <attr name="data_type" type="string" val="data"/>
- <attr name="send_timeout_ms" type="u32" val="10"/>
- <attr name="recv_timeout_ms" type="u32" val="10"/>
- <attr name="connection_type" type="enum" val="kSendRecv"/>
- <rel name="associated_service" class="Service" id="foo"/>
-</obj>
 
 <obj class="NetworkConnection" id="pubsub1">
  <attr name="data_type" type="string" val="String"/>
@@ -107,17 +99,25 @@
  <attr name="connection_type" type="enum" val="kPubSub"/>
  <rel name="associated_service" class="Service" id="abr"/>
 </obj>
-    
+
+<obj class="NetworkConnection" id="sendRecv">
+ <attr name="data_type" type="string" val="data"/>
+ <attr name="send_timeout_ms" type="u32" val="10"/>
+ <attr name="recv_timeout_ms" type="u32" val="10"/>
+ <attr name="connection_type" type="enum" val="kSendRecv"/>
+ <rel name="associated_service" class="Service" id="foo"/>
+</obj>
+
+<obj class="Service" id="abr">
+ <attr name="protocol" type="string" val="inproc"/>
+ <attr name="port" type="u16" val="0"/>
+ <attr name="path" type="string" val="abr"/>
+</obj>
+
 <obj class="Service" id="bar">
  <attr name="protocol" type="string" val="inproc"/>
  <attr name="port" type="u16" val="0"/>
  <attr name="path" type="string" val="bar"/>
-</obj>
-
-<obj class="Service" id="rab">
- <attr name="protocol" type="string" val="inproc"/>
- <attr name="port" type="u16" val="0"/>
- <attr name="path" type="string" val="rab"/>
 </obj>
 
 <obj class="Service" id="foo">
@@ -126,10 +126,10 @@
  <attr name="path" type="string" val="foo"/>
 </obj>
 
-<obj class="Service" id="abr">
+<obj class="Service" id="rab">
  <attr name="protocol" type="string" val="inproc"/>
  <attr name="port" type="u16" val="0"/>
- <attr name="path" type="string" val="abr"/>
+ <attr name="path" type="string" val="rab"/>
 </obj>
 
 </oks-data>
