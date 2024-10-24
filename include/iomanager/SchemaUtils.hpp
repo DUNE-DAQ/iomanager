@@ -91,7 +91,7 @@ get_uri_for_connection(const confmodel::NetworkConnection* netCon)
 {
   std::string uri = "";
   if (netCon) {
-    TLOG() << "Getting URI for network connection " << netCon->UID();
+    TLOG_DEBUG(45) << "Getting URI for network connection " << netCon->UID();
     auto service = netCon->get_associated_service();
     if (service->get_protocol() == "tcp") {
 
