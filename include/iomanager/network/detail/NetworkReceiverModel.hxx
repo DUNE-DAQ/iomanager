@@ -183,7 +183,7 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
     std::optional<Datatype> message;
     while (m_with_callback.load() || message) {
       try {
-        message = try_read_network<Datatype>(std::chrono::milliseconds(1));
+        message = try_read_network<Datatype>(std::chrono::milliseconds(20));
         if (message) {
           m_callback(*message);
         }
