@@ -11,7 +11,7 @@
 #include "iomanager/queue/FollyQueue.hpp"
 
 #define BOOST_TEST_MODULE FollyQueue_metric_test // NOLINT
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 #include <chrono>
 #include <future>
