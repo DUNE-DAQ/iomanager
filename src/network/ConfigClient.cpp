@@ -149,7 +149,7 @@ ConfigClient::publish(const std::vector<ConnectionRegistration>& connections)
 void
 ConfigClient::publish()
 {
-  json content{ { "partition", m_session } };
+  json content{ { "session", m_session } };
   json connections = json::array();
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -211,7 +211,7 @@ ConfigClient::retract()
     TLOG_DEBUG(1) << "retract(): Retracting " << connections.size() << " connections";
     http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
     req.set(http::field::content_type, "application/json");
-    json body{ { "partition", m_session } };
+    json body{ { "session", m_session } };
     body["connections"] = connections;
     req.body() = body.dump();
     req.prepare_payload();
@@ -274,7 +274,7 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
       }
     }
   }
-  json body{ { "partition", m_session } };
+  json body{ { "session", m_session } };
   body["connections"] = connections;
   req.body() = body.dump();
   req.prepare_payload();
