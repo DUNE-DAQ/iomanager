@@ -1,4 +1,3 @@
-#include "iomanager/connection/Structs.hpp"
 #include "iomanager/network/ConfigClient.hpp"
 #include "iomanager/network/NetworkManager.hpp"
 #include "iomanager/network/NetworkReceiverModel.hpp"
@@ -19,7 +18,6 @@ namespace dunedaq {
 
 namespace iomanager {
 
-using namespace connection;
 
 template<typename Datatype>
 inline void

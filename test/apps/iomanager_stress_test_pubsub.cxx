@@ -8,6 +8,7 @@
 
 #include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #include "boost/program_options.hpp"
 
@@ -81,12 +82,6 @@ struct TestConfig
   size_t send_interval_ms = 100;
   int publish_interval = 1000;
 
-  void configure_connsvc()
-  {
-    setenv("CONNECTION_SERVER", server.c_str(), 1);
-    setenv("CONNECTION_PORT", std::to_string(port).c_str(), 1);
-  }
-
   std::string get_connection_name(size_t app_id, size_t group_id, size_t conn_id)
   {
     std::stringstream ss;
@@ -123,8 +118,6 @@ struct TestConfig
 
   void configure_iomanager(bool is_publisher)
   {
-    setenv("DUNEDAQ_PARTITION", session_name.c_str(), 0);
-
     Queues_t queues;
     Connections_t connections;
 
@@ -162,8 +155,12 @@ struct TestConfig
       }
     }
 
-    IOManager::get()->configure(
-      queues, connections, use_connectivity_service, std::chrono::milliseconds(publish_interval));
+    dunedaq::opmonlib::TestOpMonManager op_manager;
+    IOManager::get()->configure( queues,
+				 connections,
+				 use_connectivity_service,
+				 std::chrono::milliseconds(publish_interval),
+				 op_manager);
   }
 };
 struct SubscriberTest
@@ -230,8 +227,8 @@ struct SubscriberTest
     std::for_each(std::execution::par_unseq,
                   std::begin(subscribers),
                   std::end(subscribers),
-                  [=, &last_received](std::shared_ptr<SubscriberInfo> info) {
-                    auto recv_proc = [=, &last_received](Data& msg) {
+                  [=,this, &last_received](std::shared_ptr<SubscriberInfo> info) {
+                    auto recv_proc = [=,this, &last_received](Data& msg) {
                       TLOG_DEBUG(3) << "Received message " << msg.seq_number << " with size " << msg.contents.size()
                                     << " bytes from connection "
                                     << config.get_connection_name(msg.publisher_id, msg.group_id, msg.conn_id) << " at "
@@ -388,7 +385,7 @@ struct PublisherTest
     auto quota_receiver = dunedaq::get_iom_receiver<QuotaReached>(config.get_publisher_quota_name());
     std::unordered_map<int, std::set<size_t>> completed_receiver_tracking;
     std::mutex tracking_mutex;
-    auto quota_callback = [=, &completed_receiver_tracking, &tracking_mutex](QuotaReached& msg) {
+    auto quota_callback = [=,this, &completed_receiver_tracking, &tracking_mutex](QuotaReached& msg) {
       TLOG_DEBUG(4) << "Received QuotaReached message from app " << msg.sender_id << ", group " << msg.group_id
                     << ", conn " << msg.conn_id << " for run " << msg.run_number;
 
@@ -421,7 +418,7 @@ struct PublisherTest
     std::for_each(std::execution::par_unseq,
                   std::begin(publishers),
                   std::end(publishers),
-                  [=](std::shared_ptr<PublisherInfo> info) {
+                  [=, this](std::shared_ptr<PublisherInfo> info) {
                     auto before_sender = std::chrono::steady_clock::now();
                     info->sender = dunedaq::get_iom_sender<Data>(
                       config.get_connection_name(config.my_id, info->group_id, info->conn_id));
@@ -437,8 +434,8 @@ struct PublisherTest
       std::execution::par_unseq,
       std::begin(publishers),
       std::end(publishers),
-      [=, &completed_receiver_tracking, &tracking_mutex](std::shared_ptr<PublisherInfo> info) {
-        info->send_thread.reset(new std::thread([=, &completed_receiver_tracking, &tracking_mutex]() {
+      [=,this, &completed_receiver_tracking, &tracking_mutex](std::shared_ptr<PublisherInfo> info) {
+        info->send_thread.reset(new std::thread([=,this, &completed_receiver_tracking, &tracking_mutex]() {
           bool complete_received = false;
           while (!complete_received) {
             TLOG_DEBUG(4) << "Sending message " << info->messages_sent << " with size " << config.message_size_kb * 1024

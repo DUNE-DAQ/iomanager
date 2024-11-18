@@ -7,6 +7,9 @@
  */
 
 #include "iomanager/queue/QueueRegistry.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
+
+#include "conffwk/Configuration.hpp"
 
 #define BOOST_TEST_MODULE QueueRegistry_test // NOLINT
 
@@ -20,44 +23,31 @@ BOOST_AUTO_TEST_SUITE(QueueRegistry_test)
 
 using namespace dunedaq::iomanager;
 
+const std::string TEST_OKS_DB = "test/config/queueregistry_test.data.xml";
+
+struct ConfigurationFixture
+{
+  ConfigurationFixture()
+  {
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb->get<dunedaq::confmodel::Queue>(queues);
+
+  };
+  static std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
+  static std::vector<const dunedaq::confmodel::Queue*> queues;
+};
+std::vector<const dunedaq::confmodel::Queue*> ConfigurationFixture::queues;
+std::shared_ptr<dunedaq::conffwk::Configuration> ConfigurationFixture::confdb(nullptr);
+BOOST_TEST_GLOBAL_FIXTURE(ConfigurationFixture);
+
 BOOST_AUTO_TEST_CASE(Configure)
 {
-  std::vector<QueueConfig> queue_registry_config;
-  QueueConfig qc;
-  qc.id.uid = "test_queue_unknown";
-  qc.queue_type = QueueType::kUnknown;
-  qc.capacity = 10;
-  queue_registry_config.push_back(qc);
-  qc.queue_type = QueueType::kStdDeQueue;
-  qc.capacity = 10;
-  qc.id.uid = "test_queue_stddeque";
-  queue_registry_config.push_back(qc);
-  qc.queue_type = QueueType::kFollySPSCQueue;
-  qc.capacity = 10;
-  qc.id.uid = "test_queue_fspsc";
-  queue_registry_config.push_back(qc);
-  qc.queue_type = QueueType::kFollyMPMCQueue;
-  qc.capacity = 10;
-  qc.id.uid = "test_queue_fmpmc";
-  queue_registry_config.push_back(qc);
+  dunedaq::opmonlib::TestOpMonManager opmgr;
+  QueueRegistry::get().configure(ConfigurationFixture::queues, opmgr);
 
-  QueueRegistry::get().configure(queue_registry_config);
-
-  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(queue_registry_config),
+  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(ConfigurationFixture::queues, opmgr),
                           QueueRegistryConfigured,
                           [&](QueueRegistryConfigured const&) { return true; });
-}
-
-BOOST_AUTO_TEST_CASE(GatherStats)
-{
-  dunedaq::opmonlib::InfoCollector ic;
-  QueueRegistry::get().gather_stats(ic, 1);
-  BOOST_REQUIRE(ic.is_empty());
-
-  auto queue_ptr = QueueRegistry::get().get_queue<int>("test_queue_stddeque");
-  BOOST_REQUIRE(queue_ptr != nullptr);
-  QueueRegistry::get().gather_stats(ic, 1);
-  BOOST_REQUIRE(!ic.is_empty());
 }
 
 BOOST_AUTO_TEST_CASE(CreateQueue)

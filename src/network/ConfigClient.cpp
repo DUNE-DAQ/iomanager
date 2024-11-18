@@ -26,19 +26,10 @@ using namespace dunedaq::iomanager;
 
 ConfigClient::ConfigClient(const std::string& server,
                            const std::string& port,
+                           const std::string& session_name,
                            std::chrono::milliseconds publish_interval)
 {
-  char* session = getenv("DUNEDAQ_SESSION");
-  if (session) {
-    m_session = std::string(session);
-  } else {
-    session = getenv("DUNEDAQ_PARTITION");
-    if (session) {
-      m_session = std::string(session);
-    } else {
-      throw(EnvNotFound(ERS_HERE, "DUNEDAQ_SESSION"));
-    }
-  }
+  m_session = session_name;
 
   tcp::resolver resolver(m_ioContext);
   m_addr = resolver.resolve(server, port);
@@ -95,8 +86,8 @@ ConfigClient::resolveConnection(const ConnectionRequest& query, std::string sess
   req.prepare_payload();
 
   http::response<http::string_body> response;
-    boost::beast::tcp_stream stream(m_ioContext);
-    beast::error_code ec;
+  boost::beast::tcp_stream stream(m_ioContext);
+  beast::error_code ec;
   try {
     stream.connect(m_addr);
     http::write(stream, req);
@@ -176,8 +167,8 @@ ConfigClient::publish()
   req.body() = content.dump();
   req.prepare_payload();
 
-    boost::beast::tcp_stream stream(m_ioContext);
-    beast::error_code ec;
+  boost::beast::tcp_stream stream(m_ioContext);
+  beast::error_code ec;
   try {
     stream.connect(m_addr);
     http::write(stream, req);
@@ -217,7 +208,7 @@ ConfigClient::retract()
     m_registered_connections.clear();
   }
   if (connections.size() > 0) {
-  TLOG_DEBUG(1) << "retract(): Retracting " << connections.size() << " connections";
+    TLOG_DEBUG(1) << "retract(): Retracting " << connections.size() << " connections";
     http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
     req.set(http::field::content_type, "application/json");
     json body{ { "partition", m_session } };
@@ -225,8 +216,8 @@ ConfigClient::retract()
     req.body() = body.dump();
     req.prepare_payload();
 
-      boost::beast::tcp_stream stream(m_ioContext);
-      beast::error_code ec;
+    boost::beast::tcp_stream stream(m_ioContext);
+    beast::error_code ec;
     try {
       stream.connect(m_addr);
       http::write(stream, req);
@@ -288,8 +279,8 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
   req.body() = body.dump();
   req.prepare_payload();
 
-    boost::beast::tcp_stream stream(m_ioContext);
-    beast::error_code ec;
+  boost::beast::tcp_stream stream(m_ioContext);
+  beast::error_code ec;
   try {
     stream.connect(m_addr);
     http::write(stream, req);

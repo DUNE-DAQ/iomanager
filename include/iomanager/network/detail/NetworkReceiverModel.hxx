@@ -181,9 +181,10 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
   // start event loop (thread that calls when receive happens)
   m_event_loop_runner = std::make_unique<std::thread>([&]() {
     std::optional<Datatype> message;
-    while (m_with_callback.load() || message) {
+    while(m_with_callback.load() || message) {
       try {
-        message = try_read_network<Datatype>(std::chrono::milliseconds(1));
+      	// 0 timeout when we are trying to stop
+        message = try_read_network<Datatype>(m_with_callback.load() ? std::chrono::milliseconds(20) : std::chrono::milliseconds(0));
         if (message) {
           m_callback(*message);
         }

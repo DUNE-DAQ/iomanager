@@ -8,6 +8,7 @@
 
 #include "iomanager/IOManager.hpp"
 #include "logging/Logging.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #include "boost/program_options.hpp"
 
@@ -54,12 +55,6 @@ struct TestConfig
   bool verbose = false;
   static std::atomic<bool> test_running;
 
-  void configure_connsvc()
-  {
-    setenv("CONNECTION_SERVER", server.c_str(), 1);
-    setenv("CONNECTION_PORT", std::to_string(port).c_str(), 1);
-  }
-
   static std::string get_connection_name(size_t conn_id)
   {
     std::stringstream ss;
@@ -72,10 +67,6 @@ struct TestConfig
 
   void configure_iomanager()
   {
-    setenv("DUNEDAQ_PARTITION", "iomanager_stress_test", 0);
-
-    auto host = getenv("HOSTNAME");
-
     Queues_t queues;
     Connections_t connections;
 
@@ -84,7 +75,8 @@ struct TestConfig
                                  ConnectionType::kSendRecv };
     connections.push_back(recv_conn);
 
-    IOManager::get()->configure(queues, connections, true, std::chrono::milliseconds(publish_interval));
+    dunedaq::opmonlib::TestOpMonManager opmgr;
+    IOManager::get()->configure(queues, connections, true, std::chrono::milliseconds(publish_interval), opmgr);
   }
 
   void send_message(uint8_t msg_idx)

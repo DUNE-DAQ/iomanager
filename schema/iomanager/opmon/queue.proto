@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+
+package dunedaq.iomanager.opmon;
+
+message QueueInfo {
+
+ uint64 capacity = 1;
+ uint64 number_of_elements = 2;
+}

@@ -15,8 +15,10 @@
 #include "iomanager/queue/Queue.hpp"
 #include "iomanager/queue/QueueIssues.hpp"
 
+#include "confmodel/Queue.hpp"
+#include "opmonlib/OpMonManager.hpp"
+
 #include "ers/Issue.hpp"
-#include "opmonlib/InfoCollector.hpp"
 
 #include <map>
 #include <memory>
@@ -56,13 +58,11 @@ public:
    * @brief Configure the QueueRegistry
    * @param configs Queue configurations
    */
-  void configure(const std::vector<QueueConfig>& configs);
-
-  // Gather statistics from queues
-  void gather_stats(opmonlib::InfoCollector& ic, int level);
+  void configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager &);
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
+  void shutdown() { m_queue_registry.clear(); }
 
   bool has_queue(std::string const& uid, std::string const& data_type) const;
 
@@ -71,7 +71,7 @@ public:
 private:
   struct QueueEntry
   {
-    QueueConfig m_config;
+    const confmodel::Queue* m_config;
     const std::type_info* m_type;
     std::shared_ptr<QueueBase> m_instance;
   };
@@ -79,11 +79,12 @@ private:
   QueueRegistry() = default;
 
   template<typename T>
-  std::shared_ptr<QueueBase> create_queue(const QueueConfig& config);
+  std::shared_ptr<QueueBase> create_queue(const confmodel::Queue* config);
 
   std::map<std::string, QueueEntry> m_queue_registry;
-  std::vector<QueueConfig> m_queue_configs;
-
+  std::vector<const confmodel::Queue*> m_queue_configs;
+  std::shared_ptr<opmonlib::OpMonLink> m_opmon_link{ std::make_shared<opmonlib::OpMonLink>() };
+  
   bool m_configured{ false };
 
   static std::unique_ptr<QueueRegistry> s_instance;

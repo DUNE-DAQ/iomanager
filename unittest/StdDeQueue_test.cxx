@@ -10,7 +10,7 @@
 #include "iomanager/queue/StdDeQueue.hpp"
 
 #define BOOST_TEST_MODULE StdDeQueue_test // NOLINT
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 #include <chrono>
 

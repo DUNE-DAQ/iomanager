@@ -3,6 +3,7 @@
 
 include(CMakeFindDependencyMacro)
 
+find_dependency(confmodel)
 find_dependency(serialization)
 find_dependency(utilities)
 find_dependency(opmonlib)
