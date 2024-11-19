@@ -29,13 +29,15 @@ struct ConnectionId
 {
   std::string uid{ "" };
   std::string data_type{ "" };
+  std::string tag{ "" };
   std::string session{ "" };
 
   ConnectionId() {}
 
-  ConnectionId(std::string uid, std::string data_type, std::string session = "")
+  ConnectionId(std::string uid, std::string data_type, std::string tag = "", std::string session = "")
     : uid(uid)
     , data_type(data_type)
+    , tag(tag)
     , session(session)
   {
   }
@@ -52,6 +54,9 @@ operator<(ConnectionId const& l, ConnectionId const& r)
 {
   if (l.session == r.session || l.session == "" || r.session == "") {
     if (l.data_type == r.data_type) {
+      if (l.uid == r.uid) {
+        return l.tag < r.tag;
+      }
       return l.uid < r.uid;
     }
     return l.data_type < r.data_type;
@@ -61,7 +66,8 @@ operator<(ConnectionId const& l, ConnectionId const& r)
 inline bool
 operator==(ConnectionId const& l, ConnectionId const& r)
 {
-  return (l.session == "" || r.session == "" || l.session == r.session) && l.uid == r.uid && l.data_type == r.data_type;
+  return (l.session == "" || r.session == "" || l.session == r.session) && l.uid == r.uid && l.tag == r.tag &&
+         l.data_type == r.data_type;
 }
 
 inline bool
@@ -81,9 +87,10 @@ inline std::string
 to_string(const ConnectionId& conn_id)
 {
   if (conn_id.session != "") {
-    return conn_id.session + "/" + conn_id.uid + "@@" + conn_id.data_type;
+    return conn_id.session + "/" + conn_id.uid + (conn_id.tag != "" ? "+" + conn_id.tag : "") + "@@" +
+           conn_id.data_type;
   }
-  return conn_id.uid + "@@" + conn_id.data_type;
+  return conn_id.uid + (conn_id.tag != "" ? "+" + conn_id.tag : "") + "@@" + conn_id.data_type;
 }
 
 inline std::string
@@ -144,7 +151,7 @@ struct hash<dunedaq::iomanager::ConnectionId>
 {
   std::size_t operator()(const dunedaq::iomanager::ConnectionId& conn_id) const
   {
-    return std::hash<std::string>()(conn_id.session + conn_id.uid + conn_id.data_type);
+    return std::hash<std::string>()(conn_id.session + conn_id.uid  + conn_id.tag + conn_id.data_type);
   }
 };
 
