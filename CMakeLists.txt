@@ -35,6 +35,7 @@ daq_add_application(config_client_test        config_client_test.cxx     TEST LI
 
 daq_add_application( queues_vs_threads_folly          queues_vs_threads_folly.cxx          TEST LINK_LIBRARIES iomanager )
 daq_add_application( queues_vs_threads_folly_throwing queues_vs_threads_folly_throwing.cxx TEST LINK_LIBRARIES iomanager )
+daq_add_application( folly_defines folly_defines.cxx TEST LINK_LIBRARIES iomanager )
 #daq_add_application( queues_vs_threads_iomanager      queues_vs_threads_iomanager.cxx      TEST LINK_LIBRARIES iomanager )
 
 daq_add_unit_test(IOManager_test         LINK_LIBRARIES iomanager )
