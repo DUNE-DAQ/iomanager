@@ -270,6 +270,20 @@ NetworkManager::get_datatypes(std::string const& uid) const
   return output;
 }
 
+std::vector<std::string>
+NetworkManager::get_pubsub_connection_strings(std::vector<ConnectionInfo> const& connections)
+{
+  std::vector<std::string> uris;
+  for (auto& conn : connections) {
+    // Check for case where both ends are in app and ConnectivityService hasn't received other end yet, or ConnectivityService was no longer available
+    if (conn.uri.find("*") != std::string::npos || conn.uri.find("0.0.0.0") != std::string::npos) {
+      continue;
+    }
+    uris.push_back(conn.uri);
+  }
+  return uris;
+}
+
 std::shared_ptr<ipm::Receiver>
 NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id)
 {
@@ -292,14 +306,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
 
   nlohmann::json config_json;
   if (is_pubsub) {
-    std::vector<std::string> uris;
-    for (auto& conn : connections) {
-      // Check for case where both ends are in app and ConnectivityService hasn't received other end yet
-      if (conn.uri.find("*") != std::string::npos || conn.uri.find("0.0.0.0") != std::string::npos) {
-        continue;
-      }
-      uris.push_back(conn.uri);
-    }
+    std::vector<std::string> uris = get_pubsub_connection_strings(connections);
     if (uris.size() == 0) {
       return nullptr;
     }
@@ -402,9 +409,11 @@ NetworkManager::update_subscribers()
           auto response = get_connections(subscriber_pair.first, false);
 
           nlohmann::json config_json;
-          std::vector<std::string> uris;
-          for (auto& conn : response.connections)
-            uris.push_back(conn.uri);
+          std::vector<std::string> uris = get_pubsub_connection_strings(response.connections);
+          if (uris.size() == 0) {
+            TLOG_DEBUG(14) << "No valid connection strings found, is the Connectivity Service running?!";
+            continue;
+          }
           config_json["connection_strings"] = uris;
 
           subscriber_pair.second->connect_for_receives(config_json);

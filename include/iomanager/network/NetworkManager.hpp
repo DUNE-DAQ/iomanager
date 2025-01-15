@@ -72,6 +72,7 @@ private:
   std::shared_ptr<ipm::Receiver> create_receiver(std::vector<ConnectionInfo> connections, ConnectionId const& conn_id);
   std::shared_ptr<ipm::Sender> create_sender(ConnectionInfo connection);
 
+  std::vector<std::string> get_pubsub_connection_strings(std::vector<ConnectionInfo> const& connections);
   void update_subscribers();
 
   std::unordered_map<ConnectionId, const confmodel::NetworkConnection*> m_preconfigured_connections;
