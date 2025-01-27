@@ -135,17 +135,17 @@ StdDeQueue<T>::try_lock_for(std::unique_lock<std::mutex>& lk, const duration_t& 
   assert(!lk.owns_lock());
 
   auto start_time = std::chrono::steady_clock::now();
-  lk.try_lock();
+  auto ret = lk.try_lock();
 
-  if (!lk.owns_lock() && timeout.count() > 0) {
+  if ((!ret || !lk.owns_lock()) && timeout.count() > 0) {
 
     int approximate_number_of_retries = 5;
     duration_t pause_between_tries = duration_t(timeout.count() / approximate_number_of_retries);
 
     while (std::chrono::steady_clock::now() < start_time + timeout) {
       std::this_thread::sleep_for(pause_between_tries);
-      lk.try_lock();
-      if (lk.owns_lock()) {
+      ret = lk.try_lock();
+      if (ret && lk.owns_lock()) {
         break;
       }
     }
