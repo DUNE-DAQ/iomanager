@@ -105,7 +105,7 @@ NetworkSenderModel<Datatype>::write_network(MessageType& message, Sender::timeou
       ERS_HERE, this->id().uid, "send", timeout.count(), ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
   }
 
-  auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
+  auto serialized = dunedaq::serialization::serialize_msgpack(message);
   //  TLOG("NetworkSenderModel") << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
   //  m_topic << ", this="
   //  << (void*)this;
@@ -140,7 +140,7 @@ NetworkSenderModel<Datatype>::try_write_network(MessageType& message, Sender::ti
     return false;
   }
 
-  auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
+  auto serialized = dunedaq::serialization::serialize_msgpack(message);
   // TLOG("NetworkSenderModel") << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
   // m_topic <<
   // ", this=" << (void*)this;
@@ -178,7 +178,7 @@ NetworkSenderModel<Datatype>::write_network_with_topic(MessageType& message,
       ERS_HERE, this->id().uid, "send", timeout.count(), ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
   }
 
-  auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
+  auto serialized = dunedaq::serialization::serialize_msgpack(message);
   //  TLOG("NetworkSenderModel") << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
   //  m_topic << ", this="
   //  << (void*)this;

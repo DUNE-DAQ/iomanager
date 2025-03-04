@@ -117,7 +117,7 @@ NetworkReceiverModel<Datatype>::read_network(Receiver::timeout_t const& timeout)
 
   auto response = m_network_receiver_ptr->receive(timeout);
   if (response.data.size() > 0) {
-    return dunedaq::serialization::deserialize<MessageType>(response.data);
+    return dunedaq::serialization::deserialize_msgpack<MessageType>(response.data);
   }
 
   throw TimeoutExpired(ERS_HERE, this->id().uid, "network receive", timeout.count());
@@ -150,7 +150,7 @@ inline
   res = m_network_receiver_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
 
   if (res.data.size() > 0) {
-    return std::make_optional<MessageType>(dunedaq::serialization::deserialize<MessageType>(res.data));
+    return std::make_optional<MessageType>(dunedaq::serialization::deserialize_msgpack<MessageType>(res.data));
   }
 
   return std::nullopt;
