@@ -10,13 +10,14 @@ find_package(confmodel REQUIRED)
 find_package(ipm REQUIRED)
 find_package(opmonlib REQUIRED)
 find_package(folly REQUIRED)
+find_package(nlohmann_json REQUIRED)
 find_package(serialization REQUIRED)
 find_package(utilities REQUIRED)
 find_package(fmt REQUIRED)
 
 
 ##############################################################################
-set(IOMANAGER_DEPENDENCIES serialization::serialization confmodel::confmodel Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm fmt::fmt)
+set(IOMANAGER_DEPENDENCIES serialization::serialization confmodel::confmodel Folly::folly utilities::utilities opmonlib::opmonlib ipm::ipm fmt::fmt nlohmann_json::nlohmann_json)
 
 daq_protobuf_codegen( opmon/*.proto )
 
