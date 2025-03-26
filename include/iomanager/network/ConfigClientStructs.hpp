@@ -10,7 +10,7 @@
 #define IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTSTRUCTS_HPP_
 
 #include "iomanager/SchemaUtils.hpp"
-#include "serialization/Serialization.hpp"
+#include "nlohmann/json.hpp"
 
 #include <string>
 
@@ -48,8 +48,7 @@ struct ConnectionRequest
     , data_type(convert.data_type)
   {
   }
-
-  DUNE_DAQ_SERIALIZE(ConnectionRequest, uid_regex, data_type);
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionRequest, uid_regex, data_type);
 };
 
 struct ConnectionInfo
@@ -70,7 +69,7 @@ struct ConnectionInfo
   {
   }
 
-  DUNE_DAQ_SERIALIZE(ConnectionInfo, uid, data_type, uri, connection_type);
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionInfo, uid, data_type, uri, connection_type);
 };
 
 struct ConnectionRegistration
@@ -100,14 +99,14 @@ struct ConnectionRegistration
   {
   }
 
-  DUNE_DAQ_SERIALIZE(ConnectionRegistration, uid, data_type, uri, connection_type);
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionRegistration, uid, data_type, uri, connection_type);
 };
 
 struct ConnectionResponse
 {
   std::vector<ConnectionInfo> connections;
 
-  DUNE_DAQ_SERIALIZE(ConnectionResponse, connections);
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionResponse, connections);
 };
 
 inline bool
@@ -120,7 +119,5 @@ operator<(ConnectionRegistration const& l, ConnectionRegistration const& r)
 }
 }
 }
-
-MSGPACK_ADD_ENUM(dunedaq::iomanager::ConnectionType)
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTSTRUCTS_HPP_
