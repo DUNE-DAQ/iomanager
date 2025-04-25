@@ -131,6 +131,7 @@ get_uri_for_connection(const confmodel::NetworkConnection* netCon)
             break;
           }
         }
+        freeifaddrs(ifaddr);
       }
       uri = std::string(service->get_protocol() + "://" + ipaddr + ":" + port);
     } else if (service->get_protocol() == "inproc") {
