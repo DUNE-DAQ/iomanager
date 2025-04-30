@@ -8,8 +8,8 @@
 
 #include "iomanager/IOManager.hpp"
 
-#include "serialization/Serialization.hpp"
 #include "opmonlib/TestOpMonManager.hpp"
+#include "serialization/Serialization.hpp"
 
 #define BOOST_TEST_MODULE IOManager_test // NOLINT
 
@@ -324,7 +324,7 @@ BOOST_FIXTURE_TEST_CASE(MultipleReceiverPubSub, ConfigurationTestFixture)
 
   auto ret1a = sub1a_receiver->receive(std::chrono::milliseconds(10));
   auto ret1b = sub1b_receiver->receive(std::chrono::milliseconds(10));
-  
+
   BOOST_CHECK_EQUAL(ret1a.d1, 56);
   BOOST_CHECK_EQUAL(ret1a.d2, 26.5);
   BOOST_CHECK_EQUAL(ret1b.d1, 56);
@@ -335,7 +335,7 @@ BOOST_FIXTURE_TEST_CASE(MultipleReceiverPubSub, ConfigurationTestFixture)
 
   ret1a = sub1a_receiver->receive(std::chrono::milliseconds(10));
   ret1b = sub1b_receiver->receive(std::chrono::milliseconds(10));
-  
+
   BOOST_CHECK_EQUAL(ret1a.d1, 57);
   BOOST_CHECK_EQUAL(ret1a.d2, 27.5);
   BOOST_CHECK_EQUAL(ret1b.d1, 57);
@@ -376,7 +376,7 @@ BOOST_FIXTURE_TEST_CASE(PubSubWithTopic, ConfigurationTestFixture)
   BOOST_REQUIRE_EXCEPTION(
     sub2_receiver->receive(std::chrono::milliseconds(10)), TimeoutExpired, [](TimeoutExpired const&) { return true; });
 
-  Data2 sent_t3{ 57, 27.5};
+  Data2 sent_t3{ 57, 27.5 };
   pub1_sender->send_with_topic(std::move(sent_t3), dunedaq::iomanager::Sender::s_no_block, "sub1_topic");
   ret1 = sub1_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret1.d1, 57);
@@ -398,6 +398,36 @@ BOOST_FIXTURE_TEST_CASE(PubSubWithTopic, ConfigurationTestFixture)
   auto ret2 = sub2_receiver->receive(std::chrono::milliseconds(10));
   BOOST_CHECK_EQUAL(ret2.d1, 59);
   BOOST_CHECK_EQUAL(ret2.d2, 29.5);
+}
+
+BOOST_FIXTURE_TEST_CASE(ConnectionInstanceNotFound, ConfigurationTestFixture)
+{
+  ConnectionId bad_id{ "pub4", "data2_t" };
+  auto receiver = IOManager::get()->get_receiver<Data2>(bad_id);
+
+  BOOST_REQUIRE_EXCEPTION(receiver->receive(std::chrono::milliseconds(10)),
+                          ConnectionInstanceNotFound,
+                          [](ConnectionInstanceNotFound const&) { return true; });
+
+  auto ret = receiver->try_receive(std::chrono::milliseconds(10));
+  BOOST_REQUIRE_EQUAL(ret.has_value(), false);
+
+  std::function<void(Data2&)> callback = [&](Data2&) { BOOST_REQUIRE(false); };
+  IOManager::get()->add_callback<Data2>(bad_id, callback);
+
+  usleep(1000000);
+
+  IOManager::get()->remove_callback<Data2>(bad_id);
+
+// ELF, 2025 Apr 25: Loop test to look for memory leak
+#if 0
+  for (auto ii = 0; ii < 100; ++ii) {
+    auto ret = receiver->try_receive(std::chrono::milliseconds(10));
+    BOOST_REQUIRE_EQUAL(ret.has_value(), false);
+    usleep(10000);
+  }
+  std::terminate();
+#endif
 }
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)
