@@ -400,7 +400,7 @@ BOOST_FIXTURE_TEST_CASE(PubSubWithTopic, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(ret2.d2, 29.5);
 }
 
-BOOST_FIXTURE_TEST_CASE(ConnectionInstanceNotFound, ConfigurationTestFixture)
+BOOST_FIXTURE_TEST_CASE(NotFound, ConfigurationTestFixture)
 {
   ConnectionId bad_id{ "pub4", "data2_t" };
   auto receiver = IOManager::get()->get_receiver<Data2>(bad_id);
