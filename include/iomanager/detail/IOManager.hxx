@@ -18,7 +18,6 @@ namespace dunedaq {
 
 namespace iomanager {
 
-
 template<typename Datatype>
 inline void
 IOManager::add_callback(ConnectionId const& id, std::function<void(Datatype&)> callback)

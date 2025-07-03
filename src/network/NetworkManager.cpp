@@ -18,6 +18,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -69,8 +70,8 @@ NetworkManager::configure(const std::string& session_name,
 
     TLOG_DEBUG(17) << "ConnectionServer host and port are " << connectionServer << ":" << connectionPort;
     if (m_config_client == nullptr) {
-      m_config_client =
-        std::make_unique<ConfigClient>(connectionServer, std::to_string(connectionPort),session_name, config_client_interval);
+      m_config_client = std::make_unique<ConfigClient>(
+        connectionServer, std::to_string(connectionPort), session_name, config_client_interval);
     }
     m_config_client_interval = config_client_interval;
   }
@@ -196,7 +197,6 @@ NetworkManager::remove_sender(ConnectionId const& conn_id)
   m_sender_plugins.erase(conn_id);
 }
 
-
 bool
 NetworkManager::is_pubsub_connection(ConnectionId const& conn_id) const
 {
@@ -251,7 +251,7 @@ NetworkManager::get_preconfigured_connections(ConnectionId const& conn_id) const
   ConnectionResponse matching_connections;
   for (auto& conn : m_preconfigured_connections) {
     if (is_match(conn_id, conn.first)) {
-      matching_connections.connections.push_back(conn.second);
+      matching_connections.connections.emplace_back(conn.second);
     }
   }
 
@@ -275,7 +275,8 @@ NetworkManager::get_pubsub_connection_strings(std::vector<ConnectionInfo> const&
 {
   std::vector<std::string> uris;
   for (auto& conn : connections) {
-    // Check for case where both ends are in app and ConnectivityService hasn't received other end yet, or ConnectivityService was no longer available
+    // Check for case where both ends are in app and ConnectivityService hasn't received other end yet, or
+    // ConnectivityService was no longer available
     if (conn.uri.find("*") != std::string::npos || conn.uri.find("0.0.0.0") != std::string::npos) {
       continue;
     }
@@ -340,7 +341,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
     m_subscriber_plugins[conn_id] = subscriber;
     if (!m_subscriber_update_thread_running && m_config_client != nullptr) {
       m_subscriber_update_thread_running = true;
-      m_subscriber_update_thread.reset(new std::thread(&NetworkManager::update_subscribers, this));
+      m_subscriber_update_thread = std::make_unique<std::thread>(&NetworkManager::update_subscribers, this);
     }
   }
 

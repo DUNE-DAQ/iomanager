@@ -15,6 +15,7 @@
 
 #include "boost/test/unit_test.hpp"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -68,7 +69,7 @@ struct Data3
   int d1;
 
   Data3() = default;
-  Data3(int i)
+  explicit Data3(int i)
     : d1(i)
   {
   }
@@ -168,13 +169,11 @@ datatype_to_string<NonSerializableNonCopyable>()
 
 BOOST_AUTO_TEST_SUITE(IOManager_test)
 
-const std::string TEST_OKS_DB = "test/config/iomanager_test.data.xml";
-
 struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/iomanager_test.data.xml");
     confdb->get<dunedaq::confmodel::Queue>(queues);
     confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
 
@@ -193,10 +192,10 @@ struct ConfigurationTestFixture
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
-  ConfigurationTestFixture(ConfigurationTestFixture const&) = default;
-  ConfigurationTestFixture(ConfigurationTestFixture&&) = default;
-  ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = default;
-  ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = default;
+  ConfigurationTestFixture(ConfigurationTestFixture const&) = delete;
+  ConfigurationTestFixture(ConfigurationTestFixture&&) = delete;
+  ConfigurationTestFixture& operator=(ConfigurationTestFixture const&) = delete;
+  ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = delete;
 
   ConnectionId conn_id;
   ConnectionId queue_id;

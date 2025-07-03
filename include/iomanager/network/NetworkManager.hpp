@@ -7,8 +7,8 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKMANAGER_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKMANAGER_HPP_
 
 #include "iomanager/network/ConfigClient.hpp"
 #include "iomanager/network/NetworkIssues.hpp"
@@ -26,6 +26,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -41,7 +42,8 @@ public:
   static NetworkManager& get();
   ~NetworkManager() { reset(); }
 
-  void configure (const std::string& session_name,const std::vector<const confmodel::NetworkConnection*>& connections,
+  void configure(const std::string& session_name,
+                 const std::vector<const confmodel::NetworkConnection*>& connections,
                  const confmodel::ConnectivityService* conn_svc,
                  dunedaq::opmonlib::OpMonManager&);
   void reset();
@@ -92,7 +94,7 @@ private:
   std::atomic<bool> m_subscriber_update_thread_running{ false };
 
   std::unique_ptr<ConfigClient> m_config_client;
-  std::chrono::milliseconds m_config_client_interval{1000};
+  std::chrono::milliseconds m_config_client_interval{ 1000 };
 
   mutable std::mutex m_receiver_plugin_map_mutex;
   mutable std::mutex m_sender_plugin_map_mutex;
@@ -100,4 +102,4 @@ private:
 };
 } // namespace dunedaq::iomanager
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORKMANAGER_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKMANAGER_HPP_

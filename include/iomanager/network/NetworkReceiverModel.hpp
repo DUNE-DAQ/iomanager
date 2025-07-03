@@ -6,20 +6,19 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKRECEIVERMODEL_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKRECEIVERMODEL_HPP_
 
 #include "iomanager/Receiver.hpp"
 
 #include "ipm/Subscriber.hpp"
 #include "serialization/Serialization.hpp"
 
+#include <memory>
+#include <string>
 
-namespace dunedaq {
+namespace dunedaq::iomanager {
 
-namespace iomanager {
-
-// NImpl
 template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
@@ -78,9 +77,8 @@ private:
   std::mutex m_receive_mutex;
 };
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #include "detail/NetworkReceiverModel.hxx"
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKRECEIVERMODEL_HPP_

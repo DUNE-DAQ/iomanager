@@ -6,8 +6,8 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_QRECEIVER_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_QRECEIVER_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUERECEIVERMODEL_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUERECEIVERMODEL_HPP_
 
 #include "iomanager/Receiver.hpp"
 #include "iomanager/queue/Queue.hpp"
@@ -20,8 +20,7 @@
 #include <string>
 #include <thread>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 // QImpl
 template<typename Datatype>
@@ -53,9 +52,8 @@ private:
   std::shared_ptr<Queue<Datatype>> m_queue;
 };
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #include "detail/QueueReceiverModel.hxx"
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUERECEIVERMODEL_HPP_

@@ -8,8 +8,8 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUEREGISTRY_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUEREGISTRY_HPP_
 
 #include "iomanager/SchemaUtils.hpp"
 #include "iomanager/queue/Queue.hpp"
@@ -22,10 +22,11 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <vector>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 /**
  * @brief The QueueRegistry class manages all Queue instances and gives out
@@ -58,7 +59,7 @@ public:
    * @brief Configure the QueueRegistry
    * @param configs Queue configurations
    */
-  void configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager &);
+  void configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager&);
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
@@ -84,7 +85,7 @@ private:
   std::map<std::string, QueueEntry> m_queue_registry;
   std::vector<const confmodel::Queue*> m_queue_configs;
   std::shared_ptr<opmonlib::OpMonLink> m_opmon_link{ std::make_shared<opmonlib::OpMonLink>() };
-  
+
   bool m_configured{ false };
 
   static std::unique_ptr<QueueRegistry> s_instance;
@@ -95,10 +96,8 @@ private:
   QueueRegistry& operator=(QueueRegistry&&) = delete;
 };
 
-} // namespace iomanager
-
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #include "detail/QueueRegistry.hxx"
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUEREGISTRY_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUEREGISTRY_HPP_

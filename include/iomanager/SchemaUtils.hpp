@@ -15,15 +15,15 @@
 #include "confmodel/NetworkConnection.hpp"
 #include "confmodel/Service.hpp"
 
-#include <cerrno>
+#include <cerrno> // NOLINT(runtime/output_format)
 #include <functional>
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <regex>
 #include <sstream>
+#include <string>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 struct ConnectionId
 {
@@ -107,23 +107,24 @@ get_uri_for_connection(const confmodel::NetworkConnection* netCon)
         port = std::to_string(service->get_port());
       }
       std::string ipaddr = "0.0.0.0";
-      char hostname[256];
-      if (gethostname(&hostname[0], 256) == 0) {
+      char hostname[NI_MAXHOST]; // NOLINT This is a char array for interfacing with the C networking API
+      if (gethostname(&hostname[0], NI_MAXHOST) == 0) {
         ipaddr = std::string(hostname);
       }
       auto iface = service->get_eth_device_name();
       if (iface != "") {
         // Work out which ip address goes with this device
-        struct ifaddrs* ifaddr;
+        struct ifaddrs* ifaddr = nullptr;
         getifaddrs(&ifaddr);
-        for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-          if (ifa->ifa_addr == NULL) {
+
+        for (auto ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+          if (ifa->ifa_addr == nullptr) {
             continue;
           }
           if (std::string(ifa->ifa_name) == iface) {
-            char ip[NI_MAXHOST];
+            char ip[NI_MAXHOST]; // NOLINT This is a char array for interfacing with the C networking API
             int status =
-              getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+              getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST);
             if (status != 0) {
               continue;
             }
@@ -141,9 +142,7 @@ get_uri_for_connection(const confmodel::NetworkConnection* netCon)
   return uri;
 }
 
-} // namespace iomanager
-
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 namespace std {
 
@@ -152,10 +151,10 @@ struct hash<dunedaq::iomanager::ConnectionId>
 {
   std::size_t operator()(const dunedaq::iomanager::ConnectionId& conn_id) const
   {
-    return std::hash<std::string>()(conn_id.session + conn_id.uid  + conn_id.tag + conn_id.data_type);
+    return std::hash<std::string>()(conn_id.session + conn_id.uid + conn_id.tag + conn_id.data_type);
   }
 };
 
-}
+} // namespace std
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_SCHEMAUTILS_HPP_

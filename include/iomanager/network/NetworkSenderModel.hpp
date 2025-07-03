@@ -6,8 +6,8 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_NSENDER_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKSENDERMODEL_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKSENDERMODEL_HPP_
 
 #include "iomanager/Sender.hpp"
 
@@ -63,16 +63,13 @@ private:
     Sender::timeout_t const&);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type write_network_with_topic(
-    MessageType& message,
-    Sender::timeout_t const& timeout, std::string topic);
+  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+  write_network_with_topic(MessageType& message, Sender::timeout_t const& timeout, std::string topic);
 
   template<typename MessageType>
   typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
-  write_network_with_topic(
-    MessageType&,
-    Sender::timeout_t const&, std::string);
-  
+  write_network_with_topic(MessageType&, Sender::timeout_t const&, std::string);
+
   Sender::timeout_t extend_first_timeout(Sender::timeout_t timeout);
 
   std::shared_ptr<ipm::Sender> m_network_sender_ptr;
@@ -85,4 +82,4 @@ private:
 
 #include "detail/NetworkSenderModel.hxx"
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_SENDER_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKSENDERMODEL_HPP_

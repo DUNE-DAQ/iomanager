@@ -11,13 +11,13 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUE_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUE_HPP_
 
 #include "iomanager/queue/QueueBase.hpp"
 
-#include "logging/Logging.hpp" // NOTE: if ISSUES ARE DECLARED BEFORE include logging/Logging.hpp, TLOG_DEBUG<<issue wont work.
 #include "ers/Issue.hpp"
+#include "logging/Logging.hpp" // NOTE: if ISSUES ARE DECLARED BEFORE include logging/Logging.hpp, TLOG_DEBUG<<issue wont work.
 
 #include <chrono>
 #include <cstddef>
@@ -48,7 +48,8 @@ public:
    */
   explicit Queue(const std::string& name)
     : QueueBase(name)
-  {}
+  {
+  }
 
   /**
    * @brief Determine whether the Queue may be pushed onto
@@ -109,4 +110,4 @@ ERS_DECLARE_ISSUE(iomanager,           // namespace
 // Re-enable coverage collection LCOV_EXCL_STOP
 } // namespace dunedaq
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUE_HPP_

@@ -6,8 +6,8 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORK_CONFIGCLIENT_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_NETWORK_CONFIGCLIENT_HPP_
 
 #include "iomanager/SchemaUtils.hpp"
 #include "iomanager/network/ConfigClientStructs.hpp"
@@ -20,15 +20,15 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/version.hpp>
 
-#include <string>
 #include <map>
-#include <vector>
 #include <mutex>
+#include <set>
+#include <string>
 #include <thread>
+#include <vector>
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace net = boost::asio;    // from <boost/asio.hpp>
-using namespace std::literals::chrono_literals;
 
 namespace dunedaq::iomanager {
 class ConfigClient
@@ -43,7 +43,10 @@ public:
    * @param session_name Name of the current Session
    * @param publish_interval  Time to wait between connection republish (keep-alive)
    */
-  ConfigClient(const std::string& server, const std::string& port, const std::string& session_name, std::chrono::milliseconds publish_interval);
+  ConfigClient(const std::string& server,
+               const std::string& port,
+               const std::string& session_name,
+               std::chrono::milliseconds publish_interval);
 
   /**
    * Destructor: stops the publishing hread and retracts all published
@@ -63,14 +66,14 @@ public:
 
   /**
    * Publish information for a single connection
-   * 
+   *
    * @param connectionId  The connection Id to be published
    * @param uri           The uri corresponding to the connection id
    */
   void publish(ConnectionRegistration const& connection);
   /**
    * Publish information for multiple connections
-   * 
+   *
    * @param connectionId A vector of connection Ids to be published
    * @param uri          A vector of uris corresponding to the connection ids.
    *           This vector must be the same length as the connection id vector
@@ -96,7 +99,7 @@ public:
 
   bool is_connected() { return m_connected.load(); }
 
-  private:
+private:
   void publish();
   std::string m_session;
   net::io_context m_ioContext;
@@ -110,4 +113,4 @@ public:
 };
 } // namespace dunedaq::iomanager
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENT_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORK_CONFIGCLIENT_HPP_

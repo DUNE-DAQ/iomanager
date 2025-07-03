@@ -16,10 +16,9 @@
 #include "utilities/NamedObject.hpp"
 
 #include <optional>
+#include <string>
 
-namespace dunedaq {
-
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 // Typeless
 class Receiver : public utilities::NamedObject
@@ -60,7 +59,6 @@ public:
   virtual void unsubscribe(std::string topic) = 0;
 };
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_

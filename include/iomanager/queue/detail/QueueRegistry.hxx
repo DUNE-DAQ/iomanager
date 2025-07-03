@@ -29,7 +29,7 @@ QueueRegistry::get_queue(const std::string& name)
   }
 
   const confmodel::Queue* qptr = nullptr;
-  for(auto& qcfg : m_queue_configs) {
+  for (auto& qcfg : m_queue_configs) {
     if (qcfg->UID() == name) {
       qptr = qcfg;
       break;
@@ -53,7 +53,7 @@ std::shared_ptr<QueueBase>
 QueueRegistry::create_queue(const confmodel::Queue* config)
 {
   std::shared_ptr<QueueBase> queue;
-  auto type = config->get_queue_type();
+  auto const& type = config->get_queue_type();
   if (type == confmodel::Queue::Queue_type::KStdDeQueue) {
     queue = std::make_shared<StdDeQueue<T>>(config->UID(), config->get_capacity());
   } else if (type == confmodel::Queue::Queue_type::KFollySPSCQueue) {

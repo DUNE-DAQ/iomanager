@@ -157,8 +157,7 @@ add_things(const volatile bool& spinlock)
   msg << "Thread #" << std::this_thread::get_id() << ": started at " << start_time_system
       << " ms since epoch, tried pushing " << num_pushes << " elements; time taken was "
       << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count()
-      << " ms"
-      << "\n";
+      << " ms" << "\n";
   TLOG(TLVL_INFO) << msg.str();
 }
 
@@ -221,8 +220,7 @@ remove_things(const volatile bool& spinlock)
   msg << "Thread #" << std::this_thread::get_id() << ": started at " << start_time_system
       << " ms since epoch, tried popping " << num_pops << " elements; time taken was "
       << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count()
-      << " ms"
-      << "\n";
+      << " ms" << "\n";
   TLOG(TLVL_INFO) << msg.str();
 }
 

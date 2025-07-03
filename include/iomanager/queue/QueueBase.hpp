@@ -12,13 +12,13 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUEBASE_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_QUEUEBASE_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUEBASE_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUEBASE_HPP_
 
 #include "utilities/NamedObject.hpp"
 
-#include "opmonlib/MonitorableObject.hpp"
 #include "iomanager/opmon/queue.pb.h"
+#include "opmonlib/MonitorableObject.hpp"
 
 #include "ers/Issue.hpp"
 
@@ -27,6 +27,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace dunedaq::iomanager {
@@ -35,7 +36,9 @@ namespace dunedaq::iomanager {
  * @brief The QueueBase class allows to address generic behavior of any Queue implementation
  *
  */
-  class QueueBase : public utilities::NamedObject, public opmonlib::MonitorableObject
+class QueueBase
+  : public utilities::NamedObject
+  , public opmonlib::MonitorableObject
 {
 public:
   /**
@@ -44,8 +47,8 @@ public:
    */
   explicit QueueBase(const std::string& name)
     : utilities::NamedObject(name)
-  {}
-
+  {
+  }
 
   /**
    * @brief Get the capacity (max size) of the queue
@@ -54,7 +57,6 @@ public:
   virtual size_t get_capacity() const = 0;
 
   virtual size_t get_num_elements() const = 0;
-
 
 protected:
   /**
@@ -72,10 +74,10 @@ protected:
 private:
   QueueBase(const QueueBase&) = delete;
   QueueBase& operator=(const QueueBase&) = delete;
-  QueueBase(QueueBase&&) = default;
-  QueueBase& operator=(QueueBase&&) = default;
+  QueueBase(QueueBase&&) = delete;
+  QueueBase& operator=(QueueBase&&) = delete;
 };
 
 } // namespace dunedaq::iomanager
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUEBASE_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUEBASE_HPP_
