@@ -13,10 +13,12 @@
 #include <string>
 #include <vector>
 
-std::shared_ptr<dunedaq::iomanager::IOManager> dunedaq::iomanager::IOManager::s_instance = nullptr;
+namespace dunedaq::iomanager {
+
+std::shared_ptr<IOManager> IOManager::s_instance = nullptr;
 
 void
-dunedaq::iomanager::IOManager::configure(std::string session,
+IOManager::configure(std::string session,
                                          std::vector<const confmodel::Queue*> queues,
                                          std::vector<const confmodel::NetworkConnection*> connections,
                                          const confmodel::ConnectivityService* connection_service,
@@ -29,7 +31,7 @@ dunedaq::iomanager::IOManager::configure(std::string session,
 }
 
 void
-dunedaq::iomanager::IOManager::shutdown()
+IOManager::shutdown()
 {
   QueueRegistry::get().shutdown();
   NetworkManager::get().shutdown();
@@ -38,7 +40,7 @@ dunedaq::iomanager::IOManager::shutdown()
 }
 
 void
-dunedaq::iomanager::IOManager::reset()
+IOManager::reset()
 {
   QueueRegistry::get().reset();
   NetworkManager::get().reset();
@@ -48,7 +50,7 @@ dunedaq::iomanager::IOManager::reset()
 }
 
 std::set<std::string>
-dunedaq::iomanager::IOManager::get_datatypes(std::string const& uid)
+IOManager::get_datatypes(std::string const& uid)
 {
   auto output = QueueRegistry::get().get_datatypes(uid);
   auto networks = NetworkManager::get().get_datatypes(uid);
@@ -57,3 +59,5 @@ dunedaq::iomanager::IOManager::get_datatypes(std::string const& uid)
   }
   return output;
 }
+
+} // namespace dunedaq::iomanager

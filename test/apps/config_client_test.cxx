@@ -111,7 +111,7 @@ main(int argc, char* argv[])
   ConnectionRequest req;
   req.data_type = connections[0].data_type;
   req.uid_regex = connections[0].uid;
-  auto result = client.resolveConnection(req);
+  auto result = client.resolve_connection(req);
   if (result.connections.size() == 1) {
     std::cout << "resolved to [" << result.connections[0].uid << "]\n"; // NOLINT
   } else {
@@ -120,7 +120,7 @@ main(int argc, char* argv[])
   for (std::string dt : { "2", "DRO-.*-", "DRO-00[1-4]-tp_to_trigger", "tp_to_trigger" }) {
     std::cout << "Looking up connections matching '" << dt << "'"; // NOLINT
     req.uid_regex = dt;
-    result = client.resolveConnection(req);
+    result = client.resolve_connection(req);
     std::cout << ".  Resolved to " << result.connections.size() << " uris:"; // NOLINT
     if (verbose) {
       std::cout << " ["; // NOLINT

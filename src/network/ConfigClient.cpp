@@ -32,7 +32,7 @@ ConfigClient::ConfigClient(const std::string& server,
 {
   m_session = session_name;
 
-  tcp::resolver resolver(m_ioContext);
+  tcp::resolver resolver(m_io_context);
   m_addr = resolver.resolve(server, port);
   m_active = true;
   m_thread = std::thread([this, publish_interval]() {
@@ -73,7 +73,7 @@ ConfigClient::~ConfigClient()
 }
 
 ConnectionResponse
-ConfigClient::resolveConnection(const ConnectionRequest& query, std::string session)
+ConfigClient::resolve_connection(const ConnectionRequest& query, std::string session)
 {
   if (session == "") {
     session = m_session;
@@ -87,7 +87,7 @@ ConfigClient::resolveConnection(const ConnectionRequest& query, std::string sess
   req.prepare_payload();
 
   http::response<http::string_body> response;
-  boost::beast::tcp_stream stream(m_ioContext);
+  boost::beast::tcp_stream stream(m_io_context);
   beast::error_code ec;
   try {
     stream.connect(m_addr);
@@ -168,7 +168,7 @@ ConfigClient::publish()
   req.body() = content.dump();
   req.prepare_payload();
 
-  boost::beast::tcp_stream stream(m_ioContext);
+  boost::beast::tcp_stream stream(m_io_context);
   beast::error_code ec;
   try {
     stream.connect(m_addr);
@@ -217,7 +217,7 @@ ConfigClient::retract()
     req.body() = body.dump();
     req.prepare_payload();
 
-    boost::beast::tcp_stream stream(m_ioContext);
+    boost::beast::tcp_stream stream(m_io_context);
     beast::error_code ec;
     try {
       stream.connect(m_addr);
@@ -280,7 +280,7 @@ ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
   req.body() = body.dump();
   req.prepare_payload();
 
-  boost::beast::tcp_stream stream(m_ioContext);
+  boost::beast::tcp_stream stream(m_io_context);
   beast::error_code ec;
   try {
     stream.connect(m_addr);

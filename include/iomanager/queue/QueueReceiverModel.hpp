@@ -1,5 +1,5 @@
 /**
- * @file Receiver.hpp
+ * @file QueueReceiverModel.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have

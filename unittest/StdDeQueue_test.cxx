@@ -16,13 +16,9 @@
 
 BOOST_AUTO_TEST_SUITE(StdDeQueue_test)
 
-// For a first look at the code, you may want to skip past the
-// contents of the unnamed namespace and move ahead to the actual test
-// cases
-
 namespace {
 
-constexpr int max_testable_capacity = 1000000000; ///< The maximum capacity this test will attempt to check
+constexpr int max_testable_capacity = 1'000'000'000; ///< The maximum capacity this test will attempt to check
 
 constexpr double fractional_timeout_tolerance =
   0.5; ///< The fraction of the timeout which the timing is allowed to be off by

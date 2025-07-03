@@ -1,5 +1,5 @@
 /**
- * @file Sender.hpp
+ * @file NetworkSenderModel.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -43,31 +43,31 @@ private:
   void get_sender(Sender::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type write_network(
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, void>::type write_network(
     MessageType& message,
     Sender::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type write_network(
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type write_network(
     MessageType&,
     Sender::timeout_t const&);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, bool>::type try_write_network(
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, bool>::type try_write_network(
     MessageType& message,
     Sender::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, bool>::type try_write_network(
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, bool>::type try_write_network(
     MessageType&,
     Sender::timeout_t const&);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, void>::type
   write_network_with_topic(MessageType& message, Sender::timeout_t const& timeout, std::string topic);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type
   write_network_with_topic(MessageType&, Sender::timeout_t const&, std::string);
 
   Sender::timeout_t extend_first_timeout(Sender::timeout_t timeout);

@@ -58,8 +58,9 @@ public:
   /**
    * @brief Configure the QueueRegistry
    * @param configs Queue configurations
+   * @param mgr OpMonManager to register metrics tree
    */
-  void configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager&);
+  void configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager& mgr);
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }

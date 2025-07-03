@@ -62,6 +62,7 @@ public:
   std::set<std::string> get_datatypes(std::string const& uid) const;
 
 private:
+  // NetworkManager is a singleton
   static std::unique_ptr<NetworkManager> s_instance;
 
   NetworkManager() = default;

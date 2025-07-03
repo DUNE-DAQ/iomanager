@@ -1,5 +1,5 @@
 /**
- * @file Receiver.hpp
+ * @file NetworkReceiverModel.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -45,28 +45,28 @@ private:
   void get_receiver(Receiver::timeout_t timeout);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const&);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
   try_read_network(Receiver::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value,
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value,
                           std::optional<MessageType>>::type
   try_read_network(Receiver::timeout_t const&);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
     std::function<void(MessageType&)> callback);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
     std::function<void(MessageType&)>);
 
   std::atomic<bool> m_with_callback{ false };

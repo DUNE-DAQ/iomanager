@@ -417,16 +417,6 @@ BOOST_FIXTURE_TEST_CASE(NotFound, ConfigurationTestFixture)
   usleep(1000000);
 
   IOManager::get()->remove_callback<Data2>(bad_id);
-
-// ELF, 2025 Apr 25: Loop test to look for memory leak
-#if 0
-  for (auto ii = 0; ii < 100; ++ii) {
-    auto ret = receiver->try_receive(std::chrono::milliseconds(10));
-    BOOST_REQUIRE_EQUAL(ret.has_value(), false);
-    usleep(10000);
-  }
-  std::terminate();
-#endif
 }
 
 BOOST_FIXTURE_TEST_CASE(NonSerializableSendReceive, ConfigurationTestFixture)

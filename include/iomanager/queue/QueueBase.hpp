@@ -35,6 +35,9 @@ namespace dunedaq::iomanager {
 /**
  * @brief The QueueBase class allows to address generic behavior of any Queue implementation
  *
+ * Note that while the QueueBase class is not templated on a data type (so
+ * it can be included in generic containers), all implementations should be.
+ *
  */
 class QueueBase
   : public utilities::NamedObject
@@ -47,6 +50,7 @@ public:
    */
   explicit QueueBase(const std::string& name)
     : utilities::NamedObject(name)
+    , opmonlib::MonitorableObject()
   {
   }
 

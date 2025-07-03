@@ -3,7 +3,7 @@
 
 /**
  *
- * @file QueueI wrapper around folly::DynamicBoundedQueue
+ * @file FollyQueue wrapper around folly::DynamicBoundedQueue
  *
  * The relevant types for users are FollySPSCQueue and FollyMPMCQueue,
  * which use the corresponding SPSC/MPMC specializations of
@@ -102,7 +102,3 @@ using FollyMPMCQueue = FollyQueue<T, folly::DMPMCQueue>;
 } // namespace dunedaq::iomanager
 
 #endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_FOLLYQUEUE_HPP_
-
-// Local Variables:
-// c-basic-offset: 2
-// End:

@@ -62,32 +62,18 @@ public:
    *    regular expression that can match with multiple connection ids
    * @param session The session that the requested connection is part of
    */
-  ConnectionResponse resolveConnection(const ConnectionRequest& query, std::string session = "");
+  ConnectionResponse resolve_connection(const ConnectionRequest& query, std::string session = "");
 
-  /**
-   * Publish information for a single connection
-   *
-   * @param connectionId  The connection Id to be published
-   * @param uri           The uri corresponding to the connection id
-   */
   void publish(ConnectionRegistration const& connection);
-  /**
-   * Publish information for multiple connections
-   *
-   * @param connectionId A vector of connection Ids to be published
-   * @param uri          A vector of uris corresponding to the connection ids.
-   *           This vector must be the same length as the connection id vector
-   */
+
   void publish(std::vector<ConnectionRegistration> const& connections);
-  /**
-   * Retract a single published connection
-   */
+
   void retract(const ConnectionId& connectionId);
 
   /**
    * Retract multiple published connections
    *
-   * @param connectionId  A vector of previously published connection Ids
+   * @param connectionIds  A vector of previously published connection Ids
    *                     to be retracted
    */
   void retract(const std::vector<ConnectionId>& connectionIds);
@@ -102,7 +88,7 @@ public:
 private:
   void publish();
   std::string m_session;
-  net::io_context m_ioContext;
+  net::io_context m_io_context;
   net::ip::basic_resolver<net::ip::tcp>::results_type m_addr;
 
   std::mutex m_mutex;
