@@ -171,12 +171,13 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
 {
   remove_callback();
   {
+      // This ensures that add_callback_impl and remove_callback are not processing concurrently
     std::lock_guard<std::mutex> lk(m_callback_mutex);
   }
   TLOG() << "Registering callback.";
   m_callback = callback;
   m_with_callback = true;
-  // start event loop (thread that calls when receive happens)
+  // start event loop (thread that calls when receive happens). remove_callback() is called in the destructor, so this will never go out-of-scope while this is running
   m_event_loop_runner = std::make_unique<std::thread>([&]() {
     std::optional<Datatype> message;
     while (m_with_callback.load() || message) {

@@ -25,6 +25,15 @@ using nlohmann::json;
 
 using namespace dunedaq::iomanager;
 
+static constexpr int HTTP_V1_1 = 11;
+
+enum
+{
+TLVL_PUBLISH = 20,
+TLVL_RETRACT = 25,
+TLVL_RESOLVE = 30
+};
+
 ConfigClient::ConfigClient(const std::string& server,
                            const std::string& port,
                            const std::string& session_name,
@@ -40,7 +49,7 @@ ConfigClient::ConfigClient(const std::string& server,
       try {
         publish();
         m_connected = true;
-        TLOG_DEBUG(24) << "Automatic publish complete";
+        TLOG_DEBUG(TLVL_PUBLISH) << "Automatic publish complete";
       } catch (ers::Issue& ex) {
         if (m_connected)
           ers::error(ex);
@@ -78,9 +87,9 @@ ConfigClient::resolve_connection(const ConnectionRequest& query, std::string ses
   if (session == "") {
     session = m_session;
   }
-  TLOG_DEBUG(25) << "Getting connections matching <" << query.uid_regex << "> in session " << session;
+  TLOG_DEBUG(TLVL_RESOLVE) << "Getting connections matching <" << query.uid_regex << "> in session " << session;
   std::string target = "/getconnection/" + session;
-  http::request<http::string_body> req{ http::verb::post, target, 11 };
+  http::request<http::string_body> req{ http::verb::post, target, HTTP_V1_1 };
   req.set(http::field::content_type, "application/json");
   nlohmann::json jquery = query;
   req.body() = jquery.dump();
@@ -97,7 +106,7 @@ ConfigClient::resolve_connection(const ConnectionRequest& query, std::string ses
     http::read(stream, buffer, response);
 
     stream.socket().shutdown(tcp::socket::shutdown_both, ec); // NOLINT
-    TLOG_DEBUG(25) << "get " << target << " response: " << response;
+    TLOG_DEBUG(TLVL_RESOLVE) << "get " << target << " response: " << response;
 
     if (response.result_int() != 200) {
       throw(FailedLookup(ERS_HERE, query.uid_regex, target, std::string(response.reason())));
@@ -114,7 +123,7 @@ ConfigClient::resolve_connection(const ConnectionRequest& query, std::string ses
   }
   m_connected = true;
   json result = json::parse(response.body());
-  TLOG_DEBUG(25) << result.dump();
+  TLOG_DEBUG(TLVL_RESOLVE) << result.dump();
   ConnectionResponse res;
   for (auto const& item : result) {
     res.connections.emplace_back(item.get<ConnectionInfo>());
@@ -127,7 +136,7 @@ ConfigClient::publish(ConnectionRegistration const& connection)
 {
   {
     std::lock_guard<std::mutex> lock(m_mutex);
-    TLOG_DEBUG(26) << "Adding connection with UID " << connection.uid << " and URI " << connection.uri
+    TLOG_DEBUG(TLVL_PUBLISH) << "Adding connection with UID " << connection.uid << " and URI " << connection.uri
                    << " to publish list";
 
     m_registered_connections.insert(connection);
@@ -140,7 +149,8 @@ ConfigClient::publish(const std::vector<ConnectionRegistration>& connections)
   {
     std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& entry : connections) {
-      TLOG_DEBUG(26) << "Adding connection with UID " << entry.uid << " and URI " << entry.uri << " to publish list";
+      TLOG_DEBUG(TLVL_PUBLISH) << "Adding connection with UID " << entry.uid << " and URI " << entry.uri
+                               << " to publish list";
 
       m_registered_connections.insert(entry);
     }
@@ -163,7 +173,7 @@ ConfigClient::publish()
     }
   }
   content["connections"] = connections;
-  http::request<http::string_body> req{ http::verb::post, "/publish", 11 };
+  http::request<http::string_body> req{ http::verb::post, "/publish", HTTP_V1_1 };
   req.set(http::field::content_type, "application/json");
   req.body() = content.dump();
   req.prepare_payload();
@@ -196,7 +206,7 @@ ConfigClient::publish()
 void
 ConfigClient::retract()
 {
-  TLOG_DEBUG(1) << "retract() called, getting connection information";
+  TLOG_DEBUG(TLVL_RETRACT) << "retract() called, getting connection information";
   json connections = json::array();
   {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -209,8 +219,8 @@ ConfigClient::retract()
     m_registered_connections.clear();
   }
   if (connections.size() > 0) {
-    TLOG_DEBUG(1) << "retract(): Retracting " << connections.size() << " connections";
-    http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
+    TLOG_DEBUG(TLVL_RETRACT) << "retract(): Retracting " << connections.size() << " connections";
+    http::request<http::string_body> req{ http::verb::post, "/retract", HTTP_V1_1 };
     req.set(http::field::content_type, "application/json");
     json body{ { "partition", m_session } };
     body["connections"] = connections;
@@ -251,7 +261,7 @@ ConfigClient::retract(const ConnectionId& connectionId)
 void
 ConfigClient::retract(const std::vector<ConnectionId>& connectionIds)
 {
-  http::request<http::string_body> req{ http::verb::post, "/retract", 11 };
+  http::request<http::string_body> req{ http::verb::post, "/retract", HTTP_V1_1 };
   req.set(http::field::content_type, "application/json");
 
   json connections = json::array();
