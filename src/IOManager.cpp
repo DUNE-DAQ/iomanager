@@ -19,10 +19,10 @@ std::shared_ptr<IOManager> IOManager::s_instance = nullptr;
 
 void
 IOManager::configure(std::string session,
-                                         std::vector<const confmodel::Queue*> queues,
-                                         std::vector<const confmodel::NetworkConnection*> connections,
-                                         const confmodel::ConnectivityService* connection_service,
-                                         dunedaq::opmonlib::OpMonManager& opmgr)
+                     std::vector<const confmodel::Queue*> queues,
+                     std::vector<const confmodel::NetworkConnection*> connections,
+                     const confmodel::ConnectivityService* connection_service,
+                     dunedaq::opmonlib::OpMonManager& opmgr)
 {
   m_session = session;
 

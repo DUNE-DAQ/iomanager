@@ -1,6 +1,11 @@
 /**
  * @file config_client_test.cxx
  *
+ * Tests the connection to the connectivity service, and whether publishes
+ * and lookups work as expected.
+ *
+ * Run "config_client_test --help" to see options
+ *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
@@ -34,9 +39,9 @@ main(int argc, char* argv[])
   std::string server("localhost");
   std::string port("5000");
   std::string file;
-  int connectionCount = 10;
+  int connection_count = 10;
   int pause = 0;
-  bool useMulti = false;
+  bool use_multi = false;
   bool verbose = false;
   namespace po = boost::program_options;
   po::options_description desc("Simple test program for ConfigClient class");
@@ -45,11 +50,11 @@ main(int argc, char* argv[])
     "name,n",
     po::value<std::string>(&name),
     "name of session to publish our config under")(
-    "count,c", po::value<int>(&connectionCount), "number of connections to publish")(
+    "count,c", po::value<int>(&connection_count), "number of connections to publish")(
     "port,p", po::value<std::string>(&port), "port to connect to on configuration server")(
     "server,s", po::value<std::string>(&server), "Configuration server to connect to")(
     "pause,P", po::value<int>(&pause), "Pause (in seconds) between publish an lookups")(
-    ",m", po::bool_switch(&useMulti), "publish using vectors of ids and uris")(
+    ",m", po::bool_switch(&use_multi), "publish using vectors of ids and uris")(
     "verbose,v", po::bool_switch(&verbose), "print more verbose output");
 
   try {
@@ -67,16 +72,16 @@ main(int argc, char* argv[])
   ConfigClient client(server, port, name, 1000ms);
 
   std::vector<ConnectionRegistration> connections;
-  std::ostringstream numStr;
-  for (int con = 0; con < connectionCount; con++) {
-    numStr.str("");
-    numStr << std::setfill('0') << std::setw(3) << con;
-    std::string connId = "DRO-" + numStr.str() + "-tp_to_trigger";
-    numStr.str("");
-    numStr << 1234 + con;
-    std::string uri = "tcp://192.168.1.100:" + numStr.str();
+  std::ostringstream num_str;
+  for (int con = 0; con < connection_count; con++) {
+    num_str.str("");
+    num_str << std::setfill('0') << std::setw(3) << con;
+    std::string conn_id = "DRO-" + num_str.str() + "-tp_to_trigger";
+    num_str.str("");
+    num_str << 1234 + con;
+    std::string uri = "tcp://192.168.1.100:" + num_str.str();
     ConnectionRegistration conn_reg;
-    conn_reg.uid = connId;
+    conn_reg.uid = conn_id;
     conn_reg.data_type = "TPSet";
     conn_reg.uri = uri;
     conn_reg.connection_type = dunedaq::iomanager::ConnectionType::kSendRecv;
@@ -85,14 +90,14 @@ main(int argc, char* argv[])
 
   std::cout << "Publishing my connections\n"; // NOLINT
   auto start = system_clock::now();
-  if (useMulti) {
+  if (use_multi) {
     client.publish(connections);
   } else {
-    for (int con = 0; con < connectionCount; con++) {
+    for (int con = 0; con < connection_count; con++) {
       client.publish(connections[con]);
     }
   }
-  auto endPublish = system_clock::now();
+  auto end_publish = system_clock::now();
 
   if (pause > 0) {
     std::cout << "  Pausing to allow initial entries to time out"; // NOLINT
@@ -105,7 +110,7 @@ main(int argc, char* argv[])
     std::cout << std::endl; // NOLINT
   }
 
-  auto startLookups = system_clock::now();
+  auto start_lookups = system_clock::now();
   std::cout << "Looking up connections[1]: "; // NOLINT
   std::cout.flush();                          // NOLINT
   ConnectionRequest req;
@@ -133,10 +138,10 @@ main(int argc, char* argv[])
     }
     std::cout << std::endl; // NOLINT
   }
-  auto endLookups = std::chrono::system_clock::now();
+  auto end_lookups = std::chrono::system_clock::now();
 
   std::cout << "Retracting connections\n"; // NOLINT
-  if (useMulti) {
+  if (use_multi) {
     client.retract();
   } else {
     for (auto const& con : connections) {
@@ -147,12 +152,12 @@ main(int argc, char* argv[])
     }
   }
 
-  auto endRetract = system_clock::now();
-  double retractTime = static_cast<double>(duration_cast<microseconds>(endRetract - endLookups).count());
-  double publishTime = static_cast<double>(duration_cast<microseconds>(endPublish - start).count());
-  double lookupTime = static_cast<double>(duration_cast<microseconds>(endLookups - startLookups).count());
-  std::cout << "Timing: publish " << publishTime / 1e6 << ", lookup " << lookupTime / 1e6 << ", retract " // NOLINT
-            << retractTime / 1e6 << " seconds" << std::endl;
+  auto end_retract = system_clock::now();
+  double retract_time = static_cast<double>(duration_cast<microseconds>(end_retract - end_lookups).count());
+  double publish_time = static_cast<double>(duration_cast<microseconds>(end_publish - start).count());
+  double lookup_time = static_cast<double>(duration_cast<microseconds>(end_lookups - start_lookups).count());
+  std::cout << "Timing: publish " << publish_time / 1e6 << ", lookup " << lookup_time / 1e6 << ", retract " // NOLINT
+            << retract_time / 1e6 << " seconds" << std::endl;
 
   return 0;
 } // NOLINT

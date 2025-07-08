@@ -133,9 +133,8 @@ NetworkReceiverModel<Datatype>::read_network(Receiver::timeout_t const&)
 
 template<typename Datatype>
 template<typename MessageType>
-inline
-  typename std::enable_if<serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
-  NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const& timeout)
+inline typename std::enable_if<serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
+NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const& timeout)
 {
   std::lock_guard<std::mutex> lk(m_receive_mutex);
   get_receiver(timeout);
@@ -156,8 +155,7 @@ inline
 
 template<typename Datatype>
 template<typename MessageType>
-inline typename std::enable_if<!serialization::is_serializable<MessageType>::value,
-                               std::optional<MessageType>>::type
+inline typename std::enable_if<!serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
 NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const&)
 {
   ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name())); // NOLINT(runtime/rtti)
@@ -171,13 +169,14 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
 {
   remove_callback();
   {
-      // This ensures that add_callback_impl and remove_callback are not processing concurrently
+    // This ensures that add_callback_impl and remove_callback are not processing concurrently
     std::lock_guard<std::mutex> lk(m_callback_mutex);
   }
   TLOG() << "Registering callback.";
   m_callback = callback;
   m_with_callback = true;
-  // start event loop (thread that calls when receive happens). remove_callback() is called in the destructor, so this will never go out-of-scope while this is running
+  // start event loop (thread that calls when receive happens). remove_callback() is called in the destructor, so this
+  // will never go out-of-scope while this is running
   m_event_loop_runner = std::make_unique<std::thread>([&]() {
     std::optional<Datatype> message;
     while (m_with_callback.load() || message) {
@@ -189,7 +188,7 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
           m_callback(*message);
         }
       } catch (const ers::Issue&) {
-          // Intentionally ignoring any ers::Issues that might have been raised
+        // Intentionally ignoring any ers::Issues that might have been raised
         ;
       }
     }

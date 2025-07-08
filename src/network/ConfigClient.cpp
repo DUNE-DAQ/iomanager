@@ -29,9 +29,9 @@ static constexpr int HTTP_V1_1 = 11;
 
 enum
 {
-TLVL_PUBLISH = 20,
-TLVL_RETRACT = 25,
-TLVL_RESOLVE = 30
+  TLVL_PUBLISH = 20,
+  TLVL_RETRACT = 25,
+  TLVL_RESOLVE = 30
 };
 
 ConfigClient::ConfigClient(const std::string& server,
@@ -137,7 +137,7 @@ ConfigClient::publish(ConnectionRegistration const& connection)
   {
     std::lock_guard<std::mutex> lock(m_mutex);
     TLOG_DEBUG(TLVL_PUBLISH) << "Adding connection with UID " << connection.uid << " and URI " << connection.uri
-                   << " to publish list";
+                             << " to publish list";
 
     m_registered_connections.insert(connection);
   }

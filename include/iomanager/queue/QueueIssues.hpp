@@ -61,7 +61,7 @@ ERS_DECLARE_ISSUE(iomanager,
                   QueueTimeoutExpired,
                   name << ": Unable to " << func_name << " within timeout period (timeout period was " << timeout
                        << " milliseconds)",
-                  ((std::string)name)((std::string)func_name)((int)timeout))
+                  ((std::string)name)((std::string)func_name)((int)timeout)) // NOLINT
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq

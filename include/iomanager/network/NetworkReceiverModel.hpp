@@ -57,8 +57,7 @@ private:
   try_read_network(Receiver::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<!serialization::is_serializable<MessageType>::value,
-                          std::optional<MessageType>>::type
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
   try_read_network(Receiver::timeout_t const&);
 
   template<typename MessageType>

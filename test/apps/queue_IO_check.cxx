@@ -46,63 +46,69 @@ ERS_DECLARE_ISSUE(iomanager,            ///< Namespace
 namespace {
 
 /**
- * @brief Type of the queue
+ * @brief Configuration of the test, derived from command-line options
  */
-std::string queue_type = "StdDeQueue";
+struct test_config
+{
 
-auto timeout = std::chrono::milliseconds(100); ///< Queue's timeout
+  std::chrono::milliseconds timeout = std::chrono::milliseconds(100); ///< Queue's timeout
+
+  /**
+   * @brief Queue instance for test
+   */
+  std::unique_ptr<dunedaq::iomanager::Queue<int>> queue = nullptr;
+
+  int num_elements = 1000000;   ///< Number of elements to push to the Queue (total)
+  int num_adding_threads = 1;   ///< Number of threads which will call push
+  int num_removing_threads = 1; ///< Number of threads which will call pop
+
+  int avg_milliseconds_between_pushes = 0; ///< Target average rate of pushes
+  int avg_milliseconds_between_pops = 0;   ///< Target average rate of pops
+
+  // The enable_ options, when set to true, contain code that executes
+  // for each push/pop, which will of course affect the overall
+  // execution time of the threads while also adding info about the
+  // behavior of the system
+
+  bool enable_per_pushpop_timing = true;
+  bool enable_max_size_checking = true;
+};
 
 /**
- * @brief Queue instance for test
+ *  @brief Results of the test
  */
-std::unique_ptr<dunedaq::iomanager::Queue<int>> queue = nullptr;
+struct test_results
+{
+  std::atomic<int> queue_size = 0;     ///< Queue's current size
+  std::atomic<int> max_queue_size = 0; ///< Queue's maximum size
 
-int num_elements = 1000000;   ///< Number of elements to push to the Queue (total)
-int num_adding_threads = 1;   ///< Number of threads which will call push
-int num_removing_threads = 1; ///< Number of threads which will call pop
+  std::atomic<int> timeout_pushes = 0; ///< Number of pushes which timed out
+  std::atomic<int> timeout_pops = 0;   ///< Number of pops which timed out
+  std::atomic<int> throw_pushes = 0;   ///< Number of pushes which threw an exception
+  std::atomic<int> throw_pops = 0;     ///< Number of pops which threw an exception
 
-int avg_milliseconds_between_pushes = 0; ///< Target average rate of pushes
-int avg_milliseconds_between_pops = 0;   ///< Target average rate of pops
-
-// The enable_ options, when set to true, contain code that executes
-// for each push/pop, which will of course affect the overall
-// execution time of the threads while also adding info about the
-// behavior of the system
-
-bool enable_per_pushpop_timing = true;
-bool enable_max_size_checking = true;
-
-std::atomic<int> queue_size = 0;     ///< Queue's current size
-std::atomic<int> max_queue_size = 0; ///< Queue's maximum size
-
-std::atomic<int> timeout_pushes = 0; ///< Number of pushes which timed out
-std::atomic<int> timeout_pops = 0;   ///< Number of pops which timed out
-std::atomic<int> throw_pushes = 0;   ///< Number of pushes which threw an exception
-std::atomic<int> throw_pops = 0;     ///< Number of pops which threw an exception
-
-double initial_capacity_used = 0; ///< The initial portion of the Queue which was full.
-
-/**
- * @brief A time-based seed for the random number generators
- */
-auto relatively_random_seed =
-  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() %
-  1000;
-std::default_random_engine generator(relatively_random_seed); ///< Random number generator with time-based seed
-std::unique_ptr<std::uniform_int_distribution<int>> push_distribution =
-  nullptr; ///< Random number distribution to use for push waits
-std::unique_ptr<std::uniform_int_distribution<int>> pop_distribution =
-  nullptr; ///< Random number distribution to use for pop waits
+  /**
+   * @brief A time-based seed for the random number generators
+   */
+  std::chrono::milliseconds now_ms =
+    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+  uint64_t relatively_random_seed = static_cast<uint64_t>(now_ms.count() % 1000); // NOLINT
+  std::default_random_engine generator{ relatively_random_seed }; ///< Random number generator with time-based seed
+  std::unique_ptr<std::uniform_int_distribution<int>> push_distribution =
+    nullptr; ///< Random number distribution to use for push waits
+  std::unique_ptr<std::uniform_int_distribution<int>> pop_distribution =
+    nullptr; ///< Random number distribution to use for pop waits
+};
 
 /**
  * @brief Put elements onto the queue
  */
 void
-add_things(const volatile bool& spinlock)
+add_things(test_config const& config, test_results& results, const volatile bool& spinlock)
 {
-  const int num_pushes = num_elements / num_adding_threads;
+  const int num_pushes = config.num_elements / config.num_adding_threads;
   auto start_time_push = std::chrono::steady_clock::now(); // Won't ever use the initialization value
-  auto size_snapshot = queue_size.load(); // Unlike queue_size, only this thread writes to size_snapshot
+  auto size_snapshot = results.queue_size.load(); // Unlike queue_size, only this thread writes to size_snapshot
 
   while (spinlock) {
   } // Main program thread will set this to false, then this thread starts pushing
@@ -113,39 +119,39 @@ add_things(const volatile bool& spinlock)
 
   for (int i = 0; i < num_pushes; ++i) {
 
-    if (avg_milliseconds_between_pushes > 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds((*push_distribution)(generator)));
+    if (config.avg_milliseconds_between_pushes > 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds((*results.push_distribution)(results.generator)));
     }
 
-    while (!queue->can_push()) {
+    while (!config.queue->can_push()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     while (true) {
       try {
         auto i_copy = i;
-        if (!enable_per_pushpop_timing) {
-          queue->push(std::move(i_copy), timeout); // NOLINT
+        if (!config.enable_per_pushpop_timing) {
+          config.queue->push(std::move(i_copy), config.timeout); // NOLINT
         } else {
           start_time_push = std::chrono::steady_clock::now();
-          queue->push(std::move(i_copy), timeout); // NOLINT
+          config.queue->push(std::move(i_copy), config.timeout); // NOLINT
           if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
-                                                                    start_time_push) > timeout) {
-            timeout_pushes++;
+                                                                    start_time_push) > config.timeout) {
+            results.timeout_pushes++;
           }
         }
 
-        if (enable_max_size_checking) {
-          size_snapshot = queue_size.fetch_add(1) + 1; // fetch_add returns previous value
+        if (config.enable_max_size_checking) {
+          size_snapshot = results.queue_size.fetch_add(1) + 1; // fetch_add returns previous value
 
-          if (size_snapshot > max_queue_size) {
-            max_queue_size = size_snapshot;
+          if (size_snapshot > results.max_queue_size) {
+            results.max_queue_size = size_snapshot;
           }
         }
 
         break;
       } catch (const dunedaq::iomanager::QueueTimeoutExpired& err) {
-        throw_pushes++;
+        results.throw_pushes++;
         std::ostringstream msg;
         msg << "Thread #" << std::this_thread::get_id() << ": exception thrown on push #" << i << ": " << err.what();
         TLOG(TLVL_WARNING) << msg.str();
@@ -165,9 +171,9 @@ add_things(const volatile bool& spinlock)
  * @brief Pop elements off of the queue
  */
 void
-remove_things(const volatile bool& spinlock)
+remove_things(test_config const& config, test_results& results, const volatile bool& spinlock)
 {
-  const int num_pops = num_removing_threads > 0 ? num_elements / num_removing_threads : 0;
+  const int num_pops = config.num_removing_threads > 0 ? config.num_elements / config.num_removing_threads : 0;
   auto start_time_pop = std::chrono::steady_clock::now(); // Won't ever use the initialization value
   int val = -999;
 
@@ -180,35 +186,35 @@ remove_things(const volatile bool& spinlock)
 
   for (int i = 0; i < num_pops; ++i) {
 
-    if (avg_milliseconds_between_pops > 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds((*pop_distribution)(generator)));
+    if (config.avg_milliseconds_between_pops > 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds((*results.pop_distribution)(results.generator)));
     }
 
-    while (!queue->can_pop()) {
+    while (!config.queue->can_pop()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     while (true) {
       try {
 
-        if (!enable_per_pushpop_timing) {
-          queue->pop(val, timeout);
+        if (!config.enable_per_pushpop_timing) {
+          config.queue->pop(val, config.timeout);
         } else {
           start_time_pop = std::chrono::steady_clock::now();
-          queue->pop(val, timeout);
+          config.queue->pop(val, config.timeout);
 
           if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_pop) >
-              timeout)
-            timeout_pops++;
+              config.timeout)
+            results.timeout_pops++;
         }
 
-        if (enable_max_size_checking) {
-          queue_size--;
+        if (config.enable_max_size_checking) {
+          results.queue_size--;
         }
         break;
 
       } catch (const dunedaq::iomanager::QueueTimeoutExpired& e) {
-        throw_pops++;
+        results.throw_pops++;
         std::ostringstream msg;
         msg << "Thread #" << std::this_thread::get_id() << ": exception thrown on pop #" << i << ": " << e.what();
         TLOG(TLVL_WARNING) << msg.str();
@@ -229,28 +235,32 @@ remove_things(const volatile bool& spinlock)
 int
 main(int argc, char* argv[])
 {
+  test_config config;
+  test_results results;
+
+  double initial_capacity_used = 0; ///< The initial portion of the Queue which was full.
 
   std::ostringstream descstr;
   descstr << argv[0] << " known arguments "; // NOLINT
 
   std::ostringstream num_elements_desc;
-  num_elements_desc << "# of elements you want pushed and/or popped (default is " << num_elements << ")";
+  num_elements_desc << "# of elements you want pushed and/or popped (default is " << config.num_elements << ")";
 
   std::ostringstream push_threads_desc;
-  push_threads_desc << "# of threads you want pushing elements onto the queue (default is " << num_adding_threads
+  push_threads_desc << "# of threads you want pushing elements onto the queue (default is " << config.num_adding_threads
                     << ")";
 
   std::ostringstream pop_threads_desc;
-  pop_threads_desc << "# of threads you want popping elements off the queue (default is " << num_removing_threads
+  pop_threads_desc << "# of threads you want popping elements off the queue (default is " << config.num_removing_threads
                    << ")";
 
   std::ostringstream push_pause_desc;
   push_pause_desc << "average time in milliseconds between a thread's pushes (default is "
-                  << avg_milliseconds_between_pushes << ")";
+                  << config.avg_milliseconds_between_pushes << ")";
 
   std::ostringstream pop_pause_desc;
-  pop_pause_desc << "average time in milliseconds between a thread's pops (default is " << avg_milliseconds_between_pops
-                 << ")";
+  pop_pause_desc << "average time in milliseconds between a thread's pops (default is "
+                 << config.avg_milliseconds_between_pops << ")";
 
   std::ostringstream capacity_used_desc;
   capacity_used_desc << "fraction of the queue's capacity filled at start (default is " << initial_capacity_used << ")";
@@ -280,6 +290,7 @@ main(int argc, char* argv[])
     return 0;
   }
 
+  std::string queue_type = "StdDeQueue";
   if (vm.count("queue_type")) {
     queue_type = vm["queue_type"].as<std::string>();
   }
@@ -287,70 +298,74 @@ main(int argc, char* argv[])
   int capacity = vm["capacity"].as<int>();
 
   if (queue_type == "StdDeQueue") {
-    queue.reset(new dunedaq::iomanager::StdDeQueue<int>("StdDeQueue", static_cast<size_t>(capacity)));
+    config.queue = std::make_unique<dunedaq::iomanager::StdDeQueue<int>>("StdDeQueue", static_cast<size_t>(capacity));
   } else if (queue_type == "FollySPSCQueue") {
-    queue.reset(new dunedaq::iomanager::FollySPSCQueue<int>("FollySPSCQueue", static_cast<size_t>(capacity)));
+    config.queue =
+      std::make_unique<dunedaq::iomanager::FollySPSCQueue<int>>("FollySPSCQueue", static_cast<size_t>(capacity));
   } else if (queue_type == "FollyMPMCQueue") {
-    queue.reset(new dunedaq::iomanager::FollyMPMCQueue<int>("FollyMPMCQueue", static_cast<size_t>(capacity)));
+    config.queue =
+      std::make_unique<dunedaq::iomanager::FollyMPMCQueue<int>>("FollyMPMCQueue", static_cast<size_t>(capacity));
   } else {
     TLOG(TLVL_ERROR) << "Unknown queue type \"" << queue_type << "\" requested for testing";
     return 1;
   }
 
   if (vm.count("nelements")) {
-    num_elements = vm["nelements"].as<int>();
+    config.num_elements = vm["nelements"].as<int>();
 
-    if (num_elements <= 0) {
+    if (config.num_elements <= 0) {
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE, "# of elements must be a positive integer");
     }
   }
 
   if (vm.count("push_threads")) {
 
-    num_adding_threads = vm["push_threads"].as<int>();
+    config.num_adding_threads = vm["push_threads"].as<int>();
 
-    if (num_adding_threads < 0) {
+    if (config.num_adding_threads < 0) {
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE, "# of pushing threads must be non-negative");
     }
-    if (queue_type == "FollySPSCQueue" && num_adding_threads != 0 && num_adding_threads != 1) {
+    if (queue_type == "FollySPSCQueue" && config.num_adding_threads != 0 && config.num_adding_threads != 1) {
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE, "# of pushing threads must 0 or 1 for SPSC queue");
     }
-    if (num_adding_threads > 0 && num_elements % num_adding_threads != 0) {
+    if (config.num_adding_threads > 0 && config.num_elements % config.num_adding_threads != 0) {
       std::ostringstream msg;
-      msg << "# of pushing threads must divide into the # of elements (" << num_elements << ") without a remainder";
+      msg << "# of pushing threads must divide into the # of elements (" << config.num_elements
+          << ") without a remainder";
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE, msg.str());
     }
   }
 
   if (vm.count("pop_threads")) {
-    num_removing_threads = vm["pop_threads"].as<int>();
+    config.num_removing_threads = vm["pop_threads"].as<int>();
 
-    if (num_removing_threads < 0) {
+    if (config.num_removing_threads < 0) {
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE, "# of popping threads must be non-negative");
     }
-    if (queue_type == "FollySPSCQueue" && num_removing_threads != 0 && num_removing_threads != 1) {
+    if (queue_type == "FollySPSCQueue" && config.num_removing_threads != 0 && config.num_removing_threads != 1) {
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE, "# of popping threads must 0 or 1 for SPSC queue");
     }
-    if (num_removing_threads > 0 && num_elements % num_removing_threads != 0) {
+    if (config.num_removing_threads > 0 && config.num_elements % config.num_removing_threads != 0) {
       std::ostringstream msg;
-      msg << "# of popping threads must divide into the # of elements (" << num_elements << ") without a remainder";
+      msg << "# of popping threads must divide into the # of elements (" << config.num_elements
+          << ") without a remainder";
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE, msg.str());
     }
   }
 
   if (vm.count("pause_between_pushes")) {
-    avg_milliseconds_between_pushes = vm["pause_between_pushes"].as<int>();
+    config.avg_milliseconds_between_pushes = vm["pause_between_pushes"].as<int>();
 
-    if (avg_milliseconds_between_pushes < 0) {
+    if (config.avg_milliseconds_between_pushes < 0) {
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE,
                                                      "Average # of milliseconds between pushes must be non-negative");
     }
   }
 
   if (vm.count("pause_between_pops")) {
-    avg_milliseconds_between_pops = vm["pause_between_pops"].as<int>();
+    config.avg_milliseconds_between_pops = vm["pause_between_pops"].as<int>();
 
-    if (avg_milliseconds_between_pops < 0) {
+    if (config.avg_milliseconds_between_pops < 0) {
       throw dunedaq::iomanager::ParameterDomainIssue(ERS_HERE,
                                                      "Average # of milliseconds between pops must be non-negative");
     }
@@ -365,15 +380,17 @@ main(int argc, char* argv[])
     }
   }
 
-  push_distribution.reset(new std::uniform_int_distribution<int>(0, 2 * avg_milliseconds_between_pushes));
-  pop_distribution.reset(new std::uniform_int_distribution<int>(0, 2 * avg_milliseconds_between_pops));
+  results.push_distribution =
+    std::make_unique<std::uniform_int_distribution<int>>(0, 2 * config.avg_milliseconds_between_pushes);
+  results.pop_distribution =
+    std::make_unique<std::uniform_int_distribution<int>>(0, 2 * config.avg_milliseconds_between_pops);
 
-  TLOG(TLVL_INFO) << num_adding_threads << " thread(s) pushing " << num_elements
-                  << " elements between them, each thread has an average time of " << avg_milliseconds_between_pushes
-                  << " milliseconds between pushes";
-  TLOG(TLVL_INFO) << num_removing_threads << " thread(s) popping " << num_elements
-                  << " elements between them, each thread has an average time of " << avg_milliseconds_between_pops
-                  << " milliseconds between pops";
+  TLOG(TLVL_INFO) << config.num_adding_threads << " thread(s) pushing " << config.num_elements
+                  << " elements between them, each thread has an average time of "
+                  << config.avg_milliseconds_between_pushes << " milliseconds between pushes";
+  TLOG(TLVL_INFO) << config.num_removing_threads << " thread(s) popping " << config.num_elements
+                  << " elements between them, each thread has an average time of "
+                  << config.avg_milliseconds_between_pops << " milliseconds between pops";
   TLOG(TLVL_INFO) << "Queue of type " << queue_type << " has capacity for " << capacity << " elements";
 
   int elements_to_begin_with = static_cast<int>(initial_capacity_used * capacity);
@@ -383,19 +400,19 @@ main(int argc, char* argv[])
     TLOG(TLVL_INFO) << "Before test officially begins, pushing " << elements_to_begin_with
                     << " elements onto the queue";
     for (int i_e = 0; i_e < elements_to_begin_with; ++i_e) {
-      queue->push(-1, timeout);
+      config.queue->push(-1, config.timeout);
     }
-    queue_size = elements_to_begin_with;
-    max_queue_size = elements_to_begin_with;
+    results.queue_size = elements_to_begin_with;
+    results.max_queue_size = elements_to_begin_with;
     TLOG(TLVL_INFO) << "Finished pre-test filling of the queue";
   }
 
-  if (num_adding_threads > 0 && elements_to_begin_with + num_elements > capacity) {
+  if (config.num_adding_threads > 0 && elements_to_begin_with + config.num_elements > capacity) {
     std::ostringstream msg;
     msg << "The number of elements the queue is initially filled with (" << elements_to_begin_with
-        << ") plus the number of elements which will be pushed onto it (" << num_elements
+        << ") plus the number of elements which will be pushed onto it (" << config.num_elements
         << ") exceeds the queue's capacity (" << capacity << ")";
-    if (num_removing_threads > 0) {
+    if (config.num_removing_threads > 0) {
       TLOG(TLVL_WARNING) << msg.str();
     } else {
       TLOG(TLVL_ERROR) << msg.str();
@@ -403,12 +420,13 @@ main(int argc, char* argv[])
     }
   }
 
-  if (num_removing_threads > 0 && num_elements > elements_to_begin_with) {
+  if (config.num_removing_threads > 0 && config.num_elements > elements_to_begin_with) {
     std::ostringstream msg;
     msg << "The number of elements the queue is initially filled with (" << elements_to_begin_with
-        << ") minus the number of elements which will be popped off of it (" << num_elements << ") is less than zero";
+        << ") minus the number of elements which will be popped off of it (" << config.num_elements
+        << ") is less than zero";
 
-    if (num_adding_threads > 0) {
+    if (config.num_adding_threads > 0) {
       TLOG(TLVL_WARNING) << msg.str();
     } else {
       TLOG(TLVL_ERROR) << msg.str();
@@ -421,12 +439,12 @@ main(int argc, char* argv[])
   std::vector<std::thread> adders;
   std::vector<std::thread> removers;
 
-  for (int i = 0; i < num_adding_threads; ++i) {
-    adders.emplace_back(add_things, std::cref(spinlock));
+  for (int i = 0; i < config.num_adding_threads; ++i) {
+    adders.emplace_back(add_things, std::cref(config), std::ref(results), std::cref(spinlock));
   }
 
-  for (int i = 0; i < num_removing_threads; ++i) {
-    removers.emplace_back(remove_things, std::cref(spinlock));
+  for (int i = 0; i < config.num_removing_threads; ++i) {
+    removers.emplace_back(remove_things, std::cref(config), std::ref(results), std::cref(spinlock));
   }
 
   // 20 ms is the pause Ron used when he originally implemented the
@@ -448,29 +466,29 @@ main(int argc, char* argv[])
 
   TLOG(TLVL_INFO) << "\n\nFinal results: ";
 
-  if (enable_max_size_checking) {
-    TLOG(TLVL_INFO) << "Max queue size during running was " << max_queue_size;
+  if (config.enable_max_size_checking) {
+    TLOG(TLVL_INFO) << "Max queue size during running was " << results.max_queue_size;
   } else {
     TLOG(TLVL_INFO) << "Disabled check for max queue size during running";
   }
 
-  if (num_adding_threads > 0) {
-    TLOG(TLVL_INFO) << "There were " << throw_pushes << " exception throws on push calls";
+  if (config.num_adding_threads > 0) {
+    TLOG(TLVL_INFO) << "There were " << results.throw_pushes << " exception throws on push calls";
 
-    if (enable_per_pushpop_timing) {
-      TLOG(TLVL_INFO) << "There were " << timeout_pushes << " pushes which took longer than the provided timeout of "
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count() << " ms\n";
+    if (config.enable_per_pushpop_timing) {
+      TLOG(TLVL_INFO) << "There were " << results.timeout_pushes
+                      << " pushes which took longer than the provided timeout of " << config.timeout.count() << " ms\n";
     } else {
       TLOG(TLVL_INFO) << "Disabled count of slow pushes\n";
     }
   }
 
-  if (num_removing_threads > 0) {
-    TLOG(TLVL_INFO) << "There were " << throw_pops << " exception throws on pop calls";
+  if (config.num_removing_threads > 0) {
+    TLOG(TLVL_INFO) << "There were " << results.throw_pops << " exception throws on pop calls";
 
-    if (enable_per_pushpop_timing) {
-      TLOG(TLVL_INFO) << "There were " << timeout_pops << " pops which took longer than the provided timeout of "
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count() << " ms\n";
+    if (config.enable_per_pushpop_timing) {
+      TLOG(TLVL_INFO) << "There were " << results.timeout_pops
+                      << " pops which took longer than the provided timeout of " << config.timeout.count() << " ms\n";
     } else {
       TLOG(TLVL_INFO) << "Disabled count of slow pops\n";
     }
