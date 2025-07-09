@@ -11,6 +11,8 @@
 #include <typeinfo>
 #include <utility>
 
+using namespace std::chrono_literals; // NOLINT
+
 namespace dunedaq::iomanager {
 
 template<typename Datatype>

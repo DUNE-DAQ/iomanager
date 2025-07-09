@@ -11,7 +11,7 @@
 #include <utility>
 
 namespace dunedaq::iomanager {
-	
+
 template<typename Datatype>
 inline void
 QueueSenderModel<Datatype>::send_with_topic(Datatype&& data, Sender::timeout_t timeout, std::string) // NOLINT

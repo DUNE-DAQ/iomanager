@@ -16,22 +16,21 @@
 #include "boost/test/unit_test.hpp"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 BOOST_AUTO_TEST_SUITE(QueueRegistry_test)
 
 using namespace dunedaq::iomanager;
 
-const std::string TEST_OKS_DB = "test/config/queueregistry_test.data.xml";
-
 struct ConfigurationFixture
 {
   ConfigurationFixture()
   {
-    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/queueregistry_test.data.xml");
     confdb->get<dunedaq::confmodel::Queue>(queues);
-
   };
   static std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
   static std::vector<const dunedaq::confmodel::Queue*> queues;

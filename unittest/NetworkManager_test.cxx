@@ -15,6 +15,7 @@
 
 #include "boost/test/unit_test.hpp"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -25,14 +26,12 @@ using namespace dunedaq::iomanager;
 
 BOOST_AUTO_TEST_SUITE(NetworkManager_test)
 
-const std::string TEST_OKS_DB = "test/config/networkmanager_test.data.xml";
-
 struct NetworkManagerTestFixture
 {
   NetworkManagerTestFixture()
   {
 
-    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/networkmanager_test.data.xml");
     confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
 
     sendRecvConnId.uid = "sendRecv";

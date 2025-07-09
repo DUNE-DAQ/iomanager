@@ -6,22 +6,22 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTSTRUCTS_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTSTRUCTS_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORK_CONFIGCLIENTSTRUCTS_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_NETWORK_CONFIGCLIENTSTRUCTS_HPP_
 
 #include "iomanager/SchemaUtils.hpp"
 #include "nlohmann/json.hpp"
 
 #include <string>
+#include <vector>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 enum class ConnectionType : int
 {
-kSendRecv = 0,
-kPubSub = 1,
-kInvalid = 2,
+  kSendRecv = 0,
+  kPubSub = 1,
+  kInvalid = 2,
 };
 
 inline ConnectionType
@@ -43,7 +43,7 @@ struct ConnectionRequest
   ConnectionRequest() {}
 
   // Implicit conversion
-  ConnectionRequest(ConnectionId convert)
+  ConnectionRequest(ConnectionId convert) // NOLINT(runtime/explicit)
     : uid_regex(convert.uid)
     , data_type(convert.data_type)
   {
@@ -61,7 +61,7 @@ struct ConnectionInfo
   ConnectionInfo() {}
 
   // Implicit Conversion
-  ConnectionInfo(const confmodel::NetworkConnection* convert)
+  ConnectionInfo(const confmodel::NetworkConnection* convert) // NOLINT(runtime/explicit)
     : uid(convert->UID())
     , data_type(convert->get_data_type())
     , uri(get_uri_for_connection(convert))
@@ -82,7 +82,7 @@ struct ConnectionRegistration
   ConnectionRegistration() {}
 
   // Implicit Conversion
-  ConnectionRegistration(const confmodel::NetworkConnection* convert)
+  ConnectionRegistration(const confmodel::NetworkConnection* convert) // NOLINT(runtime/explicit)
     : uid(convert->UID())
     , data_type(convert->get_data_type())
     , uri(get_uri_for_connection(convert))
@@ -91,7 +91,7 @@ struct ConnectionRegistration
   }
 
   // Implicit Conversion
-  ConnectionRegistration(ConnectionInfo convert)
+  ConnectionRegistration(ConnectionInfo convert) // NOLINT(runtime/explicit)
     : uid(convert.uid)
     , data_type(convert.data_type)
     , uri(convert.uri)
@@ -117,7 +117,7 @@ operator<(ConnectionRegistration const& l, ConnectionRegistration const& r)
   }
   return l.data_type < r.data_type;
 }
-}
-}
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_CONFIGCLIENTSTRUCTS_HPP_
+} // namespace dunedaq::iomanager
+
+#endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORK_CONFIGCLIENTSTRUCTS_HPP_
