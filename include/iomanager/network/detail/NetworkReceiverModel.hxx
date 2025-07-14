@@ -139,7 +139,7 @@ NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const& time
   std::lock_guard<std::mutex> lk(m_receive_mutex);
   get_receiver(timeout);
   if (m_network_receiver_ptr == nullptr) {
-    TLOG() << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
+    TLOG_DEBUG(5) << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
     return std::nullopt;
   }
 
