@@ -321,8 +321,8 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   // Replace with resolved if there are wildcards (host and/or port)
   if (connections[0].uri.find("*") != std::string::npos || connections[0].uri.find("0.0.0.0") != std::string::npos) {
     TLOG_DEBUG(14) << "Wildcard found in connection URI " << connections[0].uri << ", adjusting before publish";
-    auto newUri = utilities::parse_connection_string(newCs);
-    auto oldUri = utilities::parse_connection_string(connections[0].uri);
+    utilities::ZmqUri newUri(newCs);
+    utilities::ZmqUri oldUri(connections[0].uri);
 
     if (oldUri.port == "*")
       oldUri.port = newUri.port;
@@ -377,8 +377,8 @@ NetworkManager::create_sender(ConnectionInfo connection)
   // Replace with resolved if there are wildcards (host and/or port)
   if (connection.uri.find("*") != std::string::npos || connection.uri.find("0.0.0.0") != std::string::npos) {
     TLOG_DEBUG(13) << "Wildcard found in connection URI " << connection.uri << ", adjusting before publish";
-    auto newUri = utilities::parse_connection_string(newCs);
-    auto oldUri = utilities::parse_connection_string(connection.uri);
+    utilities::ZmqUri newUri(newCs);
+    utilities::ZmqUri oldUri(connection.uri);
 
     if (oldUri.port == "*")
       oldUri.port = newUri.port;
