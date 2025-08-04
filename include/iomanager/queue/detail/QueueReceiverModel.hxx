@@ -13,8 +13,7 @@
 #include <typeinfo>
 #include <utility>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 template<typename Datatype>
 inline QueueReceiverModel<Datatype>::QueueReceiverModel(ConnectionId const& request)
@@ -119,5 +118,4 @@ QueueReceiverModel<Datatype>::remove_callback()
   // remove function.
 }
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager

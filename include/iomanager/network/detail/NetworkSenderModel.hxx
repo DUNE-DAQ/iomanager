@@ -11,17 +11,19 @@
 #include <typeinfo>
 #include <utility>
 
+using namespace std::chrono_literals; // NOLINT
+
 namespace dunedaq::iomanager {
 
 template<typename Datatype>
 inline NetworkSenderModel<Datatype>::NetworkSenderModel(ConnectionId const& conn_id)
   : SenderConcept<Datatype>(conn_id)
 {
-  TLOG("NetworkSenderModel") << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this)
+  TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this)
                              << ", uid=" << conn_id.uid << ", data_type=" << conn_id.data_type;
   get_sender(std::chrono::milliseconds(1000));
   if (m_network_sender_ptr == nullptr) {
-    TLOG("NetworkSenderModel") << "Initial connection attempt failed for uid=" << conn_id.uid
+    TLOG() << "Initial connection attempt failed for uid=" << conn_id.uid
                                << ", data_type=" << conn_id.data_type;
   }
 }
@@ -83,7 +85,7 @@ NetworkSenderModel<Datatype>::get_sender(Sender::timeout_t const& timeout)
       m_network_sender_ptr = NetworkManager::get().get_sender(this->id());
 
       if (NetworkManager::get().is_pubsub_connection(this->id())) {
-        TLOG("NetworkSenderModel") << "Setting topic to " << this->id().data_type;
+        TLOG() << "Setting topic to " << this->id().data_type;
         m_topic = this->id().data_type;
       }
     } catch (ers::Issue const& ex) {
@@ -105,15 +107,15 @@ NetworkSenderModel<Datatype>::write_network(MessageType& message, Sender::timeou
       ERS_HERE, this->id().uid, "send", timeout.count(), ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
   }
 
-  auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-  //  TLOG("NetworkSenderModel") << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
+  auto serialized = dunedaq::serialization::serialize(message);
+  //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
   //  m_topic << ", this="
   //  << (void*)this;
 
   try {
     m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic);
   } catch (ipm::SendTimeoutExpired const& ex) {
-    TLOG("NetworkSenderModel") << "Timeout detected, removing sender to re-acquire connection";
+    TLOG() << "Timeout detected, removing sender to re-acquire connection";
     NetworkManager::get().remove_sender(this->id());
     m_network_sender_ptr = nullptr;
     throw;
@@ -136,19 +138,19 @@ NetworkSenderModel<Datatype>::try_write_network(MessageType& message, Sender::ti
   std::lock_guard<std::mutex> lk(m_send_mutex);
   get_sender(timeout);
   if (m_network_sender_ptr == nullptr) {
-    TLOG("NetworkSenderModel") << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
+    TLOG_DEBUG(5) << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
     return false;
   }
 
-  auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-  // TLOG("NetworkSenderModel") << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
+  auto serialized = dunedaq::serialization::serialize(message);
+  // TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
   // m_topic <<
   // ", this=" << (void*)this;
 
   auto res =
     m_network_sender_ptr->send(serialized.data(), serialized.size(), extend_first_timeout(timeout), m_topic, true);
   if (!res) {
-    TLOG("NetworkSenderModel") << "Timeout detected, removing sender to re-acquire connection";
+    TLOG() << "Timeout detected, removing sender to re-acquire connection";
     NetworkManager::get().remove_sender(this->id());
     m_network_sender_ptr = nullptr;
   }
@@ -178,8 +180,8 @@ NetworkSenderModel<Datatype>::write_network_with_topic(MessageType& message,
       ERS_HERE, this->id().uid, "send", timeout.count(), ConnectionInstanceNotFound(ERS_HERE, this->id().uid));
   }
 
-  auto serialized = dunedaq::serialization::serialize(message, dunedaq::serialization::kMsgPack);
-  //  TLOG("NetworkSenderModel") << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
+  auto serialized = dunedaq::serialization::serialize(message);
+  //  TLOG() << "Serialized message for network sending: " << serialized.size() << ", topic=" <<
   //  m_topic << ", this="
   //  << (void*)this;
 

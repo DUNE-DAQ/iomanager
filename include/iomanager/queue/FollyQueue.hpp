@@ -1,9 +1,9 @@
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_FOLLYQUEUE_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_FOLLYQUEUE_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_FOLLYQUEUE_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_FOLLYQUEUE_HPP_
 
 /**
  *
- * @file QueueI wrapper around folly::DynamicBoundedQueue
+ * @file FollyQueue wrapper around folly::DynamicBoundedQueue
  *
  * The relevant types for users are FollySPSCQueue and FollyMPMCQueue,
  * which use the corresponding SPSC/MPMC specializations of
@@ -36,7 +36,8 @@ public:
     : Queue<T>(name)
     , m_queue(capacity)
     , m_capacity(capacity)
-  {}
+  {
+  }
 
   size_t get_capacity() const noexcept override { return m_capacity; }
 
@@ -100,8 +101,4 @@ using FollyMPMCQueue = FollyQueue<T, folly::DMPMCQueue>;
 
 } // namespace dunedaq::iomanager
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_FOLLYQUEUE_HPP_
-
-// Local Variables:
-// c-basic-offset: 2
-// End:
+#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_FOLLYQUEUE_HPP_

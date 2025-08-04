@@ -21,7 +21,7 @@
 
 namespace {
 
-constexpr int max_testable_capacity = 1000000000; ///< The maximum capacity this test will attempt to check
+constexpr int max_testable_capacity = 1'000'000'000; ///< The maximum capacity this test will attempt to check
 constexpr double fractional_timeout_tolerance =
   0.5; ///< The fraction of the timeout which the timing is allowed to be off by
 

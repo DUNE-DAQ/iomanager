@@ -12,12 +12,13 @@
 
 #define BOOST_TEST_MODULE performance_test // NOLINT
 
-#include "opmonlib/TestOpMonManager.hpp"
 #include "boost/test/unit_test.hpp"
+#include "opmonlib/TestOpMonManager.hpp"
 
 #include <atomic>
 #include <functional>
 #include <future>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,13 +43,11 @@ DUNE_DAQ_SERIALIZABLE(data_t, "data_t");
 
 BOOST_AUTO_TEST_SUITE(performance_test)
 
-const std::string TEST_OKS_DB = "test/config/iomanager_test.data.xml";
-
 struct ConfigurationTestFixture
 {
   ConfigurationTestFixture()
   {
-    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:" + TEST_OKS_DB);
+    confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/iomanager_test.data.xml");
     confdb->get<dunedaq::confmodel::Queue>(queues);
     confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
 
@@ -62,7 +61,7 @@ struct ConfigurationTestFixture
   ConfigurationTestFixture& operator=(ConfigurationTestFixture&&) = delete;
 
   dunedaq::opmonlib::TestOpMonManager opmgr;
-  
+
   dunedaq::iomanager::ConnectionId network_id;
   dunedaq::iomanager::ConnectionId queue_id;
   std::shared_ptr<dunedaq::conffwk::Configuration> confdb;

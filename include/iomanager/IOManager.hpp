@@ -22,11 +22,11 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <vector>
 
-namespace dunedaq {
-
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 /**
  * @class IOManager
@@ -104,9 +104,7 @@ private:
   static std::shared_ptr<IOManager> s_instance;
 };
 
-} // namespace iomanager
-
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #include "detail/IOManager.hxx"
 

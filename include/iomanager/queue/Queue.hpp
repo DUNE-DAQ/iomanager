@@ -11,13 +11,14 @@
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUE_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUE_HPP_
 
 #include "iomanager/queue/QueueBase.hpp"
+#include "iomanager/queue/QueueIssues.hpp"
 
-#include "logging/Logging.hpp" // NOTE: if ISSUES ARE DECLARED BEFORE include logging/Logging.hpp, TLOG_DEBUG<<issue wont work.
 #include "ers/Issue.hpp"
+#include "logging/Logging.hpp" // NOTE: if ISSUES ARE DECLARED BEFORE include logging/Logging.hpp, TLOG_DEBUG<<issue wont work.
 
 #include <chrono>
 #include <cstddef>
@@ -25,15 +26,11 @@
 #include <string>
 #include <vector>
 
-namespace dunedaq {
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 /**
  * @brief Implementations of the Queue class are responsible for relaying data
  * between DAQModules within a DAQ Application
- *
- * Note that while the Queue class itself is not templated on a data type (so
- * it can be included in generic containers), all implementations should be.
  */
 template<class T>
 class Queue : public QueueBase
@@ -48,7 +45,8 @@ public:
    */
   explicit Queue(const std::string& name)
     : QueueBase(name)
-  {}
+  {
+  }
 
   /**
    * @brief Determine whether the Queue may be pushed onto
@@ -92,21 +90,10 @@ public:
 private:
   Queue(const Queue&) = delete;
   Queue& operator=(const Queue&) = delete;
-  Queue(Queue&&) = default;
-  Queue& operator=(Queue&&) = default;
+  Queue(Queue&&) = delete;
+  Queue& operator=(Queue&&) = delete;
 };
 
-} // namespace iomanager
-// Disable coverage collection LCOV_EXCL_START
-/**
- * @brief QueueTimeoutExpired ERS Issue
- */
-ERS_DECLARE_ISSUE(iomanager,           // namespace
-                  QueueTimeoutExpired, // issue class name
-                  name << ": Unable to " << func_name << " within timeout period (timeout period was " << timeout
-                       << " milliseconds)",                                  // message
-                  ((std::string)name)((std::string)func_name)((int)timeout)) // NOLINT(readability/casting)
-// Re-enable coverage collection LCOV_EXCL_STOP
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_QUEUE_QUEUE_HPP_

@@ -16,13 +16,9 @@
 
 BOOST_AUTO_TEST_SUITE(StdDeQueue_test)
 
-// For a first look at the code, you may want to skip past the
-// contents of the unnamed namespace and move ahead to the actual test
-// cases
-
 namespace {
 
-constexpr int max_testable_capacity = 1000000000; ///< The maximum capacity this test will attempt to check
+constexpr int max_testable_capacity = 1'000'000'000; ///< The maximum capacity this test will attempt to check
 
 constexpr double fractional_timeout_tolerance =
   0.5; ///< The fraction of the timeout which the timing is allowed to be off by
@@ -39,7 +35,6 @@ constexpr auto timeout = std::chrono::milliseconds(5);
  */
 constexpr auto timeout_in_us = std::chrono::duration_cast<std::chrono::microseconds>(timeout).count();
 
-dunedaq::iomanager::StdDeQueue<int> queue("StdDeQueue", 10); ///< Queue instance for the test
 } // namespace ""
 
 // This test case should run first. Make sure all other test cases depend on
@@ -48,6 +43,7 @@ dunedaq::iomanager::StdDeQueue<int> queue("StdDeQueue", 10); ///< Queue instance
 BOOST_AUTO_TEST_CASE(sanity_checks)
 {
 
+  dunedaq::iomanager::StdDeQueue<int> queue("StdDeQueue", 10); ///< Queue instance for the test
   BOOST_REQUIRE(!queue.can_pop());
 
   auto start_time = std::chrono::steady_clock::now();
@@ -96,6 +92,7 @@ BOOST_AUTO_TEST_CASE(sanity_checks)
 
 BOOST_AUTO_TEST_CASE(empty_checks)
 {
+  dunedaq::iomanager::StdDeQueue<int> queue("StdDeQueue", 10); ///< Queue instance for the test
   int popped_value = -999;
 
   while (queue.can_pop()) {

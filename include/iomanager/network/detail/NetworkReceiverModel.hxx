@@ -15,9 +15,7 @@
 #include <typeinfo>
 #include <utility>
 
-namespace dunedaq {
-
-namespace iomanager {
+namespace dunedaq::iomanager {
 
 template<typename Datatype>
 inline NetworkReceiverModel<Datatype>::NetworkReceiverModel(ConnectionId const& conn_id)
@@ -105,7 +103,7 @@ NetworkReceiverModel<Datatype>::get_receiver(Receiver::timeout_t timeout)
 
 template<typename Datatype>
 template<typename MessageType>
-inline typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type
+inline typename std::enable_if<serialization::is_serializable<MessageType>::value, MessageType>::type
 NetworkReceiverModel<Datatype>::read_network(Receiver::timeout_t const& timeout)
 {
   std::lock_guard<std::mutex> lk(m_receive_mutex);
@@ -117,7 +115,7 @@ NetworkReceiverModel<Datatype>::read_network(Receiver::timeout_t const& timeout)
 
   auto response = m_network_receiver_ptr->receive(timeout);
   if (response.data.size() > 0) {
-    return dunedaq::serialization::deserialize<MessageType>(response.data);
+    return serialization::deserialize<MessageType>(response.data);
   }
 
   throw TimeoutExpired(ERS_HERE, this->id().uid, "network receive", timeout.count());
@@ -126,7 +124,7 @@ NetworkReceiverModel<Datatype>::read_network(Receiver::timeout_t const& timeout)
 
 template<typename Datatype>
 template<typename MessageType>
-inline typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type
+inline typename std::enable_if<!serialization::is_serializable<MessageType>::value, MessageType>::type
 NetworkReceiverModel<Datatype>::read_network(Receiver::timeout_t const&)
 {
   throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
@@ -135,14 +133,13 @@ NetworkReceiverModel<Datatype>::read_network(Receiver::timeout_t const&)
 
 template<typename Datatype>
 template<typename MessageType>
-inline
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
-  NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const& timeout)
+inline typename std::enable_if<serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
+NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const& timeout)
 {
   std::lock_guard<std::mutex> lk(m_receive_mutex);
   get_receiver(timeout);
   if (m_network_receiver_ptr == nullptr) {
-    TLOG() << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
+    TLOG_DEBUG(5) << ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
     return std::nullopt;
   }
 
@@ -150,7 +147,7 @@ inline
   res = m_network_receiver_ptr->receive(timeout, ipm::Receiver::s_any_size, true);
 
   if (res.data.size() > 0) {
-    return std::make_optional<MessageType>(dunedaq::serialization::deserialize<MessageType>(res.data));
+    return std::make_optional<MessageType>(serialization::deserialize<MessageType>(res.data));
   }
 
   return std::nullopt;
@@ -158,8 +155,7 @@ inline
 
 template<typename Datatype>
 template<typename MessageType>
-inline typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value,
-                               std::optional<MessageType>>::type
+inline typename std::enable_if<!serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
 NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const&)
 {
   ers::error(NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name())); // NOLINT(runtime/rtti)
@@ -168,27 +164,31 @@ NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const&)
 
 template<typename Datatype>
 template<typename MessageType>
-inline typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+inline typename std::enable_if<serialization::is_serializable<MessageType>::value, void>::type
 NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType&)> callback)
 {
   remove_callback();
   {
+    // This ensures that add_callback_impl and remove_callback are not processing concurrently
     std::lock_guard<std::mutex> lk(m_callback_mutex);
   }
   TLOG() << "Registering callback.";
   m_callback = callback;
   m_with_callback = true;
-  // start event loop (thread that calls when receive happens)
+  // start event loop (thread that calls when receive happens). remove_callback() is called in the destructor, so this
+  // will never go out-of-scope while this is running
   m_event_loop_runner = std::make_unique<std::thread>([&]() {
     std::optional<Datatype> message;
-    while(m_with_callback.load() || message) {
+    while (m_with_callback.load() || message) {
       try {
-      	// 0 timeout when we are trying to stop
-        message = try_read_network<Datatype>(m_with_callback.load() ? std::chrono::milliseconds(20) : std::chrono::milliseconds(0));
+        // 0 timeout when we are trying to stop
+        message = try_read_network<Datatype>(m_with_callback.load() ? std::chrono::milliseconds(20)
+                                                                    : std::chrono::milliseconds(0));
         if (message) {
           m_callback(*message);
         }
       } catch (const ers::Issue&) {
+        // Intentionally ignoring any ers::Issues that might have been raised
         ;
       }
     }
@@ -197,11 +197,10 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
 
 template<typename Datatype>
 template<typename MessageType>
-inline typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type
+inline typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type
 NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType&)>)
 {
   throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
 }
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager

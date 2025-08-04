@@ -1,25 +1,24 @@
 /**
- * @file Receiver.hpp
+ * @file NetworkReceiverModel.hpp
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
-#ifndef IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
-#define IOMANAGER_INCLUDE_IOMANAGER_NRECEIVER_HPP_
+#ifndef IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKRECEIVERMODEL_HPP_
+#define IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKRECEIVERMODEL_HPP_
 
 #include "iomanager/Receiver.hpp"
 
 #include "ipm/Subscriber.hpp"
 #include "serialization/Serialization.hpp"
 
+#include <memory>
+#include <string>
 
-namespace dunedaq {
+namespace dunedaq::iomanager {
 
-namespace iomanager {
-
-// NImpl
 template<typename Datatype>
 class NetworkReceiverModel : public ReceiverConcept<Datatype>
 {
@@ -46,28 +45,27 @@ private:
   void get_receiver(Receiver::timeout_t timeout);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, MessageType>::type read_network(
     Receiver::timeout_t const&);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
   try_read_network(Receiver::timeout_t const& timeout);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value,
-                          std::optional<MessageType>>::type
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, std::optional<MessageType>>::type
   try_read_network(Receiver::timeout_t const&);
 
   template<typename MessageType>
-  typename std::enable_if<dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
+  typename std::enable_if<serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
     std::function<void(MessageType&)> callback);
 
   template<typename MessageType>
-  typename std::enable_if<!dunedaq::serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
+  typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
     std::function<void(MessageType&)>);
 
   std::atomic<bool> m_with_callback{ false };
@@ -78,9 +76,8 @@ private:
   std::mutex m_receive_mutex;
 };
 
-} // namespace iomanager
-} // namespace dunedaq
+} // namespace dunedaq::iomanager
 
 #include "detail/NetworkReceiverModel.hxx"
 
-#endif // IOMANAGER_INCLUDE_IOMANAGER_RECEIVER_HPP_
+#endif // IOMANAGER_INCLUDE_IOMANAGER_NETWORK_NETWORKRECEIVERMODEL_HPP_

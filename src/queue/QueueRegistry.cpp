@@ -12,7 +12,9 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <vector>
 
 namespace dunedaq::iomanager {
 
@@ -28,7 +30,7 @@ QueueRegistry::get()
 }
 
 void
-QueueRegistry::configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager & mgr)
+QueueRegistry::configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager& mgr)
 {
   if (m_configured) {
     throw QueueRegistryConfigured(ERS_HERE);
@@ -37,10 +39,9 @@ QueueRegistry::configure(const std::vector<const confmodel::Queue*>& configs, op
   m_queue_configs = configs;
 
   mgr.register_node("queues", m_opmon_link);
-  
+
   m_configured = true;
 }
-
 
 bool
 QueueRegistry::has_queue(const std::string& uid, const std::string& data_type) const
