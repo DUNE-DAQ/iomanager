@@ -55,6 +55,7 @@ struct ConnectionInfo
 {
   std::string uid;
   std::string data_type;
+  int capacity;
   std::string uri;
   ConnectionType connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
@@ -64,18 +65,20 @@ struct ConnectionInfo
   ConnectionInfo(const confmodel::NetworkConnection* convert) // NOLINT(runtime/explicit)
     : uid(convert->UID())
     , data_type(convert->get_data_type())
+    , capacity(convert->get_capacity())
     , uri(get_uri_for_connection(convert))
     , connection_type(string_to_connection_type_enum(convert->get_connection_type()))
   {
   }
 
-  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionInfo, uid, data_type, uri, connection_type);
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionInfo, uid, data_type, capacity, uri, connection_type);
 };
 
 struct ConnectionRegistration
 {
   std::string uid;
   std::string data_type;
+  int capacity;
   std::string uri;
   ConnectionType connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
@@ -85,6 +88,7 @@ struct ConnectionRegistration
   ConnectionRegistration(const confmodel::NetworkConnection* convert) // NOLINT(runtime/explicit)
     : uid(convert->UID())
     , data_type(convert->get_data_type())
+    , capacity(convert->get_capacity())
     , uri(get_uri_for_connection(convert))
     , connection_type(string_to_connection_type_enum(convert->get_connection_type()))
   {
@@ -94,12 +98,13 @@ struct ConnectionRegistration
   ConnectionRegistration(ConnectionInfo convert) // NOLINT(runtime/explicit)
     : uid(convert.uid)
     , data_type(convert.data_type)
+    , capacity(convert.capacity)
     , uri(convert.uri)
     , connection_type(convert.connection_type)
   {
   }
 
-  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionRegistration, uid, data_type, uri, connection_type);
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(ConnectionRegistration, uid, data_type, capacity, uri, connection_type);
 };
 
 struct ConnectionResponse
