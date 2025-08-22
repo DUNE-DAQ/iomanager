@@ -68,9 +68,8 @@ private:
   typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
     std::function<void(MessageType&)>);
 
-  std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
-  std::unique_ptr<std::thread> m_event_loop_runner;
+  std::unique_ptr<std::jthread> m_event_loop_runner;
   std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
   std::mutex m_callback_mutex;
   std::mutex m_receive_mutex;
