@@ -4,6 +4,7 @@
 #include "iomanager/queue/QueueRegistry.hpp"
 
 #include "logging/Logging.hpp"
+#include "utilities/Issues.hpp"
 
 #include <atomic>
 #include <memory>
@@ -30,7 +31,6 @@ inline QueueReceiverModel<Datatype>::QueueReceiverModel(ConnectionId const& requ
 template<typename Datatype>
 inline QueueReceiverModel<Datatype>::QueueReceiverModel(QueueReceiverModel&& other)
   : ReceiverConcept<Datatype>(other.m_conn.uid)
-  , m_with_callback(other.m_with_callback.load())
   , m_callback(std::move(other.m_callback))
   , m_event_loop_runner(std::move(other.m_event_loop_runner))
   , m_queue(std::move(other.m_queue))
@@ -41,7 +41,7 @@ template<typename Datatype>
 inline Datatype
 QueueReceiverModel<Datatype>::receive(Receiver::timeout_t timeout)
 {
-  if (m_with_callback) {
+  if (m_event_loop_runner != nullptr) {
     TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
     throw ReceiveCallbackConflict(ERS_HERE, this->id().uid);
   }
@@ -63,7 +63,7 @@ template<typename Datatype>
 inline std::optional<Datatype>
 QueueReceiverModel<Datatype>::try_receive(Receiver::timeout_t timeout)
 {
-  if (m_with_callback) {
+  if (m_event_loop_runner != nullptr) {
     TLOG() << "QueueReceiver model is equipped with callback! Ignoring receive call.";
     ers::error(ReceiveCallbackConflict(ERS_HERE, this->id().uid));
     return std::nullopt;
@@ -89,27 +89,36 @@ QueueReceiverModel<Datatype>::add_callback(std::function<void(Datatype&)> callba
   remove_callback();
   TLOG() << "Registering callback.";
   m_callback = callback;
-  m_with_callback = true;
   // start event loop (thread that calls when receive happens)
-  m_event_loop_runner = std::make_unique<std::thread>([&]() {
+  m_event_loop_runner = std::make_unique<std::jthread>([&](std::stop_token token) {
     Datatype dt;
     bool ret = true;
-    while (m_with_callback.load() || ret) {
+    while (!token.stop_requested() || ret) {
       // TLOG() << "Take data from q then invoke callback...";
-      ret = m_queue->try_pop(dt, m_with_callback.load() ? std::chrono::milliseconds(1) : std::chrono::milliseconds(0));
+      ret = m_queue->try_pop(dt, token.stop_requested() ? std::chrono::milliseconds(0) 
+          : std::chrono::milliseconds(1));
       if (ret) {
         m_callback(dt);
       }
     }
   });
+  auto handle = m_event_loop_runner->native_handle();
+  std::string name = "Q_" + this->id().uid;
+  name.resize(15);
+  auto rc = pthread_setname_np(handle, name.c_str());
+  if (rc != 0) {
+    std::ostringstream s;
+    s << "The name " << name << " provided for the thread is too long.";
+    ers::warning(utilities::ThreadingIssue(ERS_HERE, s.str()));
+  }
 }
 
 template<typename Datatype>
 inline void
 QueueReceiverModel<Datatype>::remove_callback()
 {
-  m_with_callback = false;
   if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
+    m_event_loop_runner->request_stop();
     m_event_loop_runner->join();
     m_event_loop_runner.reset(nullptr);
   } else if (m_event_loop_runner != nullptr) {

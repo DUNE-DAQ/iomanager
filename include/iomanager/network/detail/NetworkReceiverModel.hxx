@@ -5,7 +5,7 @@
 #include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
 #include "serialization/Serialization.hpp"
-#include "utilities/ReusableThread.hpp"
+#include "utilities/Issues.hpp"
 
 #include <atomic>
 #include <memory>
@@ -32,7 +32,6 @@ inline NetworkReceiverModel<Datatype>::NetworkReceiverModel(ConnectionId const& 
 template<typename Datatype>
 inline NetworkReceiverModel<Datatype>::NetworkReceiverModel(NetworkReceiverModel&& other)
   : ReceiverConcept<Datatype>(other.m_conn.uid)
-  , m_with_callback(other.m_with_callback.load())
   , m_callback(std::move(other.m_callback))
   , m_event_loop_runner(std::move(other.m_event_loop_runner))
   , m_network_receiver_ptr(std::move(other.m_network_receiver_ptr))
@@ -55,13 +54,13 @@ inline void
 NetworkReceiverModel<Datatype>::remove_callback()
 {
   std::lock_guard<std::mutex> lk(m_callback_mutex);
-  m_with_callback = false;
   if (m_event_loop_runner != nullptr && m_event_loop_runner->joinable()) {
+    m_event_loop_runner->request_stop();
     m_event_loop_runner->join();
-    m_event_loop_runner.reset(nullptr);
   } else if (m_event_loop_runner != nullptr) {
     TLOG() << "Event loop can't be closed!";
   }
+  m_event_loop_runner.reset(nullptr);
   // remove function.
 }
 
@@ -174,16 +173,15 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
   }
   TLOG() << "Registering callback.";
   m_callback = callback;
-  m_with_callback = true;
   // start event loop (thread that calls when receive happens). remove_callback() is called in the destructor, so this
   // will never go out-of-scope while this is running
-  m_event_loop_runner = std::make_unique<std::thread>([&]() {
+  m_event_loop_runner = std::make_unique<std::jthread>([&](std::stop_token token) {
     std::optional<Datatype> message;
-    while (m_with_callback.load() || message) {
+    while (!token.stop_requested() || message) {
       try {
         // 0 timeout when we are trying to stop
-        message = try_read_network<Datatype>(m_with_callback.load() ? std::chrono::milliseconds(20)
-                                                                    : std::chrono::milliseconds(0));
+        message = try_read_network<Datatype>(token.stop_requested() ? std::chrono::milliseconds(0)
+                                                                    : std::chrono::milliseconds(20));
         if (message) {
           m_callback(*message);
         }
@@ -193,6 +191,15 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
       }
     }
   });
+  auto handle = m_event_loop_runner->native_handle();
+  std::string name = "N_" + this->id().uid;
+  name.resize(15);
+  auto rc = pthread_setname_np(handle, name.c_str());
+  if (rc != 0) {
+    std::ostringstream s;
+    s << "The name " << name << " provided for the thread is too long.";
+    ers::warning(utilities::ThreadingIssue(ERS_HERE, s.str()));
+  }
 }
 
 template<typename Datatype>

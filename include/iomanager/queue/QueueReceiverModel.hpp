@@ -46,9 +46,8 @@ public:
   void unsubscribe(std::string) override {}
 
 private:
-  std::atomic<bool> m_with_callback{ false };
   std::function<void(Datatype&)> m_callback;
-  std::unique_ptr<std::thread> m_event_loop_runner;
+  std::unique_ptr<std::jthread> m_event_loop_runner;
   std::shared_ptr<Queue<Datatype>> m_queue;
 };
 
