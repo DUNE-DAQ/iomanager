@@ -29,6 +29,12 @@ QueueSenderModel<Datatype>::try_send(Datatype&& data, Sender::timeout_t timeout)
     return false;
   }
 
+  auto cb = m_queue->get_callback();
+  if (cb) {
+    cb(std::move(data));
+    return true;
+  }
+
   return m_queue->try_push(std::move(data), timeout);
 }
 
@@ -38,6 +44,12 @@ QueueSenderModel<Datatype>::send(Datatype&& data, Sender::timeout_t timeout) // 
 {
   if (m_queue == nullptr)
     throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
+
+  auto cb = m_queue->get_callback();
+  if (cb) {
+    cb(std::move(data));
+    return;
+  }
 
   try {
     m_queue->push(std::move(data), timeout);

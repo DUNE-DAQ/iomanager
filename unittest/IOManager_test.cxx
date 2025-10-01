@@ -653,6 +653,39 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
   IOManager::get()->remove_callback<NonSerializableNonCopyable>(queue_id);
 }
 
+BOOST_FIXTURE_TEST_CASE(DirectCallbackRegistration, ConfigurationTestFixture)
+{
+  auto net_sender = IOManager::get()->get_sender<Data>(conn_id);
+  auto q_sender = IOManager::get()->get_sender<Data>(queue_id);
+
+  Data sent_data_nw(56, 26.5, "test1");
+  Data sent_data_q(57, 27.5, "test2");
+  Data recv_data;
+  std::atomic<bool> has_received_data = false;
+
+  std::function<void(Data&&)> direct_callback = [&](Data&& d) {
+    has_received_data = true;
+    recv_data = d;
+  };
+
+  BOOST_REQUIRE_EXCEPTION(IOManager::get()->add_direct_callback<Data>(conn_id, direct_callback),
+                          DirectCallbacksUnsupported,
+                          [](DirectCallbacksUnsupported const&) { return true; });
+  IOManager::get()->add_direct_callback<Data>(queue_id, direct_callback);
+
+  has_received_data = false;
+  q_sender->send(std::move(sent_data_q), std::chrono::milliseconds(10));
+  // Synchronous
+  BOOST_REQUIRE(has_received_data);
+
+  BOOST_CHECK_EQUAL(recv_data.d1, 57);
+  BOOST_CHECK_EQUAL(recv_data.d2, 27.5);
+  BOOST_CHECK_EQUAL(recv_data.d3, "test2");
+
+  IOManager::get()->remove_callback<Data>(conn_id);
+  IOManager::get()->remove_callback<Data>(queue_id);
+}
+
 BOOST_FIXTURE_TEST_CASE(GetDatatype, ConfigurationTestFixture)
 {
   auto networkDataTypes = IOManager::get()->get_datatypes("network");

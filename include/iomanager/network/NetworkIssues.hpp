@@ -23,6 +23,9 @@ ERS_DECLARE_ISSUE(iomanager,
                   NetworkMessageNotSerializable,
                   "Object of type " << type << " is not serializable but configured for network transfer!",
                   ((std::string)type))
+ERS_DECLARE_ISSUE(iomanager,
+                  DirectCallbacksUnsupported,
+                  "Direct callbacks are not supported by network connections.",)
 
 ERS_DECLARE_ISSUE(iomanager,
                   ConnectionNotFound,

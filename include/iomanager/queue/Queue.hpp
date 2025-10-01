@@ -87,7 +87,11 @@ public:
   virtual bool try_push(value_t&& val, const duration_t& timeout) = 0;
   virtual bool try_pop(value_t& val, const duration_t& timeout) = 0;
 
+  std::function<void(T&&)> get_callback() { return m_callback; }
+  void set_callback(std::function<void(T&&)> callback) { m_callback = callback; }
+
 private:
+  std::function<void(T&&)> m_callback;
   Queue(const Queue&) = delete;
   Queue& operator=(const Queue&) = delete;
   Queue(Queue&&) = delete;

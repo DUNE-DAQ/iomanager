@@ -35,6 +35,7 @@ public:
     return try_read_network<Datatype>(timeout);
   }
   void add_callback(std::function<void(Datatype&)> callback) override { add_callback_impl<Datatype>(callback); }
+  void add_direct_callback(std::function<void(Datatype&&)>) override { throw DirectCallbacksUnsupported(ERS_HERE); }
 
   void remove_callback() override;
 

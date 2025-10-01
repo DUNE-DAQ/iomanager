@@ -39,6 +39,9 @@ public:
 
   void add_callback(std::function<void(Datatype&)> callback) override;
 
+  bool direct_callbacks_supported() override { return true; }
+  void add_direct_callback(std::function<void(Datatype&&)> callback) override;
+
   void remove_callback() override;
 
   // Topics are not used for Queues

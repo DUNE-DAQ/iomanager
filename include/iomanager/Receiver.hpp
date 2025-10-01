@@ -54,6 +54,8 @@ public:
   virtual Datatype receive(Receiver::timeout_t timeout) = 0;
   virtual std::optional<Datatype> try_receive(Receiver::timeout_t timeout) = 0;
   virtual void add_callback(std::function<void(Datatype&)> callback) = 0;
+  virtual bool direct_callbacks_supported() { return false; }
+  virtual void add_direct_callback(std::function<void(Datatype&&)> callback) = 0;
   virtual void remove_callback() = 0;
   virtual void subscribe(std::string topic) = 0;
   virtual void unsubscribe(std::string topic) = 0;
