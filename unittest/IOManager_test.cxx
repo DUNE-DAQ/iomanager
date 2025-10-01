@@ -668,6 +668,11 @@ BOOST_FIXTURE_TEST_CASE(DirectCallbackRegistration, ConfigurationTestFixture)
     recv_data = d;
   };
 
+  auto net_recvr = IOManager::get()->get_receiver<Data>(conn_id);
+  auto q_recvr = IOManager::get()->get_receiver<Data>(queue_id);
+  BOOST_REQUIRE(!net_recvr->direct_callbacks_supported());
+  BOOST_REQUIRE(q_recvr->direct_callbacks_supported());
+
   BOOST_REQUIRE_EXCEPTION(IOManager::get()->add_direct_callback<Data>(conn_id, direct_callback),
                           DirectCallbacksUnsupported,
                           [](DirectCallbacksUnsupported const&) { return true; });
