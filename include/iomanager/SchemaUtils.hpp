@@ -14,13 +14,10 @@
 #include "confmodel/Connection.hpp"
 #include "confmodel/NetworkConnection.hpp"
 #include "confmodel/Service.hpp"
+#include "utilities/get_ips.hpp"
 
-#include <cerrno> // NOLINT(runtime/output_format)
 #include <functional>
-#include <ifaddrs.h>
-#include <netdb.h>
 #include <regex>
-#include <sstream>
 #include <string>
 
 namespace dunedaq::iomanager {
@@ -94,37 +91,6 @@ to_string(const ConnectionId& conn_id)
 }
 
 inline std::string
-get_host_ip(std::string eth_device_name)
-{
-  std::string ipaddr = "0.0.0.0";
-  char hostname[NI_MAXHOST]; // NOLINT This is a char array for interfacing with the C networking API
-  if (gethostname(&hostname[0], NI_MAXHOST) == 0) {
-    ipaddr = std::string(hostname);
-  }
-  if (eth_device_name != "") {
-    // Work out which ip address goes with this device
-    struct ifaddrs* ifaddr = nullptr;
-    getifaddrs(&ifaddr);
-
-    for (auto ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
-      if (ifa->ifa_addr == nullptr || std::string(ifa->ifa_name) != eth_device_name) {
-        continue;
-      }
-
-      char ip[NI_MAXHOST]; // NOLINT This is a char array for interfacing with the C networking API
-      int status = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST);
-      if (status != 0) {
-        continue;
-      }
-      ipaddr = std::string(ip);
-      break;
-    }
-    freeifaddrs(ifaddr);
-  }
-  return ipaddr;
-}
-
-inline std::string
 get_uri_for_connection(const confmodel::NetworkConnection* netCon)
 {
   std::string uri = "";
@@ -139,7 +105,7 @@ get_uri_for_connection(const confmodel::NetworkConnection* netCon)
         port = std::to_string(service->get_port());
       }
       auto iface = service->get_eth_device_name();
-      uri = std::string(service->get_protocol() + "://" + get_host_ip(iface) + ":" + port);
+      uri = std::string(service->get_protocol() + "://" + dunedaq::utilities::get_interface_ip(iface) + ":" + port);
     } else if (protocol == "inproc") {
       uri = std::string(service->get_protocol() + "://" + service->get_path());
     }
