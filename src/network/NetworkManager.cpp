@@ -11,7 +11,7 @@
 
 #include "ipm/PluginInfo.hpp"
 #include "logging/Logging.hpp"
-#include "utilities/Resolver.hpp"
+#include "utilities/ZmqUri.hpp"
 
 #include "confmodel/PhysicalHost.hpp"
 #include "confmodel/Service.hpp"
