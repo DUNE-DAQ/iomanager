@@ -20,18 +20,10 @@ namespace iomanager {
 
 template<typename Datatype>
 inline void
-IOManager::add_callback(ConnectionId const& id, std::function<void(Datatype&)> callback)
+IOManager::add_callback(ConnectionId const& id, std::function<void(Datatype&&)> callback)
 {
   auto receiver = get_receiver<Datatype>(id);
   receiver->add_callback(callback);
-}
-
-template<typename Datatype>
-inline void
-IOManager::add_direct_callback(ConnectionId const& id, std::function<void(Datatype&&)> callback)
-{
-  auto receiver = get_receiver<Datatype>(id);
-  receiver->add_direct_callback(callback);
 }
 
 template<typename Datatype>
@@ -128,7 +120,7 @@ IOManager::get_sender(ConnectionId id)
 
 template<typename Datatype>
 inline void
-IOManager::add_callback(std::string const& uid, std::function<void(Datatype&)> callback)
+IOManager::add_callback(std::string const& uid, std::function<void(Datatype&&)> callback)
 {
   auto receiver = get_receiver<Datatype>(uid);
   receiver->add_callback(callback);
@@ -136,26 +128,10 @@ IOManager::add_callback(std::string const& uid, std::function<void(Datatype&)> c
 
 template<typename Datatype>
 inline void
-IOManager::add_callback(std::string const& uid, std::string const& tag, std::function<void(Datatype&)> callback)
+IOManager::add_callback(std::string const& uid, std::string const& tag, std::function<void(Datatype&&)> callback)
 {
   auto receiver = get_receiver<Datatype>(uid, tag);
   receiver->add_callback(callback);
-}
-
-template<typename Datatype>
-inline void
-IOManager::add_direct_callback(std::string const& uid, std::function<void(Datatype&&)> callback)
-{
-  auto receiver = get_receiver<Datatype>(uid);
-  receiver->add_direct_callback(callback);
-}
-
-template<typename Datatype>
-inline void
-IOManager::add_direct_callback(std::string const& uid, std::string const& tag, std::function<void(Datatype&&)> callback)
-{
-  auto receiver = get_receiver<Datatype>(uid, tag);
-  receiver->add_direct_callback(callback);
 }
 
 template<typename Datatype>

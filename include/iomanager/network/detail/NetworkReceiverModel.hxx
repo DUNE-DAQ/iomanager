@@ -164,7 +164,7 @@ NetworkReceiverModel<Datatype>::try_read_network(Receiver::timeout_t const&)
 template<typename Datatype>
 template<typename MessageType>
 inline typename std::enable_if<serialization::is_serializable<MessageType>::value, void>::type
-NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType&)> callback)
+NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType&&)> callback)
 {
   remove_callback();
   {
@@ -183,7 +183,7 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
         message = try_read_network<Datatype>(token.stop_requested() ? std::chrono::milliseconds(0)
                                                                     : std::chrono::milliseconds(20));
         if (message) {
-          m_callback(*message);
+          m_callback(std::move(*message));
         }
       } catch (const ers::Issue&) {
         // Intentionally ignoring any ers::Issues that might have been raised
@@ -205,7 +205,7 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
 template<typename Datatype>
 template<typename MessageType>
 inline typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type
-NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType&)>)
+NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType&&)>)
 {
   throw NetworkMessageNotSerializable(ERS_HERE, typeid(MessageType).name()); // NOLINT(runtime/rtti)
 }

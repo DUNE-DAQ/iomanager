@@ -37,10 +37,9 @@ public:
 
   std::optional<Datatype> try_receive(Receiver::timeout_t timeout) override;
 
-  void add_callback(std::function<void(Datatype&)> callback) override;
+  void add_callback(std::function<void(Datatype&&)> callback) override;
 
-  bool direct_callbacks_supported() override { return true; }
-  void add_direct_callback(std::function<void(Datatype&&)> callback) override;
+  bool direct_callbacks_enabled() override { return m_queue->direct_callbacks_enabled(); }
 
   void remove_callback() override;
 
@@ -49,7 +48,7 @@ public:
   void unsubscribe(std::string) override {}
 
 private:
-  std::function<void(Datatype&)> m_callback;
+  std::function<void(Datatype&&)> m_callback;
   std::unique_ptr<std::jthread> m_event_loop_runner;
   std::shared_ptr<Queue<Datatype>> m_queue;
 };

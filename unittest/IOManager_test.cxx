@@ -179,6 +179,7 @@ struct ConfigurationTestFixture
 
     conn_id = ConnectionId{ "network", "data_t" };
     queue_id = ConnectionId{ "queue", "data_t" };
+    dqueue_id = ConnectionId{ "direct_queue", "data_t" };
 
     pub1_id = ConnectionId{ "pub1", "data2_t" };
     pub2_id = ConnectionId{ "pub2", "data2_t" };
@@ -199,6 +200,7 @@ struct ConfigurationTestFixture
 
   ConnectionId conn_id;
   ConnectionId queue_id;
+  ConnectionId dqueue_id;
   ConnectionId pub1_id;
   ConnectionId pub2_id;
   ConnectionId pub3_id;
@@ -411,7 +413,7 @@ BOOST_FIXTURE_TEST_CASE(NotFound, ConfigurationTestFixture)
   auto ret = receiver->try_receive(std::chrono::milliseconds(10));
   BOOST_REQUIRE_EQUAL(ret.has_value(), false);
 
-  std::function<void(Data2&)> callback = [&](Data2&) { BOOST_REQUIRE(false); };
+  std::function<void(Data2&&)> callback = [&](Data2&&) { BOOST_REQUIRE(false); };
   IOManager::get()->add_callback<Data2>(bad_id, callback);
 
   usleep(1000000);
@@ -505,7 +507,7 @@ BOOST_FIXTURE_TEST_CASE(CallbackRegistration, ConfigurationTestFixture)
   Data recv_data;
   std::atomic<bool> has_received_data = false;
 
-  std::function<void(Data&)> callback = [&](Data& d) {
+  std::function<void(Data&&)> callback = [&](Data&& d) {
     has_received_data = true;
     recv_data = std::move(d);
   };
@@ -548,7 +550,7 @@ BOOST_FIXTURE_TEST_CASE(NonCopyableCallbackRegistration, ConfigurationTestFixtur
   NonCopyableData recv_data;
   std::atomic<bool> has_received_data = false;
 
-  std::function<void(NonCopyableData&)> callback = [&](NonCopyableData& d) {
+  std::function<void(NonCopyableData&&)> callback = [&](NonCopyableData&& d) {
     has_received_data = true;
     recv_data = std::move(d);
   };
@@ -591,7 +593,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableCallbackRegistration, ConfigurationTestFi
   NonSerializableData recv_data;
   std::atomic<bool> has_received_data = false;
 
-  std::function<void(NonSerializableData&)> callback = [&](NonSerializableData& d) {
+  std::function<void(NonSerializableData&&)> callback = [&](NonSerializableData&& d) {
     has_received_data = true;
     recv_data = std::move(d);
   };
@@ -626,7 +628,7 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
   NonSerializableNonCopyable recv_data;
   std::atomic<bool> has_received_data = false;
 
-  std::function<void(NonSerializableNonCopyable&)> callback = [&](NonSerializableNonCopyable& d) {
+  std::function<void(NonSerializableNonCopyable&&)> callback = [&](NonSerializableNonCopyable&& d) {
     has_received_data = true;
     recv_data = std::move(d);
   };
@@ -655,10 +657,8 @@ BOOST_FIXTURE_TEST_CASE(NonSerializableNonCopyableCallbackRegistration, Configur
 
 BOOST_FIXTURE_TEST_CASE(DirectCallbackRegistration, ConfigurationTestFixture)
 {
-  auto net_sender = IOManager::get()->get_sender<Data>(conn_id);
-  auto q_sender = IOManager::get()->get_sender<Data>(queue_id);
+  auto q_sender = IOManager::get()->get_sender<Data>(dqueue_id);
 
-  Data sent_data_nw(56, 26.5, "test1");
   Data sent_data_q(57, 27.5, "test2");
   Data recv_data;
   std::atomic<bool> has_received_data = false;
@@ -668,15 +668,10 @@ BOOST_FIXTURE_TEST_CASE(DirectCallbackRegistration, ConfigurationTestFixture)
     recv_data = d;
   };
 
-  auto net_recvr = IOManager::get()->get_receiver<Data>(conn_id);
-  auto q_recvr = IOManager::get()->get_receiver<Data>(queue_id);
-  BOOST_REQUIRE(!net_recvr->direct_callbacks_supported());
-  BOOST_REQUIRE(q_recvr->direct_callbacks_supported());
+  auto q_recvr = IOManager::get()->get_receiver<Data>(dqueue_id);
+  BOOST_REQUIRE(q_recvr->direct_callbacks_enabled());
 
-  BOOST_REQUIRE_EXCEPTION(IOManager::get()->add_direct_callback<Data>(conn_id, direct_callback),
-                          DirectCallbacksUnsupported,
-                          [](DirectCallbacksUnsupported const&) { return true; });
-  IOManager::get()->add_direct_callback<Data>(queue_id, direct_callback);
+  IOManager::get()->add_callback<Data>(dqueue_id, direct_callback);
 
   has_received_data = false;
   q_sender->send(std::move(sent_data_q), std::chrono::milliseconds(10));
@@ -687,8 +682,7 @@ BOOST_FIXTURE_TEST_CASE(DirectCallbackRegistration, ConfigurationTestFixture)
   BOOST_CHECK_EQUAL(recv_data.d2, 27.5);
   BOOST_CHECK_EQUAL(recv_data.d3, "test2");
 
-  IOManager::get()->remove_callback<Data>(conn_id);
-  IOManager::get()->remove_callback<Data>(queue_id);
+  IOManager::get()->remove_callback<Data>(dqueue_id);
 }
 
 BOOST_FIXTURE_TEST_CASE(GetDatatype, ConfigurationTestFixture)

@@ -84,46 +84,43 @@ QueueReceiverModel<Datatype>::try_receive(Receiver::timeout_t timeout)
 
 template<typename Datatype>
 inline void
-QueueReceiverModel<Datatype>::add_callback(std::function<void(Datatype&)> callback)
+QueueReceiverModel<Datatype>::add_callback(std::function<void(Datatype&&)> callback)
 {
   remove_callback();
   TLOG() << "Registering callback.";
-  m_callback = callback;
-  // start event loop (thread that calls when receive happens)
-  m_event_loop_runner = std::make_unique<std::jthread>([&](std::stop_token token) {
-    Datatype dt;
-    bool ret = true;
-    while (!token.stop_requested() || ret) {
-      // TLOG() << "Take data from q then invoke callback...";
-      ret = m_queue->try_pop(dt, token.stop_requested() ? std::chrono::milliseconds(0) 
-          : std::chrono::milliseconds(1));
-      if (ret) {
-        m_callback(dt);
-      }
+  if (m_queue->direct_callbacks_enabled()) {
+    TLOG() << "Registering direct callback.";
+
+    if (m_queue == nullptr) {
+      throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
     }
-  });
-  auto handle = m_event_loop_runner->native_handle();
-  std::string name = "Q_" + this->id().uid;
-  name.resize(15);
-  auto rc = pthread_setname_np(handle, name.c_str());
-  if (rc != 0) {
-    std::ostringstream s;
-    s << "The name " << name << " provided for the thread is too long.";
-    ers::warning(utilities::ThreadingIssue(ERS_HERE, s.str()));
-  }
-}
+    m_queue->set_callback(callback);
+  } else {
 
-template<typename Datatype>
-inline void
-QueueReceiverModel<Datatype>::add_direct_callback(std::function<void(Datatype&&)> callback)
-{
-  remove_callback();
-  TLOG() << "Registering direct callback.";
-
-  if (m_queue == nullptr) {
-    throw ConnectionInstanceNotFound(ERS_HERE, this->id().uid);
+    m_callback = callback;
+    // start event loop (thread that calls when receive happens)
+    m_event_loop_runner = std::make_unique<std::jthread>([&](std::stop_token token) {
+      Datatype dt;
+      bool ret = true;
+      while (!token.stop_requested() || ret) {
+        // TLOG() << "Take data from q then invoke callback...";
+        ret =
+          m_queue->try_pop(dt, token.stop_requested() ? std::chrono::milliseconds(0) : std::chrono::milliseconds(1));
+        if (ret) {
+          m_callback(std::move(dt));
+        }
+      }
+    });
+    auto handle = m_event_loop_runner->native_handle();
+    std::string name = "Q_" + this->id().uid;
+    name.resize(15);
+    auto rc = pthread_setname_np(handle, name.c_str());
+    if (rc != 0) {
+      std::ostringstream s;
+      s << "The name " << name << " provided for the thread is too long.";
+      ers::warning(utilities::ThreadingIssue(ERS_HERE, s.str()));
+    }
   }
-  m_queue->set_callback(callback);
 }
 
 template<typename Datatype>

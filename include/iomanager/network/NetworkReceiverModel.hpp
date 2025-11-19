@@ -34,8 +34,7 @@ public:
   {
     return try_read_network<Datatype>(timeout);
   }
-  void add_callback(std::function<void(Datatype&)> callback) override { add_callback_impl<Datatype>(callback); }
-  void add_direct_callback(std::function<void(Datatype&&)>) override { throw DirectCallbacksUnsupported(ERS_HERE); }
+  void add_callback(std::function<void(Datatype&&)> callback) override { add_callback_impl<Datatype>(callback); }
 
   void remove_callback() override;
 
@@ -63,13 +62,13 @@ private:
 
   template<typename MessageType>
   typename std::enable_if<serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
-    std::function<void(MessageType&)> callback);
+    std::function<void(MessageType&&)> callback);
 
   template<typename MessageType>
   typename std::enable_if<!serialization::is_serializable<MessageType>::value, void>::type add_callback_impl(
-    std::function<void(MessageType&)>);
+    std::function<void(MessageType&&)>);
 
-  std::function<void(Datatype&)> m_callback;
+  std::function<void(Datatype&&)> m_callback;
   std::unique_ptr<std::jthread> m_event_loop_runner;
   std::shared_ptr<ipm::Receiver> m_network_receiver_ptr{ nullptr };
   std::mutex m_callback_mutex;

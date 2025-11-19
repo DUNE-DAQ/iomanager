@@ -64,6 +64,7 @@ QueueRegistry::create_queue(const confmodel::Queue* config)
     throw QueueTypeUnknown(ERS_HERE, config->get_queue_type());
   }
 
+  queue->set_direct_callbacks_enabled(config->get_direct_callbacks_enabled());
   m_opmon_link->register_node(config->UID(), queue);
 
   return queue;

@@ -74,22 +74,13 @@ public:
   std::shared_ptr<ReceiverConcept<Datatype>> get_receiver(std::string const& uid, std::string const& tag);
 
   template<typename Datatype>
-  void add_callback(ConnectionId const& id, std::function<void(Datatype&)> callback);
+  void add_callback(ConnectionId const& id, std::function<void(Datatype&&)> callback);
 
   template<typename Datatype>
-  void add_callback(std::string const& uid, std::function<void(Datatype&)> callback);
+  void add_callback(std::string const& uid, std::function<void(Datatype&&)> callback);
 
   template<typename Datatype>
-  void add_callback(std::string const& uid, std::string const& tag, std::function<void(Datatype&)> callback);
-
-  template<typename Datatype>
-  void add_direct_callback(ConnectionId const& id, std::function<void(Datatype&&)> callback);
-
-  template<typename Datatype>
-  void add_direct_callback(std::string const& uid, std::function<void(Datatype&&)> callback);
-
-  template<typename Datatype>
-  void add_direct_callback(std::string const& uid, std::string const& tag, std::function<void(Datatype&&)> callback);
+  void add_callback(std::string const& uid, std::string const& tag, std::function<void(Datatype&&)> callback);
 
   template<typename Datatype>
   void remove_callback(ConnectionId const& id);

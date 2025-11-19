@@ -62,6 +62,9 @@ public:
 
   virtual size_t get_num_elements() const = 0;
 
+  bool direct_callbacks_enabled() const { return m_direct_callbacks_enabled; };
+  void set_direct_callbacks_enabled(bool enabled) { m_direct_callbacks_enabled = enabled; }
+
 protected:
   /**
    * @brief Method to retrieve information (occupancy) from
@@ -80,6 +83,8 @@ private:
   QueueBase& operator=(const QueueBase&) = delete;
   QueueBase(QueueBase&&) = delete;
   QueueBase& operator=(QueueBase&&) = delete;
+
+  bool m_direct_callbacks_enabled;
 };
 
 } // namespace dunedaq::iomanager
