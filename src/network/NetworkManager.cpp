@@ -371,15 +371,19 @@ NetworkManager::create_sender(ConnectionInfo connection)
   TLOG_DEBUG(11) << "Creating sender plugin of type " << plugin_type;
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
-  auto newCs =
-    plugin->connect_for_sends({ { "connection_string", connection.uri }, { "capacity", connection.capacity } });
+  utilities::ZmqUri oldUri(connection.uri);
+  auto endpoints = utilities::get_ips_matching_network(oldUri.host);
+  nlohmann::json connection_json = { { "connection_string", connection.uri }, { "capacity", connection.capacity } };
+  if (endpoints.size() > 1) {
+    connection_json["send_endpoints"] = endpoints;
+  }
+  auto newCs = plugin->connect_for_sends(connection_json);
   TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << newCs;
 
   // Replace with resolved if there are wildcards (host and/or port)
   if (connection.uri.find("*") != std::string::npos || connection.uri.find("0.0.0.0") != std::string::npos) {
     TLOG_DEBUG(13) << "Wildcard found in connection URI " << connection.uri << ", adjusting before publish";
     utilities::ZmqUri newUri(newCs);
-    utilities::ZmqUri oldUri(connection.uri);
 
     if (oldUri.port == "*")
       oldUri.port = newUri.port;
