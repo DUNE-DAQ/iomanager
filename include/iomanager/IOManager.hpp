@@ -87,8 +87,18 @@ public:
 
   template<typename Datatype>
   void remove_callback(std::string const& uid);
+
   template<typename Datatype>
   void remove_callback(std::string const& uid, std::string const& tag);
+
+  template<typename Datatype>
+  std::function<void(Datatype&&)> get_callback(ConnectionId const& id);
+
+  template<typename Datatype>
+  std::function<void(Datatype&&)> get_callback(std::string const& uid);
+
+  template<typename Datatype>
+  std::function<void(Datatype&&)> get_callback(std::string const& uid, std::string const& tag);
 
   std::set<std::string> get_datatypes(std::string const& uid);
 

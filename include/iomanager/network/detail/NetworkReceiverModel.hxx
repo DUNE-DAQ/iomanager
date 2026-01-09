@@ -65,6 +65,13 @@ NetworkReceiverModel<Datatype>::remove_callback()
 }
 
 template<typename Datatype>
+inline std::function<void(Datatype&&)>
+NetworkReceiverModel<Datatype>::get_callback()
+{
+  return m_callback;
+}
+
+template<typename Datatype>
 inline void
 NetworkReceiverModel<Datatype>::subscribe(std::string topic)
 {

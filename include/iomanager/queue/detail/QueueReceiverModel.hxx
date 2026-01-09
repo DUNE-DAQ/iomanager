@@ -140,4 +140,15 @@ QueueReceiverModel<Datatype>::remove_callback()
   // remove function.
 }
 
+template<typename Datatype>
+inline std::function<void(Datatype&&)>
+QueueReceiverModel<Datatype>::get_callback()
+{
+  if (m_queue != nullptr && m_queue->get_callback()) {
+    return m_queue->get_callback();
+  }
+
+  return m_callback;
+}
+
 } // namespace dunedaq::iomanager

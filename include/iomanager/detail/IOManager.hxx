@@ -157,6 +157,30 @@ IOManager::remove_callback(std::string const& uid, std::string const& tag)
   receiver->remove_callback();
 }
 
+template<typename Datatype>
+inline std::function<void(Datatype&&)>
+IOManager::get_callback(ConnectionId const& id)
+{
+  auto receiver = get_receiver<Datatype>(id);
+  return receiver->get_callback();
+}
+
+template<typename Datatype>
+inline std::function<void(Datatype&&)>
+IOManager::get_callback(std::string const& uid)
+{
+  auto receiver = get_receiver<Datatype>(uid);
+  return receiver->get_callback();
+}
+
+template<typename Datatype>
+inline std::function<void(Datatype&&)>
+IOManager::get_callback(std::string const& uid, std::string const& tag)
+{
+  auto receiver = get_receiver<Datatype>(uid, tag);
+  return receiver->get_callback();
+}
+
 } // namespace iomanager
 
 // Helper functions

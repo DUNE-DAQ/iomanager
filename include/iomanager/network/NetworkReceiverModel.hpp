@@ -37,6 +37,7 @@ public:
   void add_callback(std::function<void(Datatype&&)> callback) override { add_callback_impl<Datatype>(callback); }
 
   void remove_callback() override;
+  std::function<void(Datatype&&)> get_callback() override;
 
   void subscribe(std::string topic) override;
   void unsubscribe(std::string topic) override;

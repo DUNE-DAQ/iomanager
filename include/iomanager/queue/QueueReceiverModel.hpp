@@ -43,6 +43,8 @@ public:
 
   void remove_callback() override;
 
+  std::function<void(Datatype&&)> get_callback() override;
+
   // Topics are not used for Queues
   void subscribe(std::string) override {}
   void unsubscribe(std::string) override {}
