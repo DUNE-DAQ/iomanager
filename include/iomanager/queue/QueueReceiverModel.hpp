@@ -37,6 +37,8 @@ public:
 
   std::optional<Datatype> try_receive(Receiver::timeout_t timeout) override;
 
+  bool data_pending() override { return m_queue && m_queue->can_pop(); }
+
   void add_callback(std::function<void(Datatype&)> callback) override;
 
   void remove_callback() override;
