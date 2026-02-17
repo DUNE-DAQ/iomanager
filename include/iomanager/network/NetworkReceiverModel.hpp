@@ -34,6 +34,9 @@ public:
   {
     return try_read_network<Datatype>(timeout);
   }
+
+  bool data_pending() override { return m_network_receiver_ptr && m_network_receiver_ptr->data_pending(); }
+
   void add_callback(std::function<void(Datatype&)> callback) override { add_callback_impl<Datatype>(callback); }
 
   void remove_callback() override;
