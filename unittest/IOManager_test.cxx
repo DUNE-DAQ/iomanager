@@ -188,7 +188,8 @@ struct ConfigurationTestFixture
     sub2_id = ConnectionId{ "pub2", "data2_t" };
     sub3_id = ConnectionId{ "pub.*", "data3_t" };
 
-    IOManager::get()->configure("IOManager_t", queues, connections, nullptr, opmgr); // Not using connectivity service
+    IOManager::get()->configure(
+      "IOManager_t", "localhost", queues, connections, nullptr, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 

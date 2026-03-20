@@ -39,6 +39,7 @@ NetworkManager::get()
 
 void
 NetworkManager::configure(const std::string& session_name,
+                          const std::string& vhost_name,
                           const std::vector<const confmodel::NetworkConnection*>& connections,
                           const confmodel::ConnectivityService* conn_svc,
                           dunedaq::opmonlib::OpMonManager& opmgr)
@@ -46,6 +47,8 @@ NetworkManager::configure(const std::string& session_name,
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
   }
+
+  m_vhost_name = vhost_name;
 
   for (auto& connection : connections) {
     auto name = connection->UID();
@@ -373,11 +376,13 @@ NetworkManager::create_sender(ConnectionInfo connection)
   TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
   ipm::Sender::ConnectionInfo conn_info(connection.uid, connection.uri, connection.capacity);
 
-  TLOG_DEBUG(11) << "Determining if specific send endpoints are needed for connection URI " << connection.uri;
   utilities::ZmqUri oldUri(connection.uri);
-  auto endpoints = utilities::get_ips_matching_network(oldUri.host);
-  if (endpoints.size() > 1) {
-    conn_info.send_endpoints = endpoints;
+  if (m_vhost_name != "") {
+    TLOG_DEBUG(11) << "Getting IP of VirtualHost " << m_vhost_name << " for configuring sender to " << connection.uri;
+    auto endpoints = utilities::get_hostname_ips(m_vhost_name);
+    if (endpoints.size() > 0) {
+      conn_info.send_endpoint = endpoints[0];
+    }
   }
 
   auto newCs = plugin->connect_for_sends(conn_info);

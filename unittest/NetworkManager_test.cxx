@@ -44,7 +44,7 @@ struct NetworkManagerTestFixture
     pubSubConnId3.data_type = "String";
 
     dunedaq::opmonlib::TestOpMonManager opmgr;
-    NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr); // Not using ConfigClient
+    NetworkManager::get().configure("NetworkManager_t", "localhost", connections, nullptr, opmgr); // Not using ConfigClient
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
 
@@ -121,13 +121,13 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
                           [](ConnectionNotFound const&) { return true; });
 
   dunedaq::opmonlib::TestOpMonManager opmgr;
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr),
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure("NetworkManager_t", "localhost", connections, nullptr, opmgr),
                           AlreadyConfigured,
                           [&](AlreadyConfigured const&) { return true; });
 
   NetworkManager::get().reset();
 
-  NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr);
+  NetworkManager::get().configure("NetworkManager_t", "localhost", connections, nullptr, opmgr);
 }
 
 BOOST_FIXTURE_TEST_CASE(GetDatatypes, NetworkManagerTestFixture)

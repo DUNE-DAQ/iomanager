@@ -43,6 +43,7 @@ public:
   ~NetworkManager() { reset(); }
 
   void configure(const std::string& session_name,
+                 const std::string& vhost_name,
                  const std::vector<const confmodel::NetworkConnection*>& connections,
                  const confmodel::ConnectivityService* conn_svc,
                  dunedaq::opmonlib::OpMonManager&);
@@ -78,6 +79,7 @@ private:
   std::vector<std::string> get_pubsub_connection_strings(std::vector<ConnectionInfo> const& connections);
   void update_subscribers();
 
+  std::string m_vhost_name{ "" };
   std::unordered_map<ConnectionId, const confmodel::NetworkConnection*> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;

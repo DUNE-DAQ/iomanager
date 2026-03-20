@@ -50,7 +50,7 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  void configure(std::string session,
+  void configure(std::string session, std::string vhost_name,
                  std::vector<const confmodel::Queue*> queues,
                  std::vector<const confmodel::NetworkConnection*> connections,
                  const confmodel::ConnectivityService* connection_service,

@@ -51,7 +51,8 @@ struct ConfigurationTestFixture
     confdb->get<dunedaq::confmodel::Queue>(queues);
     confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
 
-    IOManager::get()->configure("performance_t", queues, connections, nullptr, opmgr); // Not using connectivity service
+    IOManager::get()->configure(
+      "performance_t", "localhost", queues, connections, nullptr, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 

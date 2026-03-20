@@ -19,6 +19,7 @@ std::shared_ptr<IOManager> IOManager::s_instance = nullptr;
 
 void
 IOManager::configure(std::string session,
+                     std::string vhost_name,
                      std::vector<const confmodel::Queue*> queues,
                      std::vector<const confmodel::NetworkConnection*> connections,
                      const confmodel::ConnectivityService* connection_service,
@@ -27,7 +28,7 @@ IOManager::configure(std::string session,
   m_session = session;
 
   QueueRegistry::get().configure(queues, opmgr);
-  NetworkManager::get().configure(session, connections, connection_service, opmgr);
+  NetworkManager::get().configure(session, vhost_name, connections, connection_service, opmgr);
 }
 
 void
