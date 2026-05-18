@@ -178,16 +178,27 @@ NetworkReceiverModel<Datatype>::add_callback_impl(std::function<void(MessageType
   m_event_loop_runner = std::make_unique<std::jthread>([&](std::stop_token token) {
     std::optional<Datatype> message;
     while (!token.stop_requested() || message) {
-      try {
-        // 0 timeout when we are trying to stop
-        message = try_read_network<Datatype>(token.stop_requested() ? std::chrono::milliseconds(0)
+
+      // the following sleep statement is for testing only!
+      int delay_usec = 0;  //1500000;
+      if (delay_usec > 0 && message.has_value() && this->id().uid.length() == 10 &&
+          this->id().uid == "td_mlt_dfo" && this->id().data_type == "TriggerDecision") {
+        ers::warning(ArtificialDelay(ERS_HERE, delay_usec, "receiving", "the next trigger decision"));
+        usleep(delay_usec);
+        message.reset();
+      }
+      else {
+        try {
+          // 0 timeout when we are trying to stop
+          message = try_read_network<Datatype>(token.stop_requested() ? std::chrono::milliseconds(0)
                                                                     : std::chrono::milliseconds(20));
-        if (message) {
-          m_callback(*message);
+          if (message) {
+            m_callback(*message);
+          }
+        } catch (const ers::Issue&) {
+          // Intentionally ignoring any ers::Issues that might have been raised
+          ;
         }
-      } catch (const ers::Issue&) {
-        // Intentionally ignoring any ers::Issues that might have been raised
-        ;
       }
     }
   });

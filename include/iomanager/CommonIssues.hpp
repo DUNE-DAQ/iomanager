@@ -36,6 +36,12 @@ ERS_DECLARE_ISSUE(iomanager,
                                                                       << " but datatype_to_string reports " << datatype,
                   ((std::string)cuid)((std::string)cid_dt)((std::string)datatype))
 
+ERS_DECLARE_ISSUE(iomanager,
+                  ArtificialDelay,
+                  "An artificial delay of " << delay << " usec is being introduced before "
+                  << action << " " << object,
+                  ((size_t)delay)((std::string)action)((std::string)object))
+
 // Re-enable coverage collection LCOV_EXCL_STOP
 
 } // namespace dunedaq
