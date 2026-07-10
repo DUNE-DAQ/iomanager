@@ -47,6 +47,10 @@ public:
 
   void pop(value_t& val, const duration_t& dur) override
   {
+    if (dur == std::chrono::milliseconds::max()) {
+      m_queue.dequeue(val);
+      return;
+    }
     if (!m_queue.try_dequeue_for(val, dur)) {
       throw QueueTimeoutExpired(
         ERS_HERE, this->get_name(), "pop", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
@@ -54,6 +58,10 @@ public:
   }
   bool try_pop(value_t& val, const duration_t& dur) override
   {
+    if (dur == std::chrono::milliseconds::max()) {
+      m_queue.dequeue(val);
+      return true;
+    }
     if (!m_queue.try_dequeue_for(val, dur)) {
       return false;
     }
@@ -64,6 +72,10 @@ public:
 
   void push(value_t&& t, const duration_t& dur) override
   {
+    if (dur == std::chrono::milliseconds::max()) {
+      m_queue.enqueue(std::move(t));
+      return;
+    }
     if (!m_queue.try_enqueue_for(std::move(t), dur)) {
       throw QueueTimeoutExpired(
         ERS_HERE, this->get_name(), "push", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count());
@@ -71,6 +83,10 @@ public:
   }
   bool try_push(value_t&& t, const duration_t& dur) override
   {
+    if (dur == std::chrono::milliseconds::max()) {
+      m_queue.enqueue(std::move(t));
+      return true;
+    }
     if (!m_queue.try_enqueue_for(std::move(t), dur)) {
       ers::error(QueueTimeoutExpired(
         ERS_HERE, this->get_name(), "push", std::chrono::duration_cast<std::chrono::milliseconds>(dur).count()));

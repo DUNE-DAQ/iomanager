@@ -199,8 +199,7 @@ BOOST_AUTO_TEST_CASE(max_timeout, *boost::unit_test::depends_on("full_checks"))
   }
 
   int push_value = 0;
-  //auto unlimited_timeout = std::chrono::milliseconds::max();
-  auto unlimited_timeout = std::chrono::milliseconds(5000);
+  auto unlimited_timeout = std::chrono::milliseconds::max();
 
   while (queue.can_push()) {
 
@@ -266,7 +265,6 @@ BOOST_AUTO_TEST_CASE(max_timeout, *boost::unit_test::depends_on("full_checks"))
       break;
     }
   }
-  unlimited_timeout = std::chrono::milliseconds::max();
 
   BOOST_REQUIRE(!queue.can_pop());
 
