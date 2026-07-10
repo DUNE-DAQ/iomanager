@@ -48,6 +48,8 @@ public:
   void pop(value_t& val, const duration_t& dur) override
   {
     if (dur == std::chrono::milliseconds::max()) {
+      // try_dequeue_for adds the dur to now(), which overflows and causes 0 duration
+      // Use base dequeue which blocks indefinitely until it can pop
       m_queue.dequeue(val);
       return;
     }
@@ -59,6 +61,8 @@ public:
   bool try_pop(value_t& val, const duration_t& dur) override
   {
     if (dur == std::chrono::milliseconds::max()) {
+      // try_dequeue_for adds the dur to now(), which overflows and causes 0 duration
+      // Use base dequeue which blocks indefinitely until it can pop
       m_queue.dequeue(val);
       return true;
     }
@@ -73,6 +77,8 @@ public:
   void push(value_t&& t, const duration_t& dur) override
   {
     if (dur == std::chrono::milliseconds::max()) {
+      // try_enqueue_for adds the dur to now(), which overflows and causes 0 duration
+      // Use base enqueue which blocks indefinitely until it can push
       m_queue.enqueue(std::move(t));
       return;
     }
@@ -84,6 +90,8 @@ public:
   bool try_push(value_t&& t, const duration_t& dur) override
   {
     if (dur == std::chrono::milliseconds::max()) {
+      // try_enqueue_for adds the dur to now(), which overflows and causes 0 duration
+      // Use base enqueue which blocks indefinitely until it can push
       m_queue.enqueue(std::move(t));
       return true;
     }
