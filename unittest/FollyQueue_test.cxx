@@ -181,3 +181,125 @@ BOOST_AUTO_TEST_CASE(full_checks, *boost::unit_test::depends_on("empty_checks"))
     BOOST_TEST_MESSAGE("Unable to cause push timeout in " << test_max_capacity << " pushes");
   }
 }
+
+BOOST_AUTO_TEST_CASE(max_timeout, *boost::unit_test::depends_on("full_checks"))
+{
+  int popped_value = -999;
+
+  while (queue.can_pop()) {
+
+    try {
+      queue.pop(popped_value, timeout);
+    } catch (const dunedaq::iomanager::QueueTimeoutExpired& ex) {
+      BOOST_TEST(false,
+                 "Timeout exception thrown in call to FollyQueue::pop(); unable "
+                 "to empty the Queue");
+      break;
+    }
+  }
+
+  int push_value = 0;
+  auto unlimited_timeout = std::chrono::milliseconds::max();
+
+  while (queue.can_push()) {
+
+    try {
+      int push_value_tmp = push_value;
+      queue.push(std::move(push_value_tmp), timeout);
+      push_value++;
+    } catch (const dunedaq::iomanager::QueueTimeoutExpired& ex) {
+      BOOST_TEST(false,
+                 "Timeout exception thrown in call to FollyQueue::push(); unable "
+                 "to fill the Queue");
+      break;
+    }
+  }
+
+  BOOST_REQUIRE(!queue.can_push());
+
+  std::jthread push_test_thread([&]() {
+      // push to a full Queue
+      auto start_time = std::chrono::steady_clock::now();
+      try {
+        int push_value_tmp = push_value;
+        queue.push(std::move(push_value_tmp), unlimited_timeout);
+        push_value++;
+      } catch (dunedaq::iomanager::QueueTimeoutExpired&) {
+        auto push_duration = std::chrono::steady_clock::now() - start_time;
+        BOOST_TEST_MESSAGE("Timeout occurred. Capacity is "
+                           << queue.get_capacity() << ", current occupancy is " << queue.get_num_elements()
+                           << ", elapsed time "
+                           << std::chrono::duration_cast<std::chrono::milliseconds>(push_duration).count());
+        BOOST_REQUIRE(false);
+      }
+  });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+
+  while (queue.can_pop()) {
+
+    try {
+      popped_value = -999;
+      queue.pop(popped_value, timeout);
+      BOOST_REQUIRE_GE(popped_value, 0);
+      BOOST_REQUIRE_LE(popped_value, push_value);
+    } catch (const dunedaq::iomanager::QueueTimeoutExpired& ex) {
+      BOOST_TEST(false,
+                 "Timeout exception thrown in call to FollyQueue::pop(); unable "
+                 "to empty the Queue");
+      break;
+    }
+  }
+  push_test_thread.join();
+  while (queue.can_pop()) {
+
+    try {
+      popped_value = -999;
+      queue.pop(popped_value, timeout);
+      BOOST_REQUIRE_GE(popped_value, 0);
+      BOOST_REQUIRE_LE(popped_value, push_value);
+    } catch (const dunedaq::iomanager::QueueTimeoutExpired& ex) {
+      BOOST_TEST(false,
+                 "Timeout exception thrown in call to FollyQueue::pop(); unable "
+                 "to empty the Queue");
+      break;
+    }
+  }
+
+  BOOST_REQUIRE(!queue.can_pop());
+
+  std::jthread pop_test_thread([&]() {
+    // pop from an empty Queue
+    auto start_time = std::chrono::steady_clock::now();
+    try {
+      popped_value = -999;
+      queue.pop(popped_value, unlimited_timeout);
+      BOOST_REQUIRE_GE(popped_value, 0);
+      BOOST_REQUIRE_LE(popped_value, push_value);
+    } catch (dunedaq::iomanager::QueueTimeoutExpired&) {
+      auto pop_duration = std::chrono::steady_clock::now() - start_time;
+      BOOST_TEST_MESSAGE("Timeout occurred. Capacity is "
+                         << queue.get_capacity() << ", current occupancy is " << queue.get_num_elements()
+                         << ", elapsed time "
+                         << std::chrono::duration_cast<std::chrono::milliseconds>(pop_duration).count());
+      BOOST_REQUIRE(false);
+    }
+  });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+
+  while (queue.can_push()) {
+
+    try {
+      int push_value_tmp = push_value;
+      queue.push(std::move(push_value_tmp), timeout);
+      push_value++;
+    } catch (const dunedaq::iomanager::QueueTimeoutExpired& ex) {
+      BOOST_TEST(false,
+                 "Timeout exception thrown in call to FollyQueue::push(); unable "
+                 "to fill the Queue");
+      break;
+    }
+  }
+  pop_test_thread.join();
+}
