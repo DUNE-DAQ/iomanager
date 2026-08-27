@@ -50,9 +50,10 @@ struct ConfigurationTestFixture
     confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/iomanager_test.data.xml");
     confdb->get<dunedaq::confmodel::Queue>(queues);
     confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
+    confdb->get<dunedaq::confmodel::ConnectionOverride>(local_overrides);
 
     IOManager::get()->configure(
-      "performance_t", "localhost", queues, connections, nullptr, opmgr); // Not using connectivity service
+      "performance_t", queues, connections, local_overrides, nullptr, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -68,6 +69,7 @@ struct ConfigurationTestFixture
   std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
   std::vector<const dunedaq::confmodel::Queue*> queues;
   std::vector<const dunedaq::confmodel::NetworkConnection*> connections;
+  std::vector<const dunedaq::confmodel::ConnectionOverride*> local_overrides;
   const size_t n_sends = 10000;
   const size_t message_size = 55680;
 };

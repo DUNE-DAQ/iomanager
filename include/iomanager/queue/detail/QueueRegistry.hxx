@@ -53,13 +53,25 @@ std::shared_ptr<QueueBase>
 QueueRegistry::create_queue(const confmodel::Queue* config)
 {
   std::shared_ptr<QueueBase> queue;
+
+  int capacity = config->get_capacity();
+  for (auto& lo : m_local_overrides) {
+    std::regex search_ex(lo->get_connection_id_regex());
+    if (std::regex_match(config->UID(), search_ex)) {
+      TLOG_DEBUG(11) << "Found local override for queue " << config->UID();
+      if (lo->get_override_type() == confmodel::ConnectionOverride::Override_type::Capacity) {
+        capacity = std::stoi(lo->get_override_value());
+      }
+    }
+  }
+
   auto const& type = config->get_queue_type();
   if (type == confmodel::Queue::Queue_type::KStdDeQueue) {
-    queue = std::make_shared<StdDeQueue<T>>(config->UID(), config->get_capacity());
+    queue = std::make_shared<StdDeQueue<T>>(config->UID(), capacity);
   } else if (type == confmodel::Queue::Queue_type::KFollySPSCQueue) {
-    queue = std::make_shared<FollySPSCQueue<T>>(config->UID(), config->get_capacity());
+    queue = std::make_shared<FollySPSCQueue<T>>(config->UID(), capacity);
   } else if (type == confmodel::Queue::Queue_type::KFollyMPMCQueue) {
-    queue = std::make_shared<FollyMPMCQueue<T>>(config->UID(), config->get_capacity());
+    queue = std::make_shared<FollyMPMCQueue<T>>(config->UID(), capacity);
   } else {
     throw QueueTypeUnknown(ERS_HERE, config->get_queue_type());
   }

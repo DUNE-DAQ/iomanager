@@ -39,8 +39,8 @@ NetworkManager::get()
 
 void
 NetworkManager::configure(const std::string& session_name,
-                          const std::string& vhost_name,
                           const std::vector<const confmodel::NetworkConnection*>& connections,
+                          const std::vector<const confmodel::ConnectionOverride*>& local_overrides,
                           const confmodel::ConnectivityService* conn_svc,
                           dunedaq::opmonlib::OpMonManager& opmgr)
 {
@@ -48,7 +48,7 @@ NetworkManager::configure(const std::string& session_name,
     throw AlreadyConfigured(ERS_HERE);
   }
 
-  m_vhost_name = vhost_name;
+  m_local_overrides = local_overrides;
 
   for (auto& connection : connections) {
     auto name = connection->UID();
@@ -318,6 +318,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   } else {
     conn_info.connection_string = connections[0].uri;
   }
+
   auto newCs = plugin->connect_for_receives(conn_info);
   TLOG_DEBUG(12) << "Receiver reports connected to URI " << newCs;
 
@@ -377,11 +378,23 @@ NetworkManager::create_sender(ConnectionInfo connection)
   ipm::Sender::ConnectionInfo conn_info(connection.uid, connection.uri, connection.capacity);
 
   utilities::ZmqUri oldUri(connection.uri);
-  if (m_vhost_name != "") {
-    TLOG_DEBUG(11) << "Getting IP of VirtualHost " << m_vhost_name << " for configuring sender to " << connection.uri;
-    auto endpoints = utilities::get_hostname_ips(m_vhost_name);
-    if (endpoints.size() > 0) {
-      conn_info.send_endpoint = endpoints[0];
+  for (auto& lo : m_local_overrides) {
+    std::regex search_ex(lo->get_connection_id_regex());
+    if (std::regex_match(connection.uid, search_ex)) {
+      TLOG_DEBUG(11) << "Found local override for connection " << connection.uid;
+      auto type = lo->get_override_type();
+      if (type == confmodel::ConnectionOverride::Override_type::Output_interface) {
+        conn_info.send_endpoint = utilities::get_interface_ip(lo->get_override_value());
+      }
+      if (type == confmodel::ConnectionOverride::Override_type::Output_hostname) {
+        auto endpoints = utilities::get_hostname_ips(lo->get_override_value());
+        if (endpoints.size() > 0) {
+          conn_info.send_endpoint = endpoints[0];
+        }
+      }
+      if (type == confmodel::ConnectionOverride::Override_type::Capacity) {
+        conn_info.capacity = std::stoi(lo->get_override_value());
+      }
     }
   }
 

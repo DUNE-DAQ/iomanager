@@ -16,6 +16,7 @@
 
 #include "confmodel/ConnectivityService.hpp"
 #include "confmodel/NetworkConnection.hpp"
+#include "confmodel/ConnectionOverride.hpp"
 #include "confmodel/Queue.hpp"
 
 #include <chrono>
@@ -50,9 +51,10 @@ public:
   IOManager(IOManager&&) = delete;                 ///< IOManager is not move-constructible
   IOManager& operator=(IOManager&&) = delete;      ///< IOManager is not move-assignable
 
-  void configure(std::string session, std::string vhost_name,
+  void configure(std::string session,
                  std::vector<const confmodel::Queue*> queues,
                  std::vector<const confmodel::NetworkConnection*> connections,
+                 std::vector<const confmodel::ConnectionOverride*> local_overrides,
                  const confmodel::ConnectivityService* connection_service,
                  opmonlib::OpMonManager&);
 

@@ -16,6 +16,7 @@
 #include "iomanager/queue/QueueIssues.hpp"
 
 #include "confmodel/Queue.hpp"
+#include "confmodel/ConnectionOverride.hpp"
 #include "opmonlib/OpMonManager.hpp"
 
 #include "ers/Issue.hpp"
@@ -58,9 +59,13 @@ public:
   /**
    * @brief Configure the QueueRegistry
    * @param configs Queue configurations
+   * @param local_overrides Local connection overrides
    * @param mgr OpMonManager to register metrics tree
    */
-  void configure(const std::vector<const confmodel::Queue*>& configs, opmonlib::OpMonManager& mgr);
+  void configure(const std::vector<const confmodel::Queue*>& configs, const
+                   std::vector<const confmodel::ConnectionOverride*>& local_overrides,
+
+                 opmonlib::OpMonManager& mgr);
 
   // ONLY TO BE USED FOR TESTING!
   static void reset() { s_instance.reset(nullptr); }
@@ -85,6 +90,7 @@ private:
 
   std::map<std::string, QueueEntry> m_queue_registry;
   std::vector<const confmodel::Queue*> m_queue_configs;
+  std::vector<const confmodel::ConnectionOverride*> m_local_overrides;
   std::shared_ptr<opmonlib::OpMonLink> m_opmon_link{ std::make_shared<opmonlib::OpMonLink>() };
 
   bool m_configured{ false };

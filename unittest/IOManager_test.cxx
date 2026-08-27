@@ -176,6 +176,7 @@ struct ConfigurationTestFixture
     confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/iomanager_test.data.xml");
     confdb->get<dunedaq::confmodel::Queue>(queues);
     confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
+    confdb->get<dunedaq::confmodel::ConnectionOverride>(local_overrides);
 
     conn_id = ConnectionId{ "network", "data_t" };
     queue_id = ConnectionId{ "queue", "data_t" };
@@ -189,7 +190,7 @@ struct ConfigurationTestFixture
     sub3_id = ConnectionId{ "pub.*", "data3_t" };
 
     IOManager::get()->configure(
-      "IOManager_t", "localhost", queues, connections, nullptr, opmgr); // Not using connectivity service
+      "IOManager_t", queues, connections, local_overrides, nullptr, opmgr); // Not using connectivity service
   }
   ~ConfigurationTestFixture() { IOManager::get()->reset(); }
 
@@ -211,6 +212,7 @@ struct ConfigurationTestFixture
   std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
   std::vector<const dunedaq::confmodel::Queue*> queues;
   std::vector<const dunedaq::confmodel::NetworkConnection*> connections;
+  std::vector<const dunedaq::confmodel::ConnectionOverride*> local_overrides;
 
   dunedaq::opmonlib::TestOpMonManager opmgr;
 };
