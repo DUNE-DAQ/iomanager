@@ -31,20 +31,23 @@ struct ConfigurationFixture
   {
     confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/queueregistry_test.data.xml");
     confdb->get<dunedaq::confmodel::Queue>(queues);
+    confdb->get<dunedaq::confmodel::ConnectionOverride>(local_overrides);
   };
   static std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
   static std::vector<const dunedaq::confmodel::Queue*> queues;
+  static std::vector<const dunedaq::confmodel::ConnectionOverride*> local_overrides;
 };
 std::vector<const dunedaq::confmodel::Queue*> ConfigurationFixture::queues;
+std::vector<const dunedaq::confmodel::ConnectionOverride*> ConfigurationFixture::local_overrides;
 std::shared_ptr<dunedaq::conffwk::Configuration> ConfigurationFixture::confdb(nullptr);
 BOOST_TEST_GLOBAL_FIXTURE(ConfigurationFixture);
 
 BOOST_AUTO_TEST_CASE(Configure)
 {
   dunedaq::opmonlib::TestOpMonManager opmgr;
-  QueueRegistry::get().configure(ConfigurationFixture::queues, opmgr);
+  QueueRegistry::get().configure(ConfigurationFixture::queues, ConfigurationFixture::local_overrides, opmgr);
 
-  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(ConfigurationFixture::queues, opmgr),
+  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(ConfigurationFixture::queues, ConfigurationFixture::local_overrides, opmgr),
                           QueueRegistryConfigured,
                           [&](QueueRegistryConfigured const&) { return true; });
 }

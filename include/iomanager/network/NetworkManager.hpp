@@ -20,6 +20,7 @@
 
 #include "confmodel/ConnectivityService.hpp"
 #include "confmodel/NetworkConnection.hpp"
+#include "confmodel/ConnectionOverride.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -44,6 +45,7 @@ public:
 
   void configure(const std::string& session_name,
                  const std::vector<const confmodel::NetworkConnection*>& connections,
+                 const std::vector<const confmodel::ConnectionOverride*>& local_overrides,
                  const confmodel::ConnectivityService* conn_svc,
                  dunedaq::opmonlib::OpMonManager&);
   void reset();
@@ -81,6 +83,7 @@ private:
   std::unordered_map<ConnectionId, const confmodel::NetworkConnection*> m_preconfigured_connections;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<ConnectionId, std::shared_ptr<ipm::Sender>> m_sender_plugins;
+  std::vector<const confmodel::ConnectionOverride*> m_local_overrides;
   std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_sender_opmon_link{ std::make_shared<dunedaq::opmonlib::OpMonLink>() };
   std::shared_ptr<dunedaq::opmonlib::OpMonLink> m_receiver_opmon_link{
     std::make_shared<dunedaq::opmonlib::OpMonLink>()

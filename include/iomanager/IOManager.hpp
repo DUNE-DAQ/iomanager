@@ -16,6 +16,7 @@
 
 #include "confmodel/ConnectivityService.hpp"
 #include "confmodel/NetworkConnection.hpp"
+#include "confmodel/ConnectionOverride.hpp"
 #include "confmodel/Queue.hpp"
 
 #include <chrono>
@@ -53,6 +54,7 @@ public:
   void configure(std::string session,
                  std::vector<const confmodel::Queue*> queues,
                  std::vector<const confmodel::NetworkConnection*> connections,
+                 std::vector<const confmodel::ConnectionOverride*> local_overrides,
                  const confmodel::ConnectivityService* connection_service,
                  opmonlib::OpMonManager&);
 

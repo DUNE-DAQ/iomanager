@@ -33,6 +33,7 @@ struct NetworkManagerTestFixture
 
     confdb = std::make_shared<dunedaq::conffwk::Configuration>("oksconflibs:test/config/networkmanager_test.data.xml");
     confdb->get<dunedaq::confmodel::NetworkConnection>(connections);
+    confdb->get<dunedaq::confmodel::ConnectionOverride>(local_overrides);
 
     sendRecvConnId.uid = "sendRecv";
     sendRecvConnId.data_type = "data";
@@ -44,7 +45,7 @@ struct NetworkManagerTestFixture
     pubSubConnId3.data_type = "String";
 
     dunedaq::opmonlib::TestOpMonManager opmgr;
-    NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr); // Not using ConfigClient
+    NetworkManager::get().configure("NetworkManager_t", connections, local_overrides, nullptr, opmgr); // Not using ConfigClient
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
 
@@ -56,6 +57,7 @@ struct NetworkManagerTestFixture
   ConnectionId sendRecvConnId, pubSubConnId1, pubSubConnId2, pubSubConnId3;
   std::shared_ptr<dunedaq::conffwk::Configuration> confdb;
   std::vector<const dunedaq::confmodel::NetworkConnection*> connections;
+  std::vector<const dunedaq::confmodel::ConnectionOverride*> local_overrides;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
@@ -121,13 +123,13 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
                           [](ConnectionNotFound const&) { return true; });
 
   dunedaq::opmonlib::TestOpMonManager opmgr;
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr),
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure("NetworkManager_t", connections, local_overrides, nullptr, opmgr),
                           AlreadyConfigured,
                           [&](AlreadyConfigured const&) { return true; });
 
   NetworkManager::get().reset();
 
-  NetworkManager::get().configure("NetworkManager_t", connections, nullptr, opmgr);
+  NetworkManager::get().configure("NetworkManager_t", connections, local_overrides, nullptr, opmgr);
 }
 
 BOOST_FIXTURE_TEST_CASE(GetDatatypes, NetworkManagerTestFixture)

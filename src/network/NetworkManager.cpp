@@ -40,12 +40,15 @@ NetworkManager::get()
 void
 NetworkManager::configure(const std::string& session_name,
                           const std::vector<const confmodel::NetworkConnection*>& connections,
+                          const std::vector<const confmodel::ConnectionOverride*>& local_overrides,
                           const confmodel::ConnectivityService* conn_svc,
                           dunedaq::opmonlib::OpMonManager& opmgr)
 {
   if (!m_preconfigured_connections.empty()) {
     throw AlreadyConfigured(ERS_HERE);
   }
+
+  m_local_overrides = local_overrides;
 
   for (auto& connection : connections) {
     auto name = connection->UID();
@@ -315,6 +318,7 @@ NetworkManager::create_receiver(std::vector<ConnectionInfo> connections, Connect
   } else {
     conn_info.connection_string = connections[0].uri;
   }
+
   auto newCs = plugin->connect_for_receives(conn_info);
   TLOG_DEBUG(12) << "Receiver reports connected to URI " << newCs;
 
@@ -372,15 +376,35 @@ NetworkManager::create_sender(ConnectionInfo connection)
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
   ipm::Sender::ConnectionInfo conn_info(connection.uid, connection.uri, connection.capacity);
-  auto newCs =
-    plugin->connect_for_sends(conn_info);
+
+  utilities::ZmqUri oldUri(connection.uri);
+  for (auto& lo : m_local_overrides) {
+    std::regex search_ex(lo->get_connection_id_regex());
+    if (std::regex_match(connection.uid, search_ex)) {
+      TLOG_DEBUG(11) << "Found local override for connection " << connection.uid;
+      auto type = lo->get_override_type();
+      if (type == confmodel::ConnectionOverride::Override_type::Output_interface) {
+        conn_info.send_endpoint = utilities::get_interface_ip(lo->get_override_value());
+      }
+      if (type == confmodel::ConnectionOverride::Override_type::Output_hostname) {
+        auto endpoints = utilities::get_hostname_ips(lo->get_override_value());
+        if (endpoints.size() > 0) {
+          conn_info.send_endpoint = endpoints[0];
+        }
+      }
+      if (type == confmodel::ConnectionOverride::Override_type::Capacity) {
+        conn_info.capacity = std::stoi(lo->get_override_value());
+      }
+    }
+  }
+
+  auto newCs = plugin->connect_for_sends(conn_info);
   TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << newCs;
 
   // Replace with resolved if there are wildcards (host and/or port)
   if (connection.uri.find("*") != std::string::npos || connection.uri.find("0.0.0.0") != std::string::npos) {
     TLOG_DEBUG(13) << "Wildcard found in connection URI " << connection.uri << ", adjusting before publish";
     utilities::ZmqUri newUri(newCs);
-    utilities::ZmqUri oldUri(connection.uri);
 
     if (oldUri.port == "*")
       oldUri.port = newUri.port;
