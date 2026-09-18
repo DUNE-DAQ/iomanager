@@ -108,7 +108,6 @@ add_things(test_config const& config, test_results& results, const volatile bool
 {
   const int num_pushes = config.num_elements / config.num_adding_threads;
   auto start_time_push = std::chrono::steady_clock::now(); // Won't ever use the initialization value
-  auto size_snapshot = results.queue_size.load(); // Unlike queue_size, only this thread writes to size_snapshot
 
   while (spinlock) {
   } // Main program thread will set this to false, then this thread starts pushing
@@ -142,7 +141,7 @@ add_things(test_config const& config, test_results& results, const volatile bool
         }
 
         if (config.enable_max_size_checking) {
-          size_snapshot = results.queue_size.fetch_add(1) + 1; // fetch_add returns previous value
+          auto size_snapshot = results.queue_size.fetch_add(1) + 1; // fetch_add returns previous value
 
           if (size_snapshot > results.max_queue_size) {
             results.max_queue_size = size_snapshot;
@@ -436,8 +435,8 @@ main(int argc, char* argv[])
 
   bool spinlock = true;
 
-  std::vector<std::thread> adders;
-  std::vector<std::thread> removers;
+  std::vector<std::thread> adders(config.num_adding_threads);
+  std::vector<std::thread> removers(config.num_removing_threads);
 
   for (int i = 0; i < config.num_adding_threads; ++i) {
     adders.emplace_back(add_things, std::cref(config), std::ref(results), std::cref(spinlock));
@@ -451,7 +450,7 @@ main(int argc, char* argv[])
   // spinlock strategy in his logging package
 
   std::this_thread::sleep_for(std::chrono::milliseconds(20));
-  spinlock = false;
+  spinlock = false; // NOLINT
 
   const auto start_time = std::chrono::steady_clock::now();
   for (auto& adder : adders) {

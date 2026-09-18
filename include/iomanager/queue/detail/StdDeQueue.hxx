@@ -10,7 +10,7 @@ StdDeQueue<T>::StdDeQueue(const std::string& name, size_t capacity)
   , m_capacity(capacity)
   , m_size(0)
 {
-  assert(m_deque.max_size() > this->get_capacity());
+  assert(m_deque.max_size() > this->get_capacity()); // NOLINT
 }
 
 template<class T>
