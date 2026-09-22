@@ -435,8 +435,10 @@ main(int argc, char* argv[])
 
   bool spinlock = true;
 
-  std::vector<std::thread> adders(config.num_adding_threads);
-  std::vector<std::thread> removers(config.num_removing_threads);
+  std::vector<std::thread> adders;
+  adders.reserve(config.num_adding_threads);
+  std::vector<std::thread> removers;
+  removers.reserve(config.num_removing_threads);
 
   for (int i = 0; i < config.num_adding_threads; ++i) {
     adders.emplace_back(add_things, std::cref(config), std::ref(results), std::cref(spinlock));
