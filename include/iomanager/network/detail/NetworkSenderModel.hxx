@@ -19,12 +19,11 @@ template<typename Datatype>
 inline NetworkSenderModel<Datatype>::NetworkSenderModel(ConnectionId const& conn_id)
   : SenderConcept<Datatype>(conn_id)
 {
-  TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this)
-                             << ", uid=" << conn_id.uid << ", data_type=" << conn_id.data_type;
+  TLOG() << "NetworkSenderModel created with DT! Addr: " << static_cast<void*>(this) << ", uid=" << conn_id.uid
+         << ", data_type=" << conn_id.data_type;
   get_sender(std::chrono::milliseconds(1000));
   if (m_network_sender_ptr == nullptr) {
-    TLOG() << "Initial connection attempt failed for uid=" << conn_id.uid
-                               << ", data_type=" << conn_id.data_type;
+    TLOG() << "Initial connection attempt failed for uid=" << conn_id.uid << ", data_type=" << conn_id.data_type;
   }
 }
 

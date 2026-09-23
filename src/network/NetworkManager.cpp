@@ -372,8 +372,7 @@ NetworkManager::create_sender(ConnectionInfo connection)
   auto plugin = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin to " << connection.uri;
   ipm::Sender::ConnectionInfo conn_info(connection.uid, connection.uri, connection.capacity);
-  auto newCs =
-    plugin->connect_for_sends(conn_info);
+  auto newCs = plugin->connect_for_sends(conn_info);
   TLOG_DEBUG(11) << "Sender Plugin connected, reports URI " << newCs;
 
   // Replace with resolved if there are wildcards (host and/or port)
