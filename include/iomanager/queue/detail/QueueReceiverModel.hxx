@@ -95,8 +95,7 @@ QueueReceiverModel<Datatype>::add_callback(std::function<void(Datatype&)> callba
     bool ret = true;
     while (!token.stop_requested() || ret) {
       // TLOG() << "Take data from q then invoke callback...";
-      ret = m_queue->try_pop(dt, token.stop_requested() ? std::chrono::milliseconds(0) 
-          : std::chrono::milliseconds(1));
+      ret = m_queue->try_pop(dt, token.stop_requested() ? std::chrono::milliseconds(0) : std::chrono::milliseconds(1));
       if (ret) {
         m_callback(dt);
       }
