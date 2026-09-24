@@ -218,20 +218,20 @@ BOOST_AUTO_TEST_CASE(max_timeout, *boost::unit_test::depends_on("full_checks"))
   BOOST_REQUIRE(!queue.can_push());
 
   std::jthread push_test_thread([&]() {
-      // push to a full Queue
-      auto start_time = std::chrono::steady_clock::now();
-      try {
-        int push_value_tmp = push_value;
-        queue.push(std::move(push_value_tmp), unlimited_timeout);
-        push_value++;
-      } catch (dunedaq::iomanager::QueueTimeoutExpired&) {
-        auto push_duration = std::chrono::steady_clock::now() - start_time;
-        BOOST_TEST_MESSAGE("Timeout occurred. Capacity is "
-                           << queue.get_capacity() << ", current occupancy is " << queue.get_num_elements()
-                           << ", elapsed time "
-                           << std::chrono::duration_cast<std::chrono::milliseconds>(push_duration).count());
-        BOOST_REQUIRE(false);
-      }
+    // push to a full Queue
+    auto start_time = std::chrono::steady_clock::now();
+    try {
+      int push_value_tmp = push_value;
+      queue.push(std::move(push_value_tmp), unlimited_timeout);
+      push_value++;
+    } catch (dunedaq::iomanager::QueueTimeoutExpired&) {
+      auto push_duration = std::chrono::steady_clock::now() - start_time;
+      BOOST_TEST_MESSAGE("Timeout occurred. Capacity is "
+                         << queue.get_capacity() << ", current occupancy is " << queue.get_num_elements()
+                         << ", elapsed time "
+                         << std::chrono::duration_cast<std::chrono::milliseconds>(push_duration).count());
+      BOOST_REQUIRE(false);
+    }
   });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2500));
