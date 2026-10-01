@@ -63,7 +63,7 @@
 
 <oks-data>
 
-<info name="" type="" num-of-items="4" oks-format="data" oks-version="862f2957270" created-by="gjc" created-on="thinkpad" creation-time="20231110T143339" last-modified-by="eflumerf" last-modified-on="ironvirt9.mshome.net" last-modification-time="20241010T181349"/>
+<info name="" type="" num-of-items="4" oks-format="data" oks-version="862f2957270" created-by="gjc" created-on="thinkpad" creation-time="20231110T143339" last-modified-by="eflumerf" last-modified-on="ironvirt9.mshome.net" last-modification-time="20260910T145938"/>
 
 <include>
  <file path="schema/confmodel/dunedaq.schema.xml"/>
@@ -78,33 +78,33 @@
 
 <obj class="Queue" id="test_queue_fmpmc">
  <attr name="data_type" type="string" val="int"/>
+ <attr name="capacity" type="u32" val="10"/>
  <attr name="send_timeout_ms" type="u32" val="10"/>
  <attr name="recv_timeout_ms" type="u32" val="10"/>
- <attr name="capacity" type="u32" val="10"/>
  <attr name="queue_type" type="enum" val="kFollyMPMCQueue"/>
 </obj>
 
 <obj class="Queue" id="test_queue_fspsc">
  <attr name="data_type" type="string" val="int"/>
+ <attr name="capacity" type="u32" val="10"/>
  <attr name="send_timeout_ms" type="u32" val="10"/>
  <attr name="recv_timeout_ms" type="u32" val="10"/>
- <attr name="capacity" type="u32" val="10"/>
  <attr name="queue_type" type="enum" val="kFollySPSCQueue"/>
 </obj>
 
 <obj class="Queue" id="test_queue_stddeque">
  <attr name="data_type" type="string" val="int"/>
+ <attr name="capacity" type="u32" val="10"/>
  <attr name="send_timeout_ms" type="u32" val="10"/>
  <attr name="recv_timeout_ms" type="u32" val="10"/>
- <attr name="capacity" type="u32" val="10"/>
  <attr name="queue_type" type="enum" val="kStdDeQueue"/>
 </obj>
 
 <obj class="Queue" id="test_queue_unknown">
  <attr name="data_type" type="string" val="int"/>
+ <attr name="capacity" type="u32" val="10"/>
  <attr name="send_timeout_ms" type="u32" val="10"/>
  <attr name="recv_timeout_ms" type="u32" val="10"/>
- <attr name="capacity" type="u32" val="10"/>
  <attr name="queue_type" type="enum" val="kUnknown"/>
 </obj>
 
