@@ -14,9 +14,9 @@
 #include "iomanager/Sender.hpp"
 #include "opmonlib/OpMonManager.hpp"
 
+#include "confmodel/ConnectionOverride.hpp"
 #include "confmodel/ConnectivityService.hpp"
 #include "confmodel/NetworkConnection.hpp"
-#include "confmodel/ConnectionOverride.hpp"
 #include "confmodel/Queue.hpp"
 
 #include <chrono>

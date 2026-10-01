@@ -18,9 +18,9 @@
 #include "ipm/Subscriber.hpp"
 #include "opmonlib/OpMonManager.hpp"
 
+#include "confmodel/ConnectionOverride.hpp"
 #include "confmodel/ConnectivityService.hpp"
 #include "confmodel/NetworkConnection.hpp"
-#include "confmodel/ConnectionOverride.hpp"
 
 #include <atomic>
 #include <chrono>

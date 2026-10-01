@@ -15,8 +15,8 @@
 #include "iomanager/queue/Queue.hpp"
 #include "iomanager/queue/QueueIssues.hpp"
 
-#include "confmodel/Queue.hpp"
 #include "confmodel/ConnectionOverride.hpp"
+#include "confmodel/Queue.hpp"
 #include "opmonlib/OpMonManager.hpp"
 
 #include "ers/Issue.hpp"
@@ -62,8 +62,8 @@ public:
    * @param local_overrides Local connection overrides
    * @param mgr OpMonManager to register metrics tree
    */
-  void configure(const std::vector<const confmodel::Queue*>& configs, const
-                   std::vector<const confmodel::ConnectionOverride*>& local_overrides,
+  void configure(const std::vector<const confmodel::Queue*>& configs,
+                 const std::vector<const confmodel::ConnectionOverride*>& local_overrides,
 
                  opmonlib::OpMonManager& mgr);
 

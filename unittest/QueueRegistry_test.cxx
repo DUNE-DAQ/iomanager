@@ -47,9 +47,10 @@ BOOST_AUTO_TEST_CASE(Configure)
   dunedaq::opmonlib::TestOpMonManager opmgr;
   QueueRegistry::get().configure(ConfigurationFixture::queues, ConfigurationFixture::local_overrides, opmgr);
 
-  BOOST_REQUIRE_EXCEPTION(QueueRegistry::get().configure(ConfigurationFixture::queues, ConfigurationFixture::local_overrides, opmgr),
-                          QueueRegistryConfigured,
-                          [&](QueueRegistryConfigured const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    QueueRegistry::get().configure(ConfigurationFixture::queues, ConfigurationFixture::local_overrides, opmgr),
+    QueueRegistryConfigured,
+    [&](QueueRegistryConfigured const&) { return true; });
 }
 
 BOOST_AUTO_TEST_CASE(CreateQueue)

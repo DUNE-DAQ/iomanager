@@ -30,7 +30,9 @@ QueueRegistry::get()
 }
 
 void
-QueueRegistry::configure(const std::vector<const confmodel::Queue*>& configs,const std::vector<const confmodel::ConnectionOverride*>& local_overrides, opmonlib::OpMonManager& mgr)
+QueueRegistry::configure(const std::vector<const confmodel::Queue*>& configs,
+                         const std::vector<const confmodel::ConnectionOverride*>& local_overrides,
+                         opmonlib::OpMonManager& mgr)
 {
   if (m_configured) {
     throw QueueRegistryConfigured(ERS_HERE);
