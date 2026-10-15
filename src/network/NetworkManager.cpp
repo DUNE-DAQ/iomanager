@@ -48,7 +48,7 @@ NetworkManager::configure(const std::string& session_name,
   }
 
   for (auto& connection : connections) {
-    auto name = connection->UID();
+    auto const& name = connection->UID();
     TLOG_DEBUG(15) << "Adding connection " << name << " to connection map";
     ConnectionId id(connection);
     if (m_preconfigured_connections.count(id)) {
