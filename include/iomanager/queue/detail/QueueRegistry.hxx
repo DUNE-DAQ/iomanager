@@ -64,21 +64,7 @@ QueueRegistry::create_queue(const confmodel::Queue* config)
     throw QueueTypeUnknown(ERS_HERE, config->get_queue_type());
   }
 
-  try {
-    m_opmon_link->register_node(config->UID(), queue);
-  } catch (const opmonlib::NonUniqueNodeName& err) {
-    bool success = false;
-    size_t counter = 1;
-    do {
-      auto fname = fmt::format("{}--{}", config->UID(), counter);
-      try {
-        m_opmon_link->register_node(fname, queue);
-        success = true;
-      } catch (const opmonlib::NonUniqueNodeName& err) {
-        ++counter;
-      }
-    } while (!success);
-  }
+  m_opmon_link->register_node(config->UID(), queue);
 
   return queue;
 }
