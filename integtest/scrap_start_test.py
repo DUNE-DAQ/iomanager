@@ -53,6 +53,9 @@ ignored_logfile_problems = {
     "connectivity-service": [
         "errorlog: -",
     ],
+    "df-01": [
+        "data_writer already present in the node list of minimal.df-01.df-01-dw-0", # Expected, since data_writer is registered in conf
+    ],
 }
 
 # Determine if this computer has enough resources for these tests
