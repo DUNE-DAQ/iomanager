@@ -36,3 +36,6 @@
 
 # Clang Format
 .clang-format*
+
+# Python cache
+*.pyc
