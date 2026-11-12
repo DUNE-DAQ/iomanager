@@ -21,13 +21,14 @@ void
 IOManager::configure(std::string session,
                      std::vector<const confmodel::Queue*> queues,
                      std::vector<const confmodel::NetworkConnection*> connections,
+                     std::vector<const confmodel::ConnectionOverride*> local_overrides,
                      const confmodel::ConnectivityService* connection_service,
                      dunedaq::opmonlib::OpMonManager& opmgr)
 {
   m_session = session;
 
-  QueueRegistry::get().configure(queues, opmgr);
-  NetworkManager::get().configure(session, connections, connection_service, opmgr);
+  QueueRegistry::get().configure(queues, local_overrides, opmgr);
+  NetworkManager::get().configure(session, connections, local_overrides, connection_service, opmgr);
 }
 
 void
