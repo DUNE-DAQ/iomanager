@@ -55,7 +55,7 @@ struct ConnectionInfo
 {
   std::string uid;
   std::string data_type;
-  int capacity;
+  unsigned int capacity;
   std::string uri;
   ConnectionType connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
@@ -78,7 +78,7 @@ struct ConnectionRegistration
 {
   std::string uid;
   std::string data_type;
-  int capacity;
+  unsigned int capacity;
   std::string uri;
   ConnectionType connection_type; // Maps to dunedaq::confmodel::NetworkConnection::Connection_type
 
